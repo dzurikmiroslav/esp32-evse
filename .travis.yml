@@ -28,7 +28,7 @@ install:
   - . ~/esp/esp-idf/export.sh
 
 script:
-#  - cd $TRAVIS_BUILD_DIR/HelloWorld
+  - cd $TRAVIS_BUILD_DIR
   - idf.py reconfigure
   - idf.py build
   - idf.py size
