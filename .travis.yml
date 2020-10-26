@@ -10,9 +10,9 @@ addons:
     - flex
     - bison
     - gperf
-    - python
-    - python-pip
-    - python-setuptools
+    - python3
+    - python3-pip
+    - python3-setuptools
     - cmake
     - ninja-build
     - ccache
