@@ -1,0 +1,43 @@
+os: linux
+dist: focal
+language: shell
+
+addons:
+  apt:
+    packages:
+    - git
+    - wget
+    - libncurses-dev
+    - flex
+    - bison
+    - gperf
+    - python
+    - python-pip
+    - python-setuptools
+    - python-serial
+    - python-click
+    - python-cryptography
+    - python-future
+    - python-pyparsing
+    - python-pyelftools
+    - cmake
+    - ninja-build
+    - ccache
+
+install:
+  - mkdir ~/esp
+  - cd ~/esp
+  - git clone -b release/v4.1 --recursive https://github.com/espressif/esp-idf.git
+  - cd ~/esp/esp-idf
+  - ./install.sh
+  - . ~/esp/esp-idf/export.sh
+
+script:
+#  - cd $TRAVIS_BUILD_DIR/HelloWorld
+  - idf.py reconfigure
+  - idf.py build
+  - idf.py size
+
+branches:
+  only:
+  - master
