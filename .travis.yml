@@ -14,7 +14,7 @@ jobs:
       script:
       - cd $TRAVIS_BUILD_DIR/web
       - npm install
-      - npm build
+      - npm run build
     - stage: build-app
       language: shell
       addons:
