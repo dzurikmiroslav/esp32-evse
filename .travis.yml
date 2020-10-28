@@ -12,11 +12,19 @@ jobs:
       language: node_js
       node_js: 14
       script:
-      - cd $TRAVIS_BUILD_DIR/web
+      - cd web
       - npm install
       - npm run build
+      workspaces:
+        create:
+          name: web-app
+          paths:
+            - web/dist/web-app-gz
     - stage: build-app
       language: shell
+      workspaces:
+        use:
+          - web-app
       addons:
         apt:
           packages:
