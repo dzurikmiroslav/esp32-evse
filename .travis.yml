@@ -1,15 +1,22 @@
 os: linux
 dist: focal
 
-matrix:
+stages:
+  - build-web
+  - build-app
+  - deploy
+
+jobs:
   include:
-    - language: node_js
+    - stage: build-web
+      language: node_js
       node_js: 14
       script:
       - cd $TRAVIS_BUILD_DIR/web
       - npm install
       - npm build
-    - language: shell
+    - stage: build-app
+      language: shell
       addons:
         apt:
           packages:
