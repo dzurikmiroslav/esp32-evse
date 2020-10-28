@@ -19,12 +19,16 @@ jobs:
         create:
           name: web-app
           paths:
-            - web/dist/web-app-gz
+            - $TRAVIS_BUILD_DIR/web/dist/web-app-gz
     - stage: build-app
       language: shell
       workspaces:
         use:
           - web-app
+      before_install:
+      - echo "yolo"
+      - ls web
+      - ls web/dist
       addons:
         apt:
           packages:
