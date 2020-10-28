@@ -25,10 +25,6 @@ jobs:
       workspaces:
         use:
           - web-app
-      before_install:
-      - echo "yolo"
-      - ls web
-      - ls web/dist
       addons:
         apt:
           packages:
@@ -57,7 +53,10 @@ jobs:
       - idf.py reconfigure
       - idf.py build
       - idf.py size
-
+    - stage: deploy
+      script:
+      - echo "TODO"
+    
 branches:
   only:
   - master
