@@ -1,0 +1,28 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+header {
+  z-index: 10;
+}
+
+main {
+  flex-grow: 1;
+  display: flex;
+  position: relative;
+}
+
+mat-tab-group {
+  width: 100%;
+}
+
+h4 {
+  text-align: center;
+}
+
