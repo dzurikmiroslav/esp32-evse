@@ -66,12 +66,12 @@ jobs:
           - app-build
 #       script:
 #         - echo "Deploy"
-      #before_deploy:
+      before_deploy:
       #$TRAVIS_BUILD_NUMBER
-      #- git config --local user.name "travis"
-      #- git config --local user.email "travis"
-      #- export TRAVIS_TAG="master"
-      #- git tag $TRAVIS_TAG
+      - git config --local user.name "travis"
+      - git config --local user.email "travis"
+      - export TRAVIS_TAG="development"
+      - git tag $TRAVIS_TAG
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
@@ -82,8 +82,8 @@ jobs:
         name: Development
         prerelease: true
         release_notes: Development
-        tag_name: master-$TRAVIS_BUILD_NUMBER
-#         overwrite: true
+#         tag_name: master-$TRAVIS_BUILD_NUMBER
+        overwrite: true
         on:
           repo: dzurikmiroslav/esp32-evse
     
