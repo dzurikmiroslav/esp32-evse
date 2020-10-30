@@ -4,7 +4,7 @@ dist: focal
 stages:
   - build-web
   - build-app
-  - deploy
+  - release
 
 jobs:
   include:
@@ -57,7 +57,7 @@ jobs:
       - idf.py reconfigure
       - idf.py build
       - idf.py size
-    - stage: deploy
+    - stage: release
       workspaces:
         use:
           - app-build
@@ -65,6 +65,14 @@ jobs:
       - echo "TODO"
       - ls
       - ls build
+      deploy:
+        provider: releases
+        api_key: $GITHUB_TOKEN
+        file:
+        - build/esp32-evse.bin
+        - build/www.bin
+        on:
+          repo: dzurikmiroslav/esp32-evse
     
 branches:
   only:
