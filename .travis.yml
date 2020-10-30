@@ -66,7 +66,6 @@ jobs:
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
-        draft: true
         skip_cleanup: true
         file:
         - build/esp32-evse.bin
