@@ -1,5 +1,6 @@
 os: linux
 dist: focal
+language: shell
 
 stages:
   - build-web
@@ -27,8 +28,7 @@ jobs:
           paths:
             - $TRAVIS_BUILD_DIR/build
         use:
-          - web-build
-      language: shell
+          - web-build      
       addons:
         apt:
           packages:
