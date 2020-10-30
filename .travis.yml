@@ -68,6 +68,8 @@ jobs:
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
+        name: master
+        draft: true
         skip_cleanup: true
         file:
         - build/esp32-evse.bin
@@ -78,9 +80,3 @@ jobs:
 branches:
   only:
   - master
-# deploy:
-#   provider: releases
-#   api_key: $GITHUB_TOKEN
-#   file: build/esp32-evse.bin
-#   on:
-#     repo: dzurikmiroslav/esp32-evse
