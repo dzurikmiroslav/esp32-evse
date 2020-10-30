@@ -61,14 +61,9 @@ jobs:
       workspaces:
         use:
           - app-build
-      script:
-      - echo "TODO"
-      - ls
-      - ls build
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
-        name: master
         draft: true
         skip_cleanup: true
         file:
