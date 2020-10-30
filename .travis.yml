@@ -65,7 +65,7 @@ jobs:
         use:
           - app-build
       script:
-      - echo "Deploy"
+      - echo "Deploy2"
       #before_deploy:
       #$TRAVIS_BUILD_NUMBER
       #- git config --local user.name "travis"
