@@ -62,13 +62,13 @@ jobs:
         use:
           - app-build
       script:
-      - echo "Deploy2"    
-      before_deploy:
-      - git config --local user.name "travis"
-      - git config --local user.email "travis"
-      - export TRAVIS_TAG="developlemnt"
-      - git tag -f $TRAVIS_TAG
-      - echo "TRAVIS_TAG=${TRAVIS_TAG}"
+      - echo "Deploy"
+      #before_deploy:
+      #$TRAVIS_BUILD_NUMBER
+      #- git config --local user.name "travis"
+      #- git config --local user.email "travis"
+      #- export TRAVIS_TAG="master"
+      #- git tag $TRAVIS_TAG
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
@@ -76,6 +76,10 @@ jobs:
         file:
         - build/esp32-evse.bin
         - build/www.bin
+        name: Development
+        prerelease: true
+        tag_name: master
+        overwrite: true
         on:
           repo: dzurikmiroslav/esp32-evse
     
