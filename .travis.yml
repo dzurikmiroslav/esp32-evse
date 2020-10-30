@@ -63,6 +63,8 @@ jobs:
           - app-build
       script:
       - echo "Deploy"
+      before_deploy:
+      - export GIT_TAG=dev-$TRAVIS_BUILD_NUMBER      
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
