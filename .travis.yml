@@ -64,8 +64,8 @@ jobs:
       workspaces:
         use:
           - app-build
-      script:
-      - echo "Deploy2"
+#       script:
+#       - echo "Deploy2"
       #before_deploy:
       #$TRAVIS_BUILD_NUMBER
       #- git config --local user.name "travis"
@@ -82,8 +82,8 @@ jobs:
         name: Development
         prerelease: true
         release_notes: Development
-        tag_name: dev
-        overwrite: true
+#         tag_name: dev
+#         overwrite: true
         on:
           repo: dzurikmiroslav/esp32-evse
     
