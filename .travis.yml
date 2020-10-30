@@ -81,6 +81,7 @@ jobs:
         - build/www.bin
         name: Development
         prerelease: true
+        release_notes: Development
         tag_name: dev
         overwrite: true
         on:
