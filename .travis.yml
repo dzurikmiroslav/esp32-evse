@@ -15,6 +15,9 @@ jobs:
           name: web-build
           paths:
             - $TRAVIS_BUILD_DIR/web/dist/web-app-gz
+      cache:
+        directories:
+         - $TRAVIS_BUILD_DIR/web/node_modules
       language: node_js
       node_js: 14
       script:
@@ -78,7 +81,7 @@ jobs:
         - build/www.bin
         name: Development
         prerelease: true
-        tag_name: master
+#         tag_name: master
         overwrite: true
         on:
           repo: dzurikmiroslav/esp32-evse
