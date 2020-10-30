@@ -82,7 +82,7 @@ jobs:
         name: Development
         prerelease: true
         release_notes: Development
-#         tag_name: dev
+        tag_name: master-$TRAVIS_BUILD_NUMBER
 #         overwrite: true
         on:
           repo: dzurikmiroslav/esp32-evse
