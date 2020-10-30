@@ -61,6 +61,8 @@ jobs:
       workspaces:
         use:
           - app-build
+      script:
+      - echo "Deploy"
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
