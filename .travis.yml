@@ -9,22 +9,26 @@ stages:
 jobs:
   include:
     - stage: build-web
+      workspaces:
+        create:
+          name: web-build
+          paths:
+            - $TRAVIS_BUILD_DIR/web/dist/web-app-gz
       language: node_js
       node_js: 14
       script:
       - cd web
       - npm install
-      - npm run build
+      - npm run build   
+    - stage: build-app      
       workspaces:
         create:
-          name: web-app
+          name: app-build
           paths:
-            - $TRAVIS_BUILD_DIR/web/dist/web-app-gz
-    - stage: build-app
-      language: shell
-      workspaces:
+            - $TRAVIS_BUILD_DIR/build
         use:
-          - web-app
+          - web-build
+      language: shell
       addons:
         apt:
           packages:
@@ -54,8 +58,13 @@ jobs:
       - idf.py build
       - idf.py size
     - stage: deploy
+      workspaces:
+        use:
+          - app-build
       script:
       - echo "TODO"
+      - ls
+      - ls build
     
 branches:
   only:
