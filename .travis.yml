@@ -62,7 +62,7 @@ jobs:
         use:
           - app-build
       script:
-      - echo "Deploy"    
+      - echo "Deploy2"    
       before_deploy:
       - git config --local user.name "travis"
       - git config --local user.email "travis"
