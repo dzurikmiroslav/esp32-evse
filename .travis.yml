@@ -69,7 +69,7 @@ jobs:
       - git config --local user.name "travis"
       - git config --local user.email "travis"
       - export TRAVIS_TAG="development"
-      - git tag $TRAVIS_TAG
+      - git tag -f $TRAVIS_TAG
       deploy:
         provider: releases
         api_key: $GITHUB_TOKEN
