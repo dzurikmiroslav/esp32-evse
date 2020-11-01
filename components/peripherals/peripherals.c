@@ -7,6 +7,7 @@
 #include "esp_adc_cal.h"
 
 #include "peripherals.h"
+
 #include "board_config.h"
 
 #define PILOT_PWM_TIMER         LEDC_TIMER_0

@@ -3,35 +3,17 @@ dist: focal
 language: shell
 
 stages:
-  - build-web
-  - build-app
+  - build
   - release
 
 jobs:
   include:
-    - stage: build-web
+    - stage: build      
       workspaces:
         create:
-          name: web-build
-          paths:
-            - $TRAVIS_BUILD_DIR/web/dist/web-app-gz
-      cache:
-        directories:
-         - $TRAVIS_BUILD_DIR/web/node_modules
-      language: node_js
-      node_js: 14
-      script:
-      - cd web
-      - npm install
-      - npm run build   
-    - stage: build-app      
-      workspaces:
-        create:
-          name: app-build
+          name: build
           paths:
             - $TRAVIS_BUILD_DIR/build
-        use:
-          - web-build      
       addons:
         apt:
           packages:
@@ -63,25 +45,25 @@ jobs:
     - stage: release
       workspaces:
         use:
-          - app-build
-      before_deploy:
-      #$TRAVIS_BUILD_NUMBER
-      - git config --local user.name "travis"
-      - git config --local user.email "travis"
-      - export TRAVIS_TAG="development"
-      - git tag -f $TRAVIS_TAG
+          - build
+      # before_deploy:
+      # #$TRAVIS_BUILD_NUMBER
+      # - git config --local user.name "travis"
+      # - git config --local user.email "travis"
+      # - export TRAVIS_TAG="development"
+      # - git tag -f $TRAVIS_TAG
       deploy:
+        if: tag IS present
         provider: releases
         api_key: $GITHUB_TOKEN
         skip_cleanup: true
         file:
         - build/esp32-evse.bin
-        - build/www.bin
-        name: Development
+        # name: Development
         prerelease: true
-        release_notes: Development
+        # release_notes: Development
 #         tag_name: master-$TRAVIS_BUILD_NUMBER
-        overwrite: true
+        # overwrite: true
         on:
           repo: dzurikmiroslav/esp32-evse
     

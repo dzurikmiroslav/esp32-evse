@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
-#include <fcntl.h>
+
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_vfs.h"
@@ -12,11 +12,10 @@
 #include "cJSON.h"
 #include "mbedtls/base64.h"
 
-#include "storage.h"
 #include "webserver.h"
+#include "storage.h"
 #include "evse.h"
 
-#define FILE_PATH_MAX               (ESP_VFS_PATH_MAX + 128)
 #define BUFSIZE                     (1024)
 
 #define DEFAULT_USER                "admin"
@@ -31,27 +30,6 @@ extern nvs_handle_t nvs;
 
 static char user[32];
 static char passwd[32];
-
-#define CHECK_FILE_EXTENSION(filename, ext) (strcasecmp(&filename[strlen(filename) - strlen(ext)], ext) == 0)
-
-static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filepath)
-{
-    const char *type = "text/plain";
-    if (CHECK_FILE_EXTENSION(filepath, ".html")) {
-        type = "text/html";
-    } else if (CHECK_FILE_EXTENSION(filepath, ".js")) {
-        type = "application/javascript";
-    } else if (CHECK_FILE_EXTENSION(filepath, ".css")) {
-        type = "text/css";
-    } else if (CHECK_FILE_EXTENSION(filepath, ".png")) {
-        type = "image/png";
-    } else if (CHECK_FILE_EXTENSION(filepath, ".ico")) {
-        type = "image/x-icon";
-    } else if (CHECK_FILE_EXTENSION(filepath, ".svg")) {
-        type = "text/xml";
-    }
-    return httpd_resp_set_type(req, type);
-}
 
 static bool autorize_req(httpd_req_t *req)
 {
@@ -114,63 +92,24 @@ static esp_err_t read_buf(httpd_req_t *req, char *buf)
     return ESP_OK;
 }
 
-static esp_err_t web_get_handler(httpd_req_t *req)
+static esp_err_t root_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_status(req, "307 Temporary Redirect");
+    httpd_resp_set_hdr(req, "Location", "/index.html");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+}
+
+static esp_err_t index_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        char filepath[FILE_PATH_MAX];
-        char filepathgz[FILE_PATH_MAX];
-        strcpy(filepath, "/www");
+        httpd_resp_set_type(req, "text/html");
 
-        if (req->uri[strlen(req->uri) - 1] == '/') {
-            strlcat(filepath, "/index.html", sizeof(filepath));
-        } else {
-            strlcat(filepath, req->uri, sizeof(filepath));
-        }
+        extern const uint8_t index_html_start[] asm("_binary_index_html_start");
+        extern const uint8_t index_html_end[] asm("_binary_index_html_end");
+        const size_t index_html_size = (index_html_end - index_html_start);
 
-        int fd = open(filepath, O_RDONLY, 0);
-        if (fd == -1) {
-            //try open gzipped
-            strcpy(filepathgz, filepath);
-            strlcat(filepathgz, ".gz", sizeof(filepath));
-            fd = open(filepathgz, O_RDONLY, 0);
-            if (fd == -1) {
-                ESP_LOGE(TAG, "Failed to open file : %s", filepath);
-                // Respond with 500 Internal Server Error
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read existing file");
-                return ESP_FAIL;
-            }
-        }
-
-        set_content_type_from_file(req, filepath);
-        if (strlen(filepathgz) > 0) {
-            httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-        }
-
-        char chunk[BUFSIZE];
-        ssize_t read_bytes;
-        do {
-            /* Read file in chunks into the scratch buffer */
-            read_bytes = read(fd, chunk, BUFSIZE);
-            if (read_bytes == -1) {
-                ESP_LOGE(TAG, "Failed to read file : %s", filepath);
-            } else if (read_bytes > 0) {
-                /* Send the buffer contents as HTTP response chunk */
-                if (httpd_resp_send_chunk(req, chunk, read_bytes) != ESP_OK) {
-                    close(fd);
-                    ESP_LOGE(TAG, "File sending failed!");
-                    /* Abort sending file */
-                    httpd_resp_sendstr_chunk(req, NULL);
-                    /* Respond with 500 Internal Server Error */
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
-                    return ESP_FAIL;
-                }
-            }
-        } while (read_bytes > 0);
-        /* Close file after sending complete */
-        close(fd);
-        ESP_LOGI(TAG, "File sending complete");
-        /* Respond with an empty chunk to signal HTTP response completion */
-        httpd_resp_send_chunk(req, NULL, 0);
+        httpd_resp_send_chunk(req, (const char*) index_html_start, index_html_size);
     }
     return ESP_OK;
 }
@@ -341,7 +280,7 @@ void webserver_init(void)
 
     httpd_handle_t server;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.uri_match_fn = httpd_uri_match_wildcard;
+    //config.uri_match_fn = httpd_uri_match_wildcard;
 
 // Start the httpd server
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
@@ -378,19 +317,29 @@ void webserver_init(void)
         };
         httpd_register_uri_handler(server, &settings_post_uri);
 
-        httpd_uri_t web_get_uri = {
-                .uri = "/*",
-                .method = HTTP_GET,
-                .handler = web_get_handler
-        };
-        httpd_register_uri_handler(server, &web_get_uri);
-
         httpd_uri_t restart_post_uri = {
                .uri = "/api/v1/restart",
                .method = HTTP_POST,
                .handler = restart_post_handler
        };
        httpd_register_uri_handler(server, &restart_post_uri);
+
+       //web
+
+       httpd_uri_t root_get_uri = {
+               .uri = "/",
+              .method = HTTP_GET,
+              .handler = root_get_handler
+       };
+       httpd_register_uri_handler(server, &root_get_uri);
+
+       httpd_uri_t index_get_uri = {
+               .uri = "/index.html",
+               .method = HTTP_GET,
+               .handler = index_get_handler
+       };
+       httpd_register_uri_handler(server, &index_get_uri);
+
 // @formatter:on
     }
 }

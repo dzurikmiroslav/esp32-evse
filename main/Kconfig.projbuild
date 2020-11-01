@@ -7,13 +7,6 @@ menu "EVSE Configuration"
             Specify the domain name used in the mDNS service.
             Note that webpage also take it as a part of URL where it will send GET/POST requests to.
 
-	config WEB_DEPLOY_SF
-		bool "Deploy website to SPI Nor Flash"
-		default y
-		help
-                Deploy website to SPI Nor Flash.
-                Choose this in production mode or once to copy website.
-
 	config CFG_DEPLOY_SF
 		bool "Deploy board config to SPI Nor Flash"
 		default y

@@ -1,11 +1,14 @@
 #include <string.h>
 #include <stdbool.h>
+
 #include "sdkconfig.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_err.h"
@@ -16,11 +19,11 @@
 #include "mdns.h"
 #include "driver/gpio.h"
 
-#include "board_config.h"
 #include "evse.h"
 #include "peripherals.h"
-#include "webserver.h"
 #include "storage.h"
+#include "board_config.h"
+#include "webserver.h"
 
 #define AP_CONNECTION_TIMEOUT       60000  // 60sec
 #define RESET_HOLD_TIME             10000  // 10sec
@@ -242,14 +245,12 @@ static void button_init(void)
     gpio_isr_handler_add(board_config.button_wifi_gpio, button_ap_isr_handler, NULL);
 }
 
-esp_err_t init_spiffs(const char *partition)
+esp_err_t init_spiffs()
 {
-    char base_path[64];
-    sprintf(base_path, "/%s", partition);
 // @formatter:off
     esp_vfs_spiffs_conf_t conf = {
-            .base_path = base_path,
-            .partition_label = partition,
+            .base_path = "/cfg",
+            .partition_label = "cfg",
             .max_files = 5,
             .format_if_mount_failed = false
     };
@@ -268,7 +269,7 @@ esp_err_t init_spiffs(const char *partition)
     }
 
     size_t total = 0, used = 0;
-    ret = esp_spiffs_info(partition, &total, &used);
+    ret = esp_spiffs_info("cfg", &total, &used);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
     } else {
@@ -287,8 +288,7 @@ void app_main()
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_ERROR_CHECK(init_spiffs("cfg"));
-    ESP_ERROR_CHECK(init_spiffs("www"));
+    ESP_ERROR_CHECK(init_spiffs());
 
     board_config_load();
 

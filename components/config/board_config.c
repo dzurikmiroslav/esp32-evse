@@ -1,3 +1,5 @@
+#include "../config/include/board_config.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +9,6 @@
 #include "esp_log.h"
 #include "esp_vfs.h"
 #include "esp_err.h"
-#include "board_config.h"
 
 //static const char *TAG = "board_config";
 

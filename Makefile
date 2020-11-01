@@ -15,13 +15,3 @@ else
 $(error $(CFG_SRC_DIR)/board.cfg doesn't exist. Please create board.cfg in $(CFG_SRC_DIR))
 endif
 endif
-
-
-ifdef CONFIG_WEB_DEPLOY_SF
-WEB_SRC_DIR = $(shell pwd)/web
-ifneq ($(wildcard $(WEB_SRC_DIR)/dist/web-app-gz/.*),)
-$(eval $(call spiffs_create_partition_image,www,$(WEB_SRC_DIR)/dist/web-app-gz,FLASH_IN_PROJECT))
-else
-$(error $(WEB_SRC_DIR)/dist/web-app doesn't exist. Please run 'npm run build' in $(WEB_SRC_DIR))
-endif
-endif
