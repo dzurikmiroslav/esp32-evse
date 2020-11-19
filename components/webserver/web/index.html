@@ -1,12 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Page Title</title>
+    <title>EVSE</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/bootstrap.min.css">
+    <style rel="stylesheet">
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+
+        body {
+            /* Margin bottom by footer height */
+            margin-bottom: 4.5rem;
+            padding-top: 4.5rem;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            /* Set the fixed height of the footer here */
+            height: 60px;
+            line-height: 60px; /* Vertically center the text there */
+            background-color: #f5f5f5;
+        }
+
+        body > .container {
+            padding-right: 15px;
+            padding-left: 15px;
+        }
+
+        code {
+            font-size: 80%;
+        }
+    </style>
+
+    <script src="/jquery.min.js"></script>
+    <script src="/bootstrap.bundle.min.js"></script>
+    <script>
+        const STATES = [
+            'Not connected',
+            'EV connected, ready to charge',
+            'EV charging',
+            'EV charging, ventilation required',
+            'Error',
+            'Unknown error'
+        ];
+
+        function formatElapsed(sec) {
+            const hour = Math.floor(sec / 3600);
+            sec %= 3600;
+            const min = Math.floor(sec / 60);
+            sec %= 60;
+            return `${hour < 10 ? '0' : ''}${hour}:${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+        }
+
+        function loadState() {
+            $.ajax({
+                url: '/api/v1/state',
+                timeout: 10000
+            }).done(function (data) {
+                $('#status').html(STATES[data.state]);
+
+                $('#charging').toggleClass('d-none', !(data.state >= 1 && data.state <= 3));
+                $('#elapsedValue').text(formatElapsed(data.elapsed));
+                $('#actualPower').toggleClass('d-none', !data.actualPower);
+                $('#actualPowerValue').text(data.actualPower / 1000);
+                $('#consumption').toggleClass('d-none', !data.consumption);
+                $('#consumptionValue').text(data.consumption / 1000);
+            }).then(function () {
+                $('#networkError').addClass('d-none');
+            }).fail(function () {
+                $('#networkError').removeClass('d-none');
+            });
+        }
+
+        $(document).ready(function () {
+            loadState();
+            setInterval(loadState, 10000);
+        });
+    </script>
 </head>
 <body>
 
-<h1>This is a Heading</h1>
-<p>This is a paragraph.</p>
+<header>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <a class="navbar-brand" href="/">EVSE</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/index.html">Home <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/settings.html">Settings</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/management.html">Management</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/about.html">About</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</header>
+
+<main role="main" class="container">
+    <div id="networkError" class="alert alert-danger" role="alert">
+        Network error, try <a href="/" class="alert-link">reload this page</a>.
+    </div>
+
+    <div class="jumbotron">
+        <h1 id="status" class="display-4">Loading...</h1>
+
+        <div id="charging" class="d-none">
+            <hr class="my-4">
+            <p class="lead">Elapsed time <span id="elapsedValue"></span></p>
+            <p id="actualPower" class="lead">Power <span id="actualPowerValue"></span>kW</p>
+            <p id="consumption" class="lead">Consumption <span id="consumptionValue"></span>kWh</p>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+    </div>
+</footer>
 
 </body>
 </html>

@@ -4,6 +4,12 @@
 #include "driver/gpio.h"
 #include "driver/adc.h"
 
+typedef enum {
+    BOARD_CONFIG_ENERGY_METER_NONE,
+    BOARD_CONFIG_ENERGY_METER_INTERNAL,
+    BOARD_CONFIG_ENERGY_METER_EXTERNAL_PULSE
+} board_config_energy_meter_t;
+
 typedef struct
 {
     bool led_charging :1;
@@ -22,7 +28,29 @@ typedef struct
     uint16_t pilot_sens_down_treshold_6;
     uint16_t pilot_sens_down_treshold_3;
 
+    uint8_t max_charging_current;
+
     gpio_num_t ac_relay_gpio;
+
+    bool cable_lock: 1;
+    gpio_num_t cable_lock_b_gpio;
+    gpio_num_t cable_lock_r_gpio;
+    gpio_num_t cable_lock_w_gpio;
+
+    board_config_energy_meter_t energy_meter;
+
+    uint8_t energy_meter_internal_num_phases;
+    uint8_t energy_meter_internal_l1_cur_gpio;
+    uint8_t energy_meter_internal_l2_cur_gpio;
+    uint8_t energy_meter_internal_l3_cur_gpio;
+    uint8_t energy_meter_internal_l1_vtl_gpio;
+    uint8_t energy_meter_internal_l2_vtl_gpio;
+    uint8_t energy_meter_internal_l3_vtl_gpio;
+
+    bool energy_meter_external_pulse_gpio;
+
+
+
 } board_config_t;
 
 extern board_config_t board_config;

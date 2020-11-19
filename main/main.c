@@ -1,14 +1,11 @@
 #include <string.h>
 #include <stdbool.h>
-
 #include "sdkconfig.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
-
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_err.h"
@@ -21,7 +18,7 @@
 
 #include "evse.h"
 #include "peripherals.h"
-#include "storage.h"
+#include "nvs_utils.h"
 #include "board_config.h"
 #include "webserver.h"
 
@@ -115,7 +112,7 @@ static void wifi_init(void)
     size_t password_len = sizeof(wifi_config.sta.password);
     nvs_get_str(nvs, NVS_WIFI_PASSWORD, (char*) wifi_config.sta.password, &password_len);
 
-    uint8_t enabled = 1;
+    uint8_t enabled = 0;
     nvs_get_u8(nvs, NVS_WIFI_ENABLED, &enabled);
 
     if (enabled) {
@@ -307,7 +304,6 @@ void app_main()
     init_mdns();
     wifi_init();
     evse_init();
-
     xTaskCreate(wifi_task_func, "wifi_task", 4 * 1024, NULL, 10, &wifi_task);
     xTaskCreate(reset_task_func, "reset_task", 2 * 1024, NULL, 10, &reset_task);
 
@@ -337,13 +333,11 @@ void app_main()
 //        vTaskDelay(pdMS_TO_TICKS(1000));
 //    }
 
-    evse_event_t evse_event;
-    while (1) {
-        if (xQueueReceive(evse_event_queue, &evse_event, portMAX_DELAY)) {
-//            if (ble_notify_task) {
-//                xTaskNotify(ble_notify_task, evse_event, eSetValueWithOverwrite);
-//            }
-        }
+    //evse_mock(EVSE_STATE_C);
+
+    for (;;) {
+        evse_process();
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
 }

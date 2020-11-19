@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>EVSE</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/bootstrap.min.css">
+    <style rel="stylesheet">
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+
+        body {
+            /* Margin bottom by footer height */
+            margin-bottom: 60px;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            /* Set the fixed height of the footer here */
+            height: 60px;
+            line-height: 60px; /* Vertically center the text there */
+            background-color: #f5f5f5;
+        }
+
+        .overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 127);
+            z-index: 10;
+        }
+
+        body > .container {
+            padding: 60px 15px 0;
+        }
+
+        .footer > .container {
+            padding-right: 15px;
+            padding-left: 15px;
+        }
+    </style>
+
+    <script src="/jquery.min.js"></script>
+    <script src="/bootstrap.bundle.min.js"></script>
+    <script>
+        const ERROR_ALERT_HTML = `
+            <div class="alert alert-primary alert-danger fade show" role="alert">
+                Network error, try <a href="/management.html" class="alert-link">reload this page</a>.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+
+        const UPDATED_ALERT_HTML = `
+            <div class="alert alert-primary alert-info fade show" role="alert">
+                Login credentials updated.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+
+        function submitCredentials() {
+            $('#loading').show().animate({opacity: '0.5'});
+
+            const credentials = {
+                user: $('#user').val(),
+                password: $('#password').val(),
+            };
+
+            $.ajax({
+                url: '/api/v1/credentials',
+                method: 'POST',
+                data: JSON.stringify(credentials),
+                contentType: 'application/json'
+            }).then(function () {
+                $('#alertContainer').append(UPDATED_ALERT_HTML);
+            }).fail(function () {
+                $('#alertContainer').append(ERROR_ALERT_HTML);
+            }).always(function () {
+                $('#loading').animate({opacity: '0'}).hide();
+            });
+        }
+
+        $(document).ready(function () {
+            $('#loading').hide();
+        });
+    </script>
+</head>
+<body>
+
+<header>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <a class="navbar-brand" href="/">EVSE</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/index.html">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/settings.html">Settings</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="/management.html">Management <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/about.html">About</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</header>
+
+<main role="main" class="container">
+    <form id="form" class="mt-2 position-relative">
+        <div id="alertContainer"></div>
+
+        <div id="loading" class="overlay text-center pt-4">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+
+        <p class="lead">Change web user and password</p>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="user">User</label>
+                <input id="user" type="text" class="form-control">
+            </div>
+            <div class="form-group col-md-6">
+                <label for="password">Password</label>
+                <input id="password" type="password" class="form-control">
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="submitCredentials()">Submit</button>
+    </form>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+    </div>
+</footer>
+
+<div class="modal fade" id="restartModal" tabindex="-1" role="dialog" aria-labelledby="restartModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="restartModalLabel">Restart required</h5>
+            </div>
+            <div class="modal-body">
+                <p>Your settings require restart of EVSE controller.</p>
+                <p>Restart now?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" data-dismiss="modal" onclick="restart()">Restart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" aria-labelledby="reloadModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reloadModalLabel">Reload</h5>
+            </div>
+            <div class="modal-body">
+                <p>Reload in <span id="reloadCountdown"></span> seconds</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="window.location.reload()">Reload now</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
