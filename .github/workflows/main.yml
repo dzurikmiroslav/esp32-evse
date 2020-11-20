@@ -34,5 +34,5 @@ jobs:
               repo: context.repo.repo,
               release_id: ${{ steps.create_release.outputs.id }},
               name: 'esp32-evse'
-              data: fs.readFileSync(`./build/esp32-evse.bin
+              data: fs.readFileSync(`./build/esp32-evse.bin')
             });
