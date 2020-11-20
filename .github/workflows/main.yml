@@ -22,14 +22,14 @@ jobs:
           debug: true
           script: |
             const fs = require('fs');
-            console.log(fs.readFileSync(`/etc/hostname'));
+            console.log(fs.readFileSync('/etc/hostname'));
             
             const r = await github.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: 'v1',
               name: 'test.txt'
-              data: fs.readFileSync(`/etc/hostname')
+              data: fs.readFileSync('/etc/hostname')
             });
      
 #       - name: Checkout code
