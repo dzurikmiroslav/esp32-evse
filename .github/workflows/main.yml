@@ -22,7 +22,16 @@ jobs:
           debug: true
           script: |
             const fs = require('fs');
-            console.log(fs.readFileSync('/etc/hostname'));
+            const { repo: { owner, repo }, sha } = context;
+            const release = await github.repos.createRelease({
+              owner, repo,
+              tag_name: 'v2',
+              draft: true,
+              target_commitish: sha
+            });
+            
+            console.log('created release', { release });
+
             await github.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
