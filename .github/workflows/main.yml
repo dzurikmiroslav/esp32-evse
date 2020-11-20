@@ -16,7 +16,7 @@ jobs:
       - name: Install ESP-IDF
         uses: CalinRadoni/esp-idf-v4-action@v2
         with:
-          esp_idf_version: 'v4.2'
+          esp_idf_version: 'v4.1'
 
       - name: Build
         run: |
