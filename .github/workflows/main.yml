@@ -22,23 +22,15 @@ jobs:
           debug: true
           script: |
             const fs = require('fs');
-            const { repo: { owner, repo }, sha } = context;
-            const release = await github.repos.createRelease({
+
+            const release = await github.repos.getRelease({
               owner, repo,
-              tag_name: 'v2',
-              draft: true,
-              target_commitish: sha
+              repo: context.repo.repo,
+              tag_name: 'v1
             });
             
-            console.log('created release', { release });
+            console.log('release', { release });
 
-            await github.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: 'v1',
-              name: 'test.txt',
-              data: fs.readFileSync('/etc/hostname')
-            });
   
 #       - name: Checkout code
 #         uses: actions/checkout@v2
