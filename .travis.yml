@@ -38,10 +38,9 @@ script:
 #   - master
  
 deploy:
-  if: tag IS present
   provider: releases
   api_key: $GITHUB_TOKEN
-  #skip_cleanup: true
+  skip_cleanup: true
   file:
   - build/esp32-evse.bin
   # name: Development
@@ -50,4 +49,4 @@ deploy:
   #         tag_name: master-$TRAVIS_BUILD_NUMBER
   # overwrite: true
   on:
-    repo: dzurikmiroslav/esp32-evse
+    tags: true
