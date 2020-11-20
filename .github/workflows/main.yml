@@ -32,7 +32,7 @@ jobs:
             github.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              release_id: github.ref.replace(/\/refs\/tags\//, ''),
+              release_id: context.payload.ref.replace(/\/refs\/tags\//, ''),
               name: 'esp32-evse'
               data: fs.readFileSync(`./build/esp32-evse.bin')
             });
