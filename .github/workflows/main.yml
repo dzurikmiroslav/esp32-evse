@@ -24,7 +24,7 @@ jobs:
             const fs = require('fs');
 
             const release = await github.repos.getRelease({
-              owner, repo,
+              owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: 'v1
             });
