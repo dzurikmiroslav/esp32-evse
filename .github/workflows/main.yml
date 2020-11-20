@@ -14,6 +14,20 @@ jobs:
           script: |
             console.log('payload is:');
             console.log(context.payload);
+      
+      - name: Upload release asset
+        uses: actions/github-script@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: 'v1',
+              name: 'test aaset'
+              data: fs.readFileSync(`/etc/hostname')
+            });
      
 #       - name: Checkout code
 #         uses: actions/checkout@v2
