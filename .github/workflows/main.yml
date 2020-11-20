@@ -21,7 +21,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            github.repos.uploadReleaseAsset({
+            console.log(fs.readFileSync(`/etc/hostname'));
+            
+            await github.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: 'v1',
