@@ -33,7 +33,7 @@ jobs:
                owner: context.repo.owner,
                repo: context.repo.repo,
                release_id: release.data.id,  //context.payload.ref.replace(/\/refs\/tags\//, ''),
-               name: 'test.txt'
+               name: 'test.txt',
                data: fs.readFileSync(`/etc/hostname')
              });
   
