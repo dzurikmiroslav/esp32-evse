@@ -35,7 +35,7 @@ jobs:
                repo: context.repo.repo,
                release_id: release.data.id,
                name: 'test.txt',
-               data: fs.readFileSync(`/etc/hostname')
+               data: fs.readFileSync('/etc/hostname')
             });
             
 #       - name: Checkout code
