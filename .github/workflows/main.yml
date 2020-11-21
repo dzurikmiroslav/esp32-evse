@@ -28,6 +28,7 @@ jobs:
               repo: context.repo.repo,
               tag: 'v1'
             });
+            console.log('release: ' + release.data.id);
             
             await github.repos.uploadReleaseAsset({
                owner: context.repo.owner,
@@ -35,8 +36,8 @@ jobs:
                release_id: release.data.id,
                name: 'test.txt',
                data: fs.readFileSync(`/etc/hostname')
-             });
-  
+            });
+            
 #       - name: Checkout code
 #         uses: actions/checkout@v2
 #    
