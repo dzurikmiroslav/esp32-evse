@@ -1,4 +1,4 @@
-name: CI
+name: ESP-IDF CI
 
 on: 
   push:
