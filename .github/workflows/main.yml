@@ -1,6 +1,11 @@
 name: CI
 
-on: push
+on: 
+  push:
+    branches: 
+      - master
+    tags: 
+      - '*'
 
 jobs:
   build:
@@ -40,6 +45,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: 'esp32-evse'
+              name: 'esp32-evse.bin',
               data: fs.readFileSync('./build/esp32-evse.bin')
             });
