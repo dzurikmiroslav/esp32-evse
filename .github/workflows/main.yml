@@ -23,7 +23,7 @@ jobs:
           script: |
             const fs = require('fs');
 
-            const release = await github.repos.getRelease({
+            const release = await github.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag: 'v1'
