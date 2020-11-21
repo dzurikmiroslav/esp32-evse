@@ -16,17 +16,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
    
-      - name: Install ESP-IDF
-        uses: CalinRadoni/esp-idf-v4-action@v2
-        with:
-          esp_idf_version: 'v4.1'
+#       - name: Install ESP-IDF
+#         uses: CalinRadoni/esp-idf-v4-action@v2
+#         with:
+#           esp_idf_version: 'v4.1'
 
-      - name: Build
-        run: |
-          source ~/esp/esp-idf/export.sh
-          idf.py reconfigure
-          idf.py app
-          idf.py size           
+#       - name: Build
+#         run: |
+#           source ~/esp/esp-idf/export.sh
+#           idf.py reconfigure
+#           idf.py app
+#           idf.py size           
      
       - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/')
@@ -35,17 +35,21 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
+            console.log('context payload:');
+            console.log(context.payload);
+            console.log('context:');
+            console.log(context);
             
-            const release = await github.repos.getReleaseByTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: context.payload.ref.replace(/\/refs\/tags\//, '')
-            });
-            
-            await github.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.data.id,
-              name: 'esp32-evse.bin',
-              data: fs.readFileSync('./build/esp32-evse.bin')
-            });
+#            const release = await github.repos.getReleaseByTag({
+#              owner: context.repo.owner,
+#              repo: context.repo.repo,
+#              tag: context.payload.ref.replace(/\/refs\/tags\//, '')
+#            });
+#            
+#            await github.repos.uploadReleaseAsset({
+#              owner: context.repo.owner,
+#              repo: context.repo.repo,
+#              release_id: release.data.id,
+#              name: 'esp32-evse.bin',
+#              data: fs.readFileSync('./build/esp32-evse.bin')
+#            });
