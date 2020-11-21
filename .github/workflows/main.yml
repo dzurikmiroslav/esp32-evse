@@ -29,8 +29,13 @@ jobs:
               tag: 'v1'
             });
             
-            console.log('release', { release });
-
+            await github.repos.uploadReleaseAsset({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               release_id: release.data.id,  //context.payload.ref.replace(/\/refs\/tags\//, ''),
+               name: 'test.txt'
+               data: fs.readFileSync(`/etc/hostname')
+             });
   
 #       - name: Checkout code
 #         uses: actions/checkout@v2
