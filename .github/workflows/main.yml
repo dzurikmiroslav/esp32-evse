@@ -34,22 +34,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
-            console.log('context payload:');
-            console.log(context.payload);
-            console.log('context:');
-            console.log(context);
-            
-#            const release = await github.repos.getReleaseByTag({
-#              owner: context.repo.owner,
-#              repo: context.repo.repo,
-#              tag: context.payload.ref.replace(/\/refs\/tags\//, '')
-#            });
-#            
-#            await github.repos.uploadReleaseAsset({
-#              owner: context.repo.owner,
-#              repo: context.repo.repo,
-#              release_id: release.data.id,
-#              name: 'esp32-evse.bin',
-#              data: fs.readFileSync('./build/esp32-evse.bin')
-#            });
+            await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              name: 'esp32-evse.bin',
+              data: fs.readFileSync('/etc/hostname')
+            });
