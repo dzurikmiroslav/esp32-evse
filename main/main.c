@@ -7,6 +7,7 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
+#include "esp_ota_ops.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
@@ -275,8 +276,29 @@ esp_err_t init_spiffs()
     return ESP_OK;
 }
 
+static bool ota_diagnostic(void)
+{
+    //TODO diagnostic after ota
+    return true;
+}
+
 void app_main()
 {
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t ota_state;
+    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+            ESP_LOGI(TAG, "OTA pending verify");
+            if (ota_diagnostic()) {
+                ESP_LOGI(TAG, "Diagnostics completed successfully! Continuing execution ...");
+                esp_ota_mark_app_valid_cancel_rollback();
+            } else {
+                ESP_LOGE(TAG, "Diagnostics failed! Start rollback to the previous version ...");
+                esp_ota_mark_app_invalid_rollback_and_reboot();
+            }
+        }
+    }
+
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_LOGW(TAG, "Erasing NVS flash");
@@ -333,7 +355,7 @@ void app_main()
 //        vTaskDelay(pdMS_TO_TICKS(1000));
 //    }
 
-    //evse_mock(EVSE_STATE_C);
+//evse_mock(EVSE_STATE_C);
 
     for (;;) {
         evse_process();

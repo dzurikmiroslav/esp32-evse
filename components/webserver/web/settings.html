@@ -73,7 +73,7 @@
         }
 
         function submitSettings() {
-            if (!$('#form').get(0).checkValidity()) {
+            if (!$('#form')[0].checkValidity()) {
                 $('#form').addClass('was-validated');
             } else {
                 $('#loading').show().animate({opacity: '0.5'});
@@ -112,20 +112,17 @@
 
             $.ajax({
                 url: '/api/v1/restart',
-                method: 'POST',
-                data: JSON.stringify({time: 500}),
-                contentType: 'application/json'
+                method: 'POST'
             }).then(function () {
                 $('#reloadModal').modal('show');
 
                 let counter = 20;
                 $('#reloadCountdown').html(counter--);
                 setInterval(function () {
-                    if (counter > 0) {
+                    if (counter > 0)
                         $('#reloadCountdown').html(counter--);
-                    } else {
+                    else
                         window.location.reload();
-                    }
                 }, 1000);
             }).fail(function () {
                 $('#networkError').removeClass('d-none');

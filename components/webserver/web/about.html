@@ -84,6 +84,44 @@
             return `${day} days ${hour < 10 ? '0' : ''}${hour}:${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
         }
 
+        function flashFirmware() {
+            if (!$('#flashForm')[0].checkValidity()) {
+                $('#flashForm').addClass('was-validated');
+            } else {
+                $('#loading').show().animate({opacity: '0.5'});
+
+                var file = $('#firmwareFile')[0].files[0];
+                var formData = new FormData();
+                formData.append("firmware", file);
+
+                $('#firmwareFile')
+
+                $.ajax({
+                    url: '/api/v1/flash',
+                    method: 'POST',
+                    data: file,
+                    processData: false,
+                    contentType: 'application/octet-stream'
+                }).then(function () {
+                    $('#reloadModal').modal('show');
+
+                    let counter = 20;
+                    $('#reloadCountdown').html(counter--);
+                    setInterval(function () {
+                        if (counter > 0)
+                            $('#reloadCountdown').html(counter--);
+                        else
+                            window.location.reload();
+                    }, 1000);
+                }).fail(function () {
+                    $('#networkError').removeClass('d-none');
+                }).always(function (config, info) {
+                    $('#loading').animate({opacity: '0'}).hide();
+                    $('#form').removeClass('was-validated');
+                });
+            }
+        }
+
         $(document).ready(function () {
             $.when(
                 $.ajax({
@@ -107,13 +145,18 @@
                     $('#chipCores').text(data.chipCores);
                     $('#chipRevision').text(data.chipRevision);
                     $('#appVersion').text(data.appVersion);
-                    $('#appDateTime').text(data.appDate + ' '+ data.appTime);
+                    $('#appDateTime').text(data.appDate + ' ' + data.appTime);
                     $('#idfVersion').text(data.idfVersion);
                 })
             ).fail(function () {
                 $('#networkError').removeClass('d-none');
             }).always(function (config, info) {
                 $('#loading').animate({opacity: '0'}).hide();
+            });
+
+            $('.custom-file-input').on('change', function () {
+                var fileName = $(this).val().split('\\').pop();
+                $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
             });
         });
     </script>
@@ -223,6 +266,16 @@
             </tr>
             </tbody>
         </table>
+
+        <form id="flashForm" novalidate class="d-flex">
+            <div class="flex-grow-1">
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="firmwareFile" accept="*.bin" required>
+                    <label class="custom-file-label" for="firmwareFile">Choose firmware file</label>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary ml-2" onclick="flashFirmware()">Flash firmware</button>
+        </form>
     </div>
 </main>
 

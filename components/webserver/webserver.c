@@ -21,7 +21,10 @@
 #include "board_config.h"
 #include "nvs_utils.h"
 
-#define BUFSIZE                     (1024)
+#define SCRATCH_BUFSIZE             1024
+
+#define MAX_JSON_SIZE               (200*1024) // 200 KB
+#define MAX_JSON_SIZE_STR           "200KB"
 
 #define NVS_WEB_USER                "web_user"
 #define NVS_WEB_PASSWORD            "web_password"
@@ -45,8 +48,8 @@ static bool autorize_req(httpd_req_t *req)
 
         if (strlen(authorization_hdr) > 0) {
             size_t olen;
-            if (mbedtls_base64_decode((unsigned char*) authorization, sizeof(authorization), &olen,
-                    (unsigned char*) authorization_hdr, strlen(authorization_hdr)) == 0) {
+            if (mbedtls_base64_decode((unsigned char*) authorization, sizeof(authorization), &olen, (unsigned char*) authorization_hdr,
+                    strlen(authorization_hdr)) == 0) {
                 authorization[olen] = '\0';
 
                 char req_user[32] = "";
@@ -72,8 +75,9 @@ static bool autorize_req(httpd_req_t *req)
         }
     }
     httpd_resp_set_status(req, "401");
+    httpd_resp_set_type(req, "text/plain");
     httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"Users\"");
-    httpd_resp_send(req, NULL, 0);
+    httpd_resp_sendstr(req, "Bad credentials");
 
     return false;
 }
@@ -83,28 +87,65 @@ static void restart_timer_callback(void *arg)
     esp_restart();
 }
 
-static esp_err_t read_buf(httpd_req_t *req, char *buf)
+static void restart_timer_arm()
 {
+    // @formatter:off
+        const esp_timer_create_args_t restart_timer_args = {
+                .callback = &restart_timer_callback,
+                .name = "restart"
+        };
+// @formatter:on
+    esp_timer_handle_t restart_timer;
+    esp_timer_create(&restart_timer_args, &restart_timer);
+    esp_timer_start_once(restart_timer, 1000000);
+}
+
+static cJSON* read_request_json(httpd_req_t *req)
+{
+    char content_type[32];
+    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
+    if (strcmp(content_type, "application/json") != 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not JSON body");
+        return NULL;
+    }
+
     int total_len = req->content_len;
+
+    if (total_len > MAX_JSON_SIZE) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "JSON size must be less than " MAX_JSON_SIZE_STR "!");
+        return NULL;
+    }
+
+    char *body = (char*) malloc(sizeof(char) * total_len);
+    if (body == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
+        return NULL;
+    }
+
     int cur_len = 0;
     int received = 0;
-    if (total_len >= BUFSIZE) {
-        /* Respond with 500 Internal Server Error */
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
-        return ESP_FAIL;
-    }
+
     while (cur_len < total_len) {
-        received = httpd_req_recv(req, buf + cur_len, total_len);
+        received = httpd_req_recv(req, body + cur_len, total_len);
         if (received <= 0) {
-            /* Respond with 500 Internal Server Error */
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
-            return ESP_FAIL;
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed receive request");
+            return NULL;
         }
         cur_len += received;
     }
-    buf[total_len] = '\0';
+    body[total_len] = '\0';
 
-    return ESP_OK;
+    cJSON *root = cJSON_Parse(body);
+
+    free((void*) body);
+
+    if (root == NULL) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not valid JSON");
+        return NULL;
+    }
+
+    return root;
 }
 
 static esp_err_t root_get_handler(httpd_req_t *req)
@@ -117,11 +158,10 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
 void send_response_chunhed(httpd_req_t *req, const uint8_t start[], const uint8_t end[])
 {
-
     int remaining = end - start;
     while (remaining > 0) {
-        httpd_resp_send_chunk(req, (const char*) (end - remaining), MIN(remaining, BUFSIZE));
-        remaining -= BUFSIZE;
+        httpd_resp_send_chunk(req, (const char*) (end - remaining), MIN(remaining, SCRATCH_BUFSIZE));
+        remaining -= SCRATCH_BUFSIZE;
     }
 
     httpd_resp_send_chunk(req, NULL, 0);
@@ -130,12 +170,11 @@ void send_response_chunhed(httpd_req_t *req, const uint8_t start[], const uint8_
 static esp_err_t favicon_ico_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "image/x-icon");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t _binary_favicon_ico_start[] asm("_binary_favicon_ico_start");
         extern const uint8_t _binary_favicon_ico_end[] asm("_binary_favicon_ico_end");
 
+        httpd_resp_set_type(req, "image/x-icon");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, _binary_favicon_ico_start, _binary_favicon_ico_end);
     }
     return ESP_OK;
@@ -144,12 +183,11 @@ static esp_err_t favicon_ico_get_handler(httpd_req_t *req)
 static esp_err_t index_html_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "text/html");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t index_html_start[] asm("_binary_index_html_start");
         extern const uint8_t index_html_end[] asm("_binary_index_html_end");
 
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, index_html_start, index_html_end);
     }
     return ESP_OK;
@@ -158,12 +196,11 @@ static esp_err_t index_html_get_handler(httpd_req_t *req)
 static esp_err_t settings_html_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "text/html");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t settings_html_start[] asm("_binary_settings_html_start");
         extern const uint8_t settings_html_end[] asm("_binary_settings_html_end");
 
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, settings_html_start, settings_html_end);
     }
     return ESP_OK;
@@ -172,12 +209,11 @@ static esp_err_t settings_html_get_handler(httpd_req_t *req)
 static esp_err_t management_html_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "text/html");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t management_html_start[] asm("_binary_management_html_start");
         extern const uint8_t management_html_end[] asm("_binary_management_html_end");
 
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, management_html_start, management_html_end);
     }
     return ESP_OK;
@@ -186,12 +222,11 @@ static esp_err_t management_html_get_handler(httpd_req_t *req)
 static esp_err_t about_html_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "text/html");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t about_html_start[] asm("_binary_about_html_start");
         extern const uint8_t about_html_end[] asm("_binary_about_html_end");
 
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, about_html_start, about_html_end);
     }
     return ESP_OK;
@@ -200,12 +235,11 @@ static esp_err_t about_html_get_handler(httpd_req_t *req)
 static esp_err_t jquery_js_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "application/javascript");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t jquery_min_js_start[] asm("_binary_jquery_min_js_start");
         extern const uint8_t jquery_min_js_end[] asm("_binary_jquery_min_js_end");
 
+        httpd_resp_set_type(req, "application/javascript");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, jquery_min_js_start, jquery_min_js_end);
     }
     return ESP_OK;
@@ -214,12 +248,11 @@ static esp_err_t jquery_js_get_handler(httpd_req_t *req)
 static esp_err_t boostrap_js_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "application/javascript");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t bootstrap_bundle_min_js_start[] asm("_binary_bootstrap_bundle_min_js_start");
         extern const uint8_t bootstrap_bundle_min_js_end[] asm("_binary_bootstrap_bundle_min_js_end");
 
+        httpd_resp_set_type(req, "application/javascript");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, bootstrap_bundle_min_js_start, bootstrap_bundle_min_js_end);
     }
     return ESP_OK;
@@ -228,12 +261,11 @@ static esp_err_t boostrap_js_get_handler(httpd_req_t *req)
 static esp_err_t boostrap_css_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "text/css");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
         extern const uint8_t bootstrap_min_css_start[] asm("_binary_bootstrap_min_css_start");
         extern const uint8_t bootstrap_min_css_end[] asm("_binary_bootstrap_min_css_end");
 
+        httpd_resp_set_type(req, "text/css");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
         send_response_chunhed(req, bootstrap_min_css_start, bootstrap_min_css_end);
     }
     return ESP_OK;
@@ -242,7 +274,6 @@ static esp_err_t boostrap_css_get_handler(httpd_req_t *req)
 static esp_err_t info_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
         cJSON *root = cJSON_CreateObject();
         cJSON_AddNumberToObject(root, "uptime", clock() / CLOCKS_PER_SEC);
         const esp_app_desc_t *app_desc = esp_ota_get_app_description();
@@ -275,7 +306,10 @@ static esp_err_t info_get_handler(httpd_req_t *req)
         cJSON_AddStringToObject(root, "ipAp", str);
 
         const char *json = cJSON_Print(root);
+
+        httpd_resp_set_type(req, "application/json");
         httpd_resp_sendstr(req, json);
+
         free((void*) json);
         cJSON_Delete(root);
     }
@@ -285,7 +319,6 @@ static esp_err_t info_get_handler(httpd_req_t *req)
 static esp_err_t settings_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
         cJSON *root = cJSON_CreateObject();
         cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current() / 10.0);
 
@@ -299,9 +332,13 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
         if (len > 0) {
             cJSON_AddStringToObject(root, "wifiSSID", str);
         }
-        const char *sys_info = cJSON_Print(root);
-        httpd_resp_sendstr(req, sys_info);
-        free((void*) sys_info);
+
+        const char *json = cJSON_Print(root);
+
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_sendstr(req, json);
+
+        free((void*) json);
         cJSON_Delete(root);
     }
     return ESP_OK;
@@ -310,35 +347,32 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 static esp_err_t settings_post_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        char buf[BUFSIZE];
-        esp_err_t err = read_buf(req, buf);
-        if (err != ESP_OK) {
-            return err;
-        }
-        cJSON *root = cJSON_Parse(buf);
+        cJSON *root = read_request_json(req);
+        if (root != NULL) {
+            double num_value;
 
-        double num_value;
+            if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
+                num_value = cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble;
+                evse_set_chaging_current(num_value * 10);
+            }
 
-        if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
-            num_value = cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble;
-            evse_set_chaging_current(num_value * 10);
-        }
+            if (cJSON_IsBool(cJSON_GetObjectItem(root, "wifiEnabled"))) {
+                nvs_set_u8(nvs, NVS_WIFI_ENABLED, cJSON_GetObjectItem(root, "wifiEnabled")->valueint);
+            }
+            if (cJSON_IsString(cJSON_GetObjectItem(root, "wifiSSID"))) {
+                nvs_set_str(nvs, NVS_WIFI_SSID, cJSON_GetObjectItem(root, "wifiSSID")->valuestring);
+            }
+            if (cJSON_IsString(cJSON_GetObjectItem(root, "wifiPassword"))) {
+                nvs_set_str(nvs, NVS_WIFI_PASSWORD, cJSON_GetObjectItem(root, "wifiPassword")->valuestring);
+            }
 
-        if (cJSON_IsBool(cJSON_GetObjectItem(root, "wifiEnabled"))) {
-            nvs_set_u8(nvs, NVS_WIFI_ENABLED, cJSON_GetObjectItem(root, "wifiEnabled")->valueint);
-        }
-        if (cJSON_IsString(cJSON_GetObjectItem(root, "wifiSSID"))) {
-            nvs_set_str(nvs, NVS_WIFI_SSID, cJSON_GetObjectItem(root, "wifiSSID")->valuestring);
-        }
-        if (cJSON_IsString(cJSON_GetObjectItem(root, "wifiPassword"))) {
-            nvs_set_str(nvs, NVS_WIFI_PASSWORD, cJSON_GetObjectItem(root, "wifiPassword")->valuestring);
-        }
+            nvs_commit(nvs);
 
-        nvs_commit(nvs);
+            httpd_resp_set_type(req, "text/plain");
+            httpd_resp_sendstr(req, "Settings updated");
 
-        cJSON_Delete(root);
-        httpd_resp_set_status(req, "201");
-        httpd_resp_send(req, NULL, 0);
+            cJSON_Delete(root);
+        }
     }
     return ESP_OK;
 }
@@ -346,7 +380,6 @@ static esp_err_t settings_post_handler(httpd_req_t *req)
 static esp_err_t config_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
         cJSON *root = cJSON_CreateObject();
 
         cJSON_AddNumberToObject(root, "maxChargingCurrent", board_config.max_charging_current);
@@ -354,7 +387,10 @@ static esp_err_t config_get_handler(httpd_req_t *req)
         cJSON_AddNumberToObject(root, "energyMeter", board_config.energy_meter);
 
         const char *json = cJSON_Print(root);
+
+        httpd_resp_set_type(req, "application/json");
         httpd_resp_sendstr(req, json);
+
         free((void*) json);
         cJSON_Delete(root);
     }
@@ -364,34 +400,31 @@ static esp_err_t config_get_handler(httpd_req_t *req)
 static esp_err_t credentials_post_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        char buf[BUFSIZE];
-        esp_err_t err = read_buf(req, buf);
-        if (err != ESP_OK) {
-            return err;
+        cJSON *root = read_request_json(req);
+        if (root != NULL) {
+            if (cJSON_IsString(cJSON_GetObjectItem(root, "user"))) {
+                strcpy(user, cJSON_GetObjectItem(root, "user")->valuestring);
+            } else {
+                user[0] = '\0';
+            }
+            ESP_LOGI(TAG, "Set credentials user: %s", user);
+            nvs_set_str(nvs, NVS_WEB_USER, user);
+
+            if (cJSON_IsString(cJSON_GetObjectItem(root, "password"))) {
+                strcpy(password, cJSON_GetObjectItem(root, "password")->valuestring);
+            } else {
+                password[0] = '\0';
+            }
+            nvs_set_str(nvs, NVS_WEB_PASSWORD, password);
+            ESP_LOGI(TAG, "Set credentials password: %s", strlen(password) ? "****" : "<none>");
+
+            nvs_commit(nvs);
+
+            httpd_resp_set_type(req, "plain/text");
+            httpd_resp_sendstr(req, "Credentials updated");
+
+            cJSON_Delete(root);
         }
-        cJSON *root = cJSON_Parse(buf);
-
-        if (cJSON_IsString(cJSON_GetObjectItem(root, "user"))) {
-            strcpy(user, cJSON_GetObjectItem(root, "user")->valuestring);
-        } else {
-            user[0] = '\0';
-        }
-        ESP_LOGI(TAG, "Set credentials user: %s", user);
-        nvs_set_str(nvs, NVS_WEB_USER, user);
-
-        if (cJSON_IsString(cJSON_GetObjectItem(root, "password"))) {
-            strcpy(password, cJSON_GetObjectItem(root, "password")->valuestring);
-        } else {
-            password[0] = '\0';
-        }
-        nvs_set_str(nvs, NVS_WEB_PASSWORD, password);
-        ESP_LOGI(TAG, "Set credentials password: %s", strlen(password) ? "****" : "<none>");
-
-        nvs_commit(nvs);
-
-        cJSON_Delete(root);
-        httpd_resp_set_status(req, "201");
-        httpd_resp_send(req, NULL, 0);
     }
     return ESP_OK;
 }
@@ -399,7 +432,6 @@ static esp_err_t credentials_post_handler(httpd_req_t *req)
 static esp_err_t state_get_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
-        httpd_resp_set_type(req, "application/json");
         cJSON *root = cJSON_CreateObject();
         cJSON_AddNumberToObject(root, "state", evse_get_state());
         cJSON_AddNumberToObject(root, "error", evse_get_error());
@@ -407,7 +439,10 @@ static esp_err_t state_get_handler(httpd_req_t *req)
         cJSON_AddNumberToObject(root, "consumption", evse_get_session_consumption());
         cJSON_AddNumberToObject(root, "actualPower", evse_get_session_actual_power());
         const char *json = cJSON_Print(root);
+
+        httpd_resp_set_type(req, "application/json");
         httpd_resp_sendstr(req, json);
+
         free((void*) json);
         cJSON_Delete(root);
     }
@@ -419,34 +454,102 @@ static esp_err_t restart_post_handler(httpd_req_t *req)
     if (autorize_req(req)) {
         // TODO check if can restart
 
-        char buf[BUFSIZE];
-        esp_err_t err = read_buf(req, buf);
+        restart_timer_arm();
+
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "Restart in one second");
+    }
+    return ESP_OK;
+}
+
+static esp_err_t flash_post_handler(httpd_req_t *req)
+{
+    if (autorize_req(req)) {
+        // TODO check if can restart
+
+        esp_err_t err;
+        esp_ota_handle_t update_handle = 0;
+        const esp_partition_t *update_partition = NULL;
+        int received = 0;
+        int remaining = req->content_len;
+        char buf[SCRATCH_BUFSIZE];
+        bool image_header_was_checked = false;
+
+        update_partition = esp_ota_get_next_update_partition(NULL);
+        ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
+        if (update_partition == NULL) {
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
+            return ESP_FAIL;
+        }
+
+        while (remaining > 0) {
+//             ESP_LOGI(TAG, "Remaining size : %d", remaining);
+
+            if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
+                ESP_LOGE(TAG, "File receive failed!");
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive request");
+                return ESP_FAIL;
+            } else if (image_header_was_checked == false) {
+                if (received > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
+                    esp_app_desc_t new_app_desc;
+                    memcpy(&new_app_desc, &buf[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
+                    ESP_LOGI(TAG, "New firmware version: %s", new_app_desc.version);
+
+                    const esp_app_desc_t *app_desc = esp_ota_get_app_description();
+                    if (strcmp(app_desc->project_name, new_app_desc.project_name) != 0) {
+                        ESP_LOGE(TAG, "Received firmware is not %s", app_desc->project_name);
+                        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
+                        return ESP_FAIL;
+                    }
+                } else {
+                    ESP_LOGE(TAG, "Received package is not fit length");
+                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
+                    return ESP_FAIL;
+                }
+
+                image_header_was_checked = true;
+
+                err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+                if (err != ESP_OK) {
+                    ESP_LOGE(TAG, "OTA begin failed (%s)", esp_err_to_name(err));
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA failed");
+                    return ESP_FAIL;
+                }
+                ESP_LOGI(TAG, "OTA begin succeeded");
+            }
+
+            err = esp_ota_write(update_handle, (const void*) buf, received);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "OTA write failed (%s)", esp_err_to_name(err));
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA failed");
+                return ESP_FAIL;
+            }
+
+            remaining -= received;
+        }
+
+        err = esp_ota_end(update_handle);
         if (err != ESP_OK) {
-            return err;
-        }
-        cJSON *root = cJSON_Parse(buf);
-
-        if (cJSON_IsNumber(cJSON_GetObjectItem(root, "time"))) {
-            double num_value = cJSON_GetObjectItem(root, "time")->valuedouble;
-            ESP_LOGI(TAG, "Restart in %d ms", (int )num_value);
-
-// @formatter:off
-    const esp_timer_create_args_t restart_timer_args = {
-            .callback = &restart_timer_callback,
-            .name = "restart"
-    };
-// @formatter:on
-            esp_timer_handle_t restart_timer;
-            ESP_ERROR_CHECK(esp_timer_create(&restart_timer_args, &restart_timer));
-            ESP_ERROR_CHECK(esp_timer_start_once(restart_timer, num_value * 1000));
-
-            httpd_resp_set_status(req, "201");
-        } else {
-            httpd_resp_set_status(req, "400");
+            if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
+                ESP_LOGE(TAG, "Image validation failed, image is corrupted");
+            }
+            ESP_LOGE(TAG, "OTA end failed (%s)!", esp_err_to_name(err));
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA failed");
+            return ESP_FAIL;
         }
 
-        cJSON_Delete(root);
-        httpd_resp_send(req, NULL, 0);
+        err = esp_ota_set_boot_partition(update_partition);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "OTA set boot partition failed (%s)", esp_err_to_name(err));
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA failed");
+            return ESP_FAIL;
+        }
+
+        ESP_LOGI(TAG, "Prepare to restart system!");
+        restart_timer_arm();
+
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "File uploaded successfully");
     }
     return ESP_OK;
 }
@@ -523,6 +626,13 @@ void webserver_init(void)
                .handler = restart_post_handler
         };
         httpd_register_uri_handler(server, &restart_post_uri);
+
+        httpd_uri_t flash_post_uri = {
+                .uri = "/api/v1/flash",
+                .method = HTTP_POST,
+                .handler = flash_post_handler
+        };
+        httpd_register_uri_handler(server, &flash_post_uri);
 
         //web
         httpd_uri_t root_get_uri = {
