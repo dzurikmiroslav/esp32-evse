@@ -33,7 +33,8 @@
             right: 0;
             top: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 127);
+            background-color: #ffffff;
+            opacity: 0.75;
             z-index: 10;
         }
 
@@ -68,6 +69,13 @@
             </div>
         `;
 
+        function showError(jqXHR) {
+            if (jqXHR.status === 400 || jqXHR.status === 500)
+                $('#alertContainer').append(ERROR_ALERT_HTML.replace('{text}', jqXHR.responseText));
+            else
+                $('#alertContainer').append( NETWORK_ERROR_ALERT_HTML);
+        }
+
         function submitCredentials() {
             $('#loading').show().animate({opacity: '0.5'});
 
@@ -83,11 +91,9 @@
                 contentType: 'application/json'
             }).then(function () {
                 $('#alertContainer').append(UPDATED_ALERT_HTML);
-            }).fail(function () {
-                $('#alertContainer').append(ERROR_ALERT_HTML);
             }).always(function () {
                 $('#loading').animate({opacity: '0'}).hide();
-            });
+            }).fail(showError);
         }
 
         $(document).ready(function () {

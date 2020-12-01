@@ -33,7 +33,8 @@
             right: 0;
             top: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 127);
+            background-color: #ffffff;
+            opacity: 0.75;
             z-index: 10;
         }
 
@@ -50,6 +51,31 @@
     <script src="/jquery.min.js"></script>
     <script src="/bootstrap.bundle.min.js"></script>
     <script>
+        const NETWORK_ERROR_ALERT_HTML = `
+            <div class="alert alert-primary alert-danger fade show" role="alert">
+                Network error, try <a href="/about.html" class="alert-link">reload this page</a>.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+
+        const ERROR_ALERT_HTML = `
+            <div class="alert alert-primary alert-danger fade show" role="alert">
+                {text}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+
+        function showError(jqXHR) {
+            if (jqXHR.status === 400 || jqXHR.status === 500)
+                $('#alertContainer').append(ERROR_ALERT_HTML.replace('{text}', jqXHR.responseText));
+            else
+                $('#alertContainer').append( NETWORK_ERROR_ALERT_HTML);
+        }
+
         let requireRestart = false;
 
         function loadSettings() {
@@ -64,12 +90,10 @@
                 $('#wifiSSID').val(data.wifiSSID);
                 $('#wifiPassword').val('');
                 requireRestart = false;
-            }).fail(function () {
-                $('#networkError').removeClass('d-none');
             }).always(function (config, info) {
                 $('#loading').animate({opacity: '0'}).hide();
                 $('#form').removeClass('was-validated');
-            });
+            }).fail(showError);
         }
 
         function submitSettings() {
@@ -98,12 +122,10 @@
                         $('#restartModal').modal('show');
                     }
                     requireRestart = false;
-                }).fail(function () {
-                    $('#networkError').removeClass('d-none');
                 }).always(function (config, info) {
                     $('#loading').animate({opacity: '0'}).hide();
                     $('#form').removeClass('was-validated');
-                });
+                }).fail(showError);
             }
         }
 
@@ -124,12 +146,10 @@
                     else
                         window.location.reload();
                 }, 1000);
-            }).fail(function () {
-                $('#networkError').removeClass('d-none');
             }).always(function (config, info) {
                 $('#loading').animate({opacity: '0'}).hide();
                 $('#form').removeClass('was-validated');
-            });
+            }).fail(showError);
         }
 
         $(document).ready(function () {
@@ -185,9 +205,7 @@
 
 <main role="main" class="container">
     <form id="form" class="mt-2 position-relative" novalidate>
-        <div id="networkError" class="alert alert-danger mt-2 d-none" role="alert">
-            Network error, try <a href="/settings.html" class="alert-link">reload this page</a>.
-        </div>
+        <div id="alertContainer"></div>
 
         <div id="loading" class="overlay text-center pt-4">
             <div class="spinner-border" role="status">
@@ -254,7 +272,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" aria-labelledby="reloadModalLabel"
+<div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="reloadModalLabel"
      aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">

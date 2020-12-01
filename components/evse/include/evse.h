@@ -1,15 +1,22 @@
 #ifndef EVSE_H_
 #define EVSE_H_
 
+#include <stdbool.h>
+
 typedef enum
 {
     EVSE_STATE_A, EVSE_STATE_B, EVSE_STATE_C, EVSE_STATE_D, EVSE_STATE_E, EVSE_STATE_F
 } evse_state_t;
 
-
 void evse_init(void);
 
-void evse_process(void);
+void evse_enable(void);
+
+void evse_disable(void);
+
+bool evse_try_disable(void);
+
+bool evse_process(void);
 
 void evse_mock(evse_state_t state);
 
