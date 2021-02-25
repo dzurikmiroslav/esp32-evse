@@ -2,11 +2,18 @@
 #define EVSE_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum
 {
     EVSE_STATE_A, EVSE_STATE_B, EVSE_STATE_C, EVSE_STATE_D, EVSE_STATE_E, EVSE_STATE_F
 } evse_state_t;
+
+typedef enum
+{
+    EVSE_ERR_NONE,
+    EVSE_ERR_PILOT_FAULT
+} evse_err_t;
 
 void evse_init(void);
 

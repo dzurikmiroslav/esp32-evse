@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>EVSE</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/bootstrap.min.css">
+    <style rel="stylesheet">
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+
+        body {
+            /* Margin bottom by footer height */
+            margin-bottom: 60px;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            /* Set the fixed height of the footer here */
+            height: 60px;
+            line-height: 60px; /* Vertically center the text there */
+            background-color: #f5f5f5;
+        }
+
+        .overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background-color: #ffffff;
+            opacity: 0.75;
+            z-index: 10;
+        }
+
+        .overlay .spinner-border {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            margin-left: -1rem;
+            margin-top: -1rem;
+        }
+
+        body > .container {
+            padding: 60px 15px 0;
+        }
+
+        .footer > .container {
+            padding-right: 15px;
+            padding-left: 15px;
+        }
+    </style>
+
+    <script src="/jquery.min.js"></script>
+    <script src="/bootstrap.bundle.min.js"></script>
+    <script>
+        function showError(jqXHR) {
+            if (jqXHR.status === 400 || jqXHR.status === 500)
+                $('#alertModalBody').html('<p>' + jqXHR.responseText + '</p>');
+            else
+                $('#alertModalBody').html('Network error, try <a href="/settings.html" class="alert-link">reload this page</a>');
+            $('#alertModal').modal('show');
+        }
+
+        let requireRestart = false;
+
+        function loadSettings() {
+            $('#loading').show().animate({opacity: '0.5'});
+
+            $.ajax({
+                url: '/api/v1/config',
+                method: 'GET'
+            }).then(function (data) {
+                $('#evseChargingCurrent').val(data.evse.chargingCurrent);
+                $('#wifiEnabled').prop('checked', data.wifi.enabled).change();
+                $('#wifiSsid').val(data.wifi.ssid);
+                $('#wifiPassword').val('');
+                $('#mqttEnabled').prop('checked', data.mqtt.enabled).change();
+                $('#mqttServer').val(data.mqtt.server);
+                $('#mqttBaseTopic').val(data.mqtt.baseTopic);
+                $('#mqttUser').val(data.mqtt.user);
+                $('#mqttPassword').val('');
+                $('#mqttPeriodicity').val(data.mqtt.periodicity);
+            }).always(function (config, info) {
+                $('#loading').animate({opacity: '0'}).hide();
+                $('form').removeClass('was-validated');
+            }).fail(showError);
+        }
+
+        function loadEvseSettings() {
+            $('#loading').show().animate({opacity: '0.5'});
+
+            $.ajax({
+                url: '/api/v1/config/evse',
+                method: 'GET'
+            }).then(function (data) {
+                $('#evseChargingCurrent').val(data.chargingCurrent);
+            }).always(function (config, info) {
+                $('#loading').animate({opacity: '0'}).hide();
+                $('#evseForm').removeClass('was-validated');
+            }).fail(showError);
+        }
+
+        function loadWifiSettings() {
+            $('#loading').show().animate({opacity: '0.5'});
+
+            $.ajax({
+                url: '/api/v1/config/wifi',
+                method: 'GET'
+            }).then(function (data) {
+                $('#wifiEnabled').prop('checked', data.enabled).change();
+                $('#wifiSsid').val(data.ssid);
+                $('#wifiPassword').val('');
+            }).always(function (config, info) {
+                $('#loading').animate({opacity: '0'}).hide();
+                $('#wifiForm').removeClass('was-validated');
+            }).fail(showError);
+        }
+
+        function loadMqttSettings() {
+            $('#loading').show().animate({opacity: '0.5'});
+
+            $.ajax({
+                url: '/api/v1/config/mqtt',
+                method: 'GET'
+            }).then(function (data) {
+                $('#mqttEnabled').prop('checked', data.enabled).change();
+                $('#mqttServer').val(data.server);
+                $('#mqttBaseTopic').val(data.baseTopic);
+                $('#mqttUser').val(data.user);
+                $('#mqttPassword').val('');
+                $('#mqttPeriodicity').val(data.periodicity);
+            }).always(function (config, info) {
+                $('#loading').animate({opacity: '0'}).hide();
+                $('#mqttForm').removeClass('was-validated');
+            }).fail(showError);
+        }
+
+        function submitEvseSettings() {
+            if (!$('#evseForm')[0].checkValidity()) {
+                $('#evseForm').addClass('was-validated');
+            } else {
+                $('#loading').show().animate({opacity: '0.5'});
+
+                const config = {
+                    chargingCurrent: parseFloat($('#evseChargingCurrent').val())
+                };
+
+                $.ajax({
+                    url: '/api/v1/config/evse',
+                    method: 'POST',
+                    data: JSON.stringify(config),
+                    contentType: 'application/json'
+                }).then(function () {
+                }).always(function (config, info) {
+                    $('#loading').animate({opacity: '0'}).hide();
+                    $('#wifiForm').removeClass('was-validated');
+                }).fail(showError);
+            }
+        }
+
+        function submitWifiSettings() {
+            if (!$('#evseForm')[0].checkValidity()) {
+                $('#evseForm').addClass('was-validated');
+            } else {
+                $('#loading').show().animate({opacity: '0.5'});
+
+                const config = {
+                    wifiEnabled: $('#wifiEnabled').prop('checked'),
+                    wifiSsid: $('#wifiSSID').val(),
+                    wifiPassword: $('#wifiPassword').val(),
+                };
+
+                $.ajax({
+                    url: '/api/v1/config/wifi',
+                    method: 'POST',
+                    data: JSON.stringify(config),
+                    contentType: 'application/json'
+                }).then(function () {
+                }).always(function (config, info) {
+                    $('#loading').animate({opacity: '0'}).hide();
+                    $('#wifiForm').removeClass('was-validated');
+                }).fail(showError);
+            }
+        }
+
+        function submitMqttSettings() {
+            if (!$('#evseForm')[0].checkValidity()) {
+                $('#evseForm').addClass('was-validated');
+            } else {
+                $('#loading').show().animate({opacity: '0.5'});
+
+                const config = {
+                    enabled: $('#mqttEnabled').prop('checked'),
+                    server: $('#mqttServer').val(),
+                    baseTopic: $('#mqttBaseTopic').val(),
+                    user: $('#mqttUser').val(),
+                    password: $('#mqttPassword').val(),
+                    periodicity: parseInt($('#mqttPeriodicity').val()),
+                };
+
+                $.ajax({
+                    url: '/api/v1/config/mqtt',
+                    method: 'POST',
+                    data: JSON.stringify(config),
+                    contentType: 'application/json'
+                }).then(function () {
+                }).always(function (config, info) {
+                    $('#loading').animate({opacity: '0'}).hide();
+                    $('#wifiForm').removeClass('was-validated');
+                }).fail(showError);
+            }
+        }
+
+        function restart() {
+            $('#loading').show().animate({opacity: '0.5'});
+
+            $.ajax({
+                url: '/api/v1/restart',
+                method: 'POST'
+            }).then(function () {
+                $('#reloadModal').modal('show');
+
+                let counter = 20;
+                $('#reloadCountdown').html(counter--);
+                setInterval(function () {
+                    if (counter > 0)
+                        $('#reloadCountdown').html(counter--);
+                    else
+                        window.location.reload();
+                }, 1000);
+            }).always(function (config, info) {
+                $('#loading').animate({opacity: '0'}).hide();
+                $('#form').removeClass('was-validated');
+            }).fail(showError);
+        }
+
+        $(document).ready(function () {
+            $('#wifiEnabled').change(function (event) {
+                $('#wifiSsid, #wifiPassword').prop('disabled', !event.target.checked);
+            });
+
+            // $('#wifiEnabled, #wifiSsid, #wifiPassword').change(function (event) {
+            //     requireRestart = true;
+            // });
+
+            $('#mqttEnabled').change(function (event) {
+                $('#mqttServer, #mqttBaseTopic, #mqttUser, #mqttPassword, #mqttPeriodicity').prop('disabled', !event.target.checked);
+            });
+
+            $.ajax({
+                url: '/api/v1/boardConfig',
+                method: 'GET'
+            }).then(function (data) {
+                $('#evseChargingCurrent').attr('max', data.maxChargingCurrent);
+            });
+            $('#evseChargingCurrent').on('input', function () {
+                this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+
+            loadSettings();
+        });
+    </script>
+</head>
+<body>
+
+<header>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <a class="navbar-brand" href="/">EVSE</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/index.html">Home</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="/settings.html">Settings <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/management.html">Management</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/about.html">About</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</header>
+
+<main role="main" class="container">
+    <div class="py-3 position-relative">
+        <div id="loading" class="overlay">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                EVSE
+            </div>
+            <div class="card-body">
+                <form id="evseForm" novalidate>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="evseChargingCurrent">Charging current</label>
+                            <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
+                                   step="0.1"
+                                   required>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" onclick="submitEvseSettings()">Submit</button>
+                    <button type="button" class="btn btn-secondary" onclick="loadEvseSettings()">Reset</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                WiFi
+            </div>
+            <div class="card-body">
+                <form id="wifiForm" novalidate>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="wifiEnabled">
+                                <label class="custom-control-label" for="wifiEnabled">Enabled</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="wifiSsid">SSID</label>
+                            <input type="text" disabled class="form-control" id="wifiSsid">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="wifiPassword">Password</label>
+                            <input type="password" disabled class="form-control" id="wifiPassword">
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" onclick="submitWifiSettings()">Submit</button>
+                    <button type="button" class="btn btn-secondary" onclick="loadWifiSettings()">Reset</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                MQTT
+            </div>
+            <div class="card-body">
+                <form id="mqttForm" novalidate>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="mqttEnabled">
+                                <label class="custom-control-label" for="mqttEnabled">Enabled</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="mqttServer">Server</label>
+                            <input type="text" disabled class="form-control" id="mqttServer">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="mqttBaseTopic">Base topic</label>
+                            <input type="text" disabled class="form-control" id="mqttBaseTopic">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="mqttUser">User</label>
+                            <input type="text" disabled class="form-control" id="mqttUser">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="mqttPassword">Password</label>
+                            <input type="password" disabled class="form-control" id="mqttPassword">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="mqttPeriodicity">Periodicity</label>
+                            <input type="number" disabled class="form-control" id="mqttPeriodicity"
+                                   step="1" required>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" onclick="submitMqttSettings()">Submit</button>
+                    <button type="button" class="btn btn-secondary" onclick="loadMqttSettings()">Reset</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                System
+            </div>
+            <div class="card-body">
+                <button type="button" class="btn btn-danger" onclick="restart()">Restart</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+    </div>
+</footer>
+
+<div class="modal fade" id="alertModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
+     aria-labelledby="alertModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertModalLabel">Error</h5>
+            </div>
+            <div class="modal-body" id="alertModalBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="restartModal" tabindex="-1" role="dialog" aria-labelledby="restartModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="restartModalLabel">Restart required</h5>
+            </div>
+            <div class="modal-body">
+                <p>Your settings require restart of EVSE controller.</p>
+                <p>Restart now?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" data-dismiss="modal" onclick="restart()">Restart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
+     aria-labelledby="reloadModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reloadModalLabel">Reload</h5>
+            </div>
+            <div class="modal-body">
+                <p>Reload in <span id="reloadCountdown"></span> seconds</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="window.location.reload()">Reload now</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

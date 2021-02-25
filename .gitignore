@@ -4,5 +4,3 @@ sdkconfig.old
 .cproject
 .project
 .settings
-/web/dist
-/web/node_modules

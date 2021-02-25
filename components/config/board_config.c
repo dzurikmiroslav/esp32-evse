@@ -1,8 +1,5 @@
 #include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include <fcntl.h>
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_vfs.h"
@@ -66,7 +63,6 @@ void board_config_load()
             char *key = strtok_r(line, "=", &saveptr);
             if (key != NULL) {
                 char *value = strtok_r(NULL, "=", &saveptr);
-
                 if (value != NULL) {
                     SET_CONFIG_VALUE("LED_CHARGING", led_charging, atob);
                     SET_CONFIG_VALUE("LED_CHARGING_GPIO", led_charging_gpio, atoi);
@@ -89,13 +85,16 @@ void board_config_load()
                     SET_CONFIG_VALUE("CABLE_LOCK_W_GPIO", cable_lock_w_gpio, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER", energy_meter, atoem);
                     SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_NUM_PHASES", energy_meter_internal_num_phases, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L1_CUR_GPIO", energy_meter_internal_l1_cur_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L2_CUR_GPIO", energy_meter_internal_l2_cur_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L3_CUR_GPIO", energy_meter_internal_l3_cur_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L1_VTL_GPIO", energy_meter_internal_l1_vtl_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L2_VTL_GPIO", energy_meter_internal_l2_vtl_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L3_VTL_GPIO", energy_meter_internal_l3_vtl_gpio, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L1_CUR_ADC_CHANNEL", energy_meter_internal_l1_cur_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L2_CUR_ADC_CHANNEL", energy_meter_internal_l2_cur_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L3_CUR_ADC_CHANNEL", energy_meter_internal_l3_cur_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L1_VLT_ADC_CHANNEL", energy_meter_internal_l1_vlt_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L2_VLT_ADC_CHANNEL", energy_meter_internal_l2_vlt_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L3_VLT_ADC_CHANNEL", energy_meter_internal_l3_vlt_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_CUR_SCALE", energy_meter_internal_cur_scale, atoff);
+                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_VLT_SCALE", energy_meter_internal_vlt_scale, atoff);
                     SET_CONFIG_VALUE("ENERGY_METER_EXTERNAL_PULSE_GPIO", energy_meter_external_pulse_gpio, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_EXTERNAL_PULSE_AMOUNT", energy_meter_external_pulse_amount, atoff);
 
                     ESP_LOGW(TAG, "Unknown config value %s", value);
                 }

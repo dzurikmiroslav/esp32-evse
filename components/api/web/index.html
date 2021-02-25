@@ -41,14 +41,22 @@
     <script src="/jquery.min.js"></script>
     <script src="/bootstrap.bundle.min.js"></script>
     <script>
-        const STATES = [
-            'Not connected',
-            'EV connected, ready to charge',
-            'EV charging',
-            'EV charging, ventilation required',
-            'Error',
-            'Unknown error'
-        ];
+        const STATES = {
+            'A': 'EV not connected',
+            'B': 'EV connected, ready to charge',
+            'C': 'EV charging',
+            'D': 'EV charging, ventilation required',
+            'E': 'Error',
+            'F': 'Unknown error'
+        };
+
+        function showError(jqXHR) {
+            if (jqXHR.status === 400 || jqXHR.status === 500)
+                $('#alertModalBody').html('<p>' + jqXHR.responseText + '</p>');
+            else
+                $('#alertModalBody').html('Network error, try <a href="/settings.html" class="alert-link">reload this page</a>');
+            $('#alertModal').modal('show');
+        }
 
         function formatElapsed(sec) {
             const hour = Math.floor(sec / 3600);
@@ -65,17 +73,15 @@
             }).done(function (data) {
                 $('#status').html(STATES[data.state]);
 
-                $('#charging').toggleClass('d-none', !(data.state >= 1 && data.state <= 3));
                 $('#elapsedValue').text(formatElapsed(data.elapsed));
-                $('#actualPower').toggleClass('d-none', !data.actualPower);
                 $('#actualPowerValue').text(data.actualPower / 1000);
-                $('#consumption').toggleClass('d-none', !data.consumption);
                 $('#consumptionValue').text(data.consumption / 1000);
+
+                $('#charging').toggleClass('d-none', ['B', 'C', 'D'].indexOf(data.state) === -1);
+                //$('#actualPower').toggleClass('d-none', !data.actualPower);
+                //$('#consumption').toggleClass('d-none', !data.consumption);
             }).then(function () {
-                $('#networkError').addClass('d-none');
-            }).fail(function () {
-                $('#networkError').removeClass('d-none');
-            });
+            }).fail(showError);
         }
 
         $(document).ready(function () {
@@ -113,10 +119,6 @@
 </header>
 
 <main role="main" class="container">
-    <div id="networkError" class="alert alert-danger" role="alert">
-        Network error, try <a href="/" class="alert-link">reload this page</a>.
-    </div>
-
     <div class="jumbotron">
         <h1 id="status" class="display-4">Loading...</h1>
 
@@ -134,6 +136,23 @@
         <span class="text-muted">ESP32 electric vehicle supply equipment</span>
     </div>
 </footer>
+
+<div class="modal fade" id="alertModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
+     aria-labelledby="alertModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertModalLabel">Error</h5>
+            </div>
+            <div class="modal-body" id="alertModalBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

@@ -21,7 +21,7 @@ esp_err_t ota_get_available_version(char *version)
 {
 // @formatter:off
     esp_http_client_config_t config = {
-            .url= OTA_VERSION_URL,
+            .url = OTA_VERSION_URL,
             .cert_pem = server_cert_pem_start
     };
 // @formatter:on
@@ -38,11 +38,12 @@ esp_err_t ota_get_available_version(char *version)
             int length = esp_http_client_get_content_length(client);
             esp_http_client_read(client, version, length);
             version[length] = '\0';
+            return ESP_OK;
         } else {
             http_client_cleanup(client);
             ESP_LOGI(TAG, "No firmware available");
+            return ESP_ERR_NOT_FOUND;
         }
-        return ESP_OK;
     }
 }
 
