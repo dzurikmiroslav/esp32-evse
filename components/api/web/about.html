@@ -84,15 +84,9 @@
             }, 1000);
         }
 
-        const ENERGY_METER = {
-            0: 'none',
-            1: 'internal',
-            2: 'external pulse'
-        };
-
         const YES_NO = {
-            0: 'no',
-            1: 'yes'
+            false: 'no',
+            true: 'yes'
         };
 
         function formatUptime(sec) {
@@ -163,7 +157,7 @@
                 }).then(function (data) {
                     $('#maxChargingCurrent').text(data.maxChargingCurrent);
                     $('#cableLock').text(YES_NO[data.cableLock]);
-                    $('#energyMeter').text(ENERGY_METER[data.energyMeter]);
+                    $('#energyMeter').text(data.energyMeter);
                 }),
                 $.ajax({
                     url: '/api/v1/info',

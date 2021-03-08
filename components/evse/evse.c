@@ -1,14 +1,14 @@
 #include <sys/param.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 
-#include "pilot.h"
-#include "relay.h"
 #include "evse.h"
 #include "board_config.h"
-
+#include "pilot.h"
+#include "relay.h"
 
 #define EVSE_MAX_CHARGING_CURRENT_MIN       6
 
@@ -24,13 +24,9 @@ static evse_err_t error = EVSE_ERR_NONE;
 
 static uint8_t error_count = 0;
 
-static uint16_t charging_current; // 0.1A
+static float charging_current;
 
-static TickType_t session_start_tick = 0;
 
-static uint32_t session_consumption = 0;
-
-static uint16_t session_actual_power = 0;
 
 bool evse_process(void)
 {
@@ -123,11 +119,9 @@ bool evse_process(void)
                 case EVSE_STATE_A:
                     pilot_pwm_set_level(true);
                     ac_relay_set_state(false);
-                    session_start_tick = 0;
                     break;
                 case EVSE_STATE_B:
                     ac_relay_set_state(false);
-                    session_start_tick = xTaskGetTickCount();
                     break;
                 case EVSE_STATE_C:
                 case EVSE_STATE_D:
@@ -144,81 +138,14 @@ bool evse_process(void)
             state_changed = true;
         }
 
-        // periodical update state
         switch (state) {
             case EVSE_STATE_C:
             case EVSE_STATE_D:
-                pilot_pwm_set_amps(charging_current / 10);
+                pilot_pwm_set_amps(charging_current);
                 break;
             default:
                 break;
         }
-
-//        if (pilot_voltage == PILOT_VOLTAGE_12 && state != EVSE_STATE_A) {
-//            ESP_LOGI(TAG, "Enter A state");
-//
-//            state = EVSE_STATE_A;
-//        }
-//
-//        if (pilot_voltage == PILOT_VOLTAGE_9 && state != EVSE_STATE_B) {
-//            ESP_LOGI(TAG, "Enter B state");
-//            if (state == EVSE_STATE_A || state == EVSE_STATE_C || state == EVSE_STATE_D) {
-//                state = EVSE_STATE_B;
-//            } else {
-//                state = EVSE_STATE_E;
-//            }
-//        }
-//
-//        if (pilot_voltage == PILOT_VOLTAGE_6 && state != EVSE_STATE_C) {
-//            ESP_LOGI(TAG, "Enter C state");
-//            if (state == EVSE_STATE_B || state == EVSE_STATE_D) {
-//                state = EVSE_STATE_C;
-//            } else {
-//                state = EVSE_STATE_E;
-//            }
-//        }
-//
-//        if (pilot_voltage == PILOT_VOLTAGE_3 && state != EVSE_STATE_D) {
-//            ESP_LOGI(TAG, "Enter D state");
-//            if (state == EVSE_STATE_B || state == EVSE_STATE_C) {
-//                state = EVSE_STATE_D;
-//            } else {
-//                state = EVSE_STATE_E;
-//            }
-//        }
-//
-//        if (pilot_voltage == PILOT_VOLTAGE_1 && state != EVSE_STATE_E) {
-//            ESP_LOGI(TAG, "Enter E state");
-//            state = EVSE_STATE_E;
-//        }
-//
-//        switch (state) {
-//            case EVSE_STATE_A:
-//                pilot_pwm_set_level(true);
-//                ac_relay_set_state(false);
-//                break;
-//            case EVSE_STATE_B:
-//                pilot_pwm_set_amps(charging_current / 10);
-//                ac_relay_set_state(false);
-//                break;
-//            case EVSE_STATE_C:
-//                pilot_pwm_set_amps(charging_current / 10);
-//                ac_relay_set_state(true);
-//                break;
-//            case EVSE_STATE_D:
-//                pilot_pwm_set_amps(charging_current / 10);
-//                ac_relay_set_state(true);
-//                break;
-//            case EVSE_STATE_E:
-//                pilot_pwm_set_level(true);
-//                ac_relay_set_state(false);
-//                break;
-//            case EVSE_STATE_F:
-//                pilot_pwm_set_level(false);
-//                ac_relay_set_state(false);
-//                break;
-//        }
-
     }
 
     xSemaphoreGive(mutex);
@@ -263,45 +190,12 @@ bool evse_try_disable(void)
     return sucess;
 }
 
-//TODO remove
-void evse_mock(evse_state_t _state)
-{
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    state = _state;
-
-    if (state == EVSE_STATE_C || state == EVSE_STATE_D) {
-        session_consumption = rand() % 40000;
-        session_actual_power = 7489;
-    } else {
-        session_consumption = 0;
-        session_actual_power = 0;
-    }
-
-    xSemaphoreGive(mutex);
-}
-
 void evse_init()
 {
     mutex = xSemaphoreCreateMutex();
-    charging_current = board_config.max_charging_current * 10;
+    charging_current = board_config.max_charging_current;
 
     pilot_pwm_set_level(true);
-}
-
-uint32_t evse_get_session_elapsed(void)
-{
-    return pdTICKS_TO_MS(xTaskGetTickCount() - session_start_tick) / 1000;
-}
-
-uint32_t evse_get_session_consumption(void)
-{
-    return session_consumption;
-}
-
-uint16_t evse_get_session_actual_power(void)
-{
-    return session_actual_power;
 }
 
 evse_state_t evse_get_state(void)
@@ -314,16 +208,15 @@ uint16_t evse_get_error(void)
     return error;
 }
 
-uint16_t evse_get_chaging_current(void)
+float evse_get_chaging_current(void)
 {
     return charging_current;
 }
 
-void evse_set_chaging_current(uint16_t value)
+void evse_set_chaging_current(float value)
 {
-    value = MAX(value, EVSE_MAX_CHARGING_CURRENT_MIN * 10);
-    value = MIN(value, board_config.max_charging_current * 10);
+    value = MAX(value, EVSE_MAX_CHARGING_CURRENT_MIN);
+    value = MIN(value, board_config.max_charging_current);
     charging_current = value;
-
 }
 

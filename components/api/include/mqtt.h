@@ -14,7 +14,7 @@ void mqtt_init(void);
 
 void mqtt_set_config(bool enabled, const char *server, const char *base_topic, const char *user, const char *password, uint16_t periodicity);
 
-bool mqtt_get_enabled();
+bool mqtt_get_enabled(void);
 
 void mqtt_get_server(char *value); //string length 64
 
@@ -24,8 +24,8 @@ void mqtt_get_user(char *value); //string length 32
 
 void mqtt_get_password(char *value); //string length 64
 
-uint16_t mqtt_get_periodicity();
+uint16_t mqtt_get_periodicity(void);
 
-void mqtt_periodic_handle();
+void mqtt_process(void);
 
 #endif /* MQTT_H_ */

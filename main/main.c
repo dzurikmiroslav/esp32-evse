@@ -63,7 +63,8 @@ static void wifi_event_task_func(void *param)
             connect_bits = xEventGroupWaitBits(wifi_ap_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT));
             if (connect_bits & WIFI_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
-                xEventGroupWaitBits(wifi_ap_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+                do {
+                } while ( WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_ap_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
             } else {
                 if (xEventGroupGetBits(wifi_mode_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
@@ -75,7 +76,8 @@ static void wifi_event_task_func(void *param)
             connect_bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
             if (connect_bits & WIFI_CONNECTED_BIT) {
                 led_set_on(LED_ID_WIFI);
-                xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+                do {
+                } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
             }
         }
     }
@@ -263,8 +265,8 @@ void app_main()
             state = evse_get_state();
             set_led_state(state);
         }
-
-        mqtt_periodic_handle();
+        energy_meter_process();
+        mqtt_process();
 
         vTaskDelay(MAX(0, pdMS_TO_TICKS(1000) - (xTaskGetTickCount() - tick)));
     }

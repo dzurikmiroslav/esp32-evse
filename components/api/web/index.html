@@ -75,7 +75,7 @@
 
                 $('#elapsedValue').text(formatElapsed(data.elapsed));
                 $('#actualPowerValue').text(data.actualPower / 1000);
-                $('#consumptionValue').text(data.consumption / 1000);
+                $('#consumptionValue').text(Math.round(data.consumption / 3600) / 1000);
 
                 $('#charging').toggleClass('d-none', ['B', 'C', 'D'].indexOf(data.state) === -1);
                 //$('#actualPower').toggleClass('d-none', !data.actualPower);

@@ -6,8 +6,9 @@
 
 typedef enum {
     BOARD_CONFIG_ENERGY_METER_NONE,
-    BOARD_CONFIG_ENERGY_METER_INTERNAL,
-    BOARD_CONFIG_ENERGY_METER_EXTERNAL_PULSE
+    BOARD_CONFIG_ENERGY_METER_CUR,
+    BOARD_CONFIG_ENERGY_METER_CUR_VLT,
+    BOARD_CONFIG_ENERGY_METER_EXT_PULSE
 } board_config_energy_meter_t;
 
 typedef struct
@@ -38,19 +39,19 @@ typedef struct
     gpio_num_t cable_lock_w_gpio;
 
     board_config_energy_meter_t energy_meter;
+    bool energy_meter_three_phases: 1;
 
-    uint8_t energy_meter_internal_num_phases;
-    adc_channel_t energy_meter_internal_l1_cur_adc_channel;
-    adc_channel_t energy_meter_internal_l2_cur_adc_channel;
-    adc_channel_t energy_meter_internal_l3_cur_adc_channel;
-    adc_channel_t energy_meter_internal_l1_vlt_adc_channel;
-    adc_channel_t energy_meter_internal_l2_vlt_adc_channel;
-    adc_channel_t energy_meter_internal_l3_vlt_adc_channel;
-    float energy_meter_internal_cur_scale;
-    float energy_meter_internal_vlt_scale;
+    adc_channel_t energy_meter_l1_cur_adc_channel;
+    adc_channel_t energy_meter_l2_cur_adc_channel;
+    adc_channel_t energy_meter_l3_cur_adc_channel;
+    float energy_meter_cur_scale;
+    adc_channel_t energy_meter_l1_vlt_adc_channel;
+    adc_channel_t energy_meter_l2_vlt_adc_channel;
+    adc_channel_t energy_meter_l3_vlt_adc_channel;
+    float energy_meter_vlt_scale;
 
-    bool energy_meter_external_pulse_gpio;
-    float energy_meter_external_pulse_amount;
+    gpio_num_t energy_meter_ext_pulse_gpio;
+    float energy_meter_ext_pulse_amount;
 } board_config_t;
 
 extern board_config_t board_config;

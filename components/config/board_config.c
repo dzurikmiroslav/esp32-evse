@@ -18,11 +18,14 @@ bool atob(const char *value)
 
 board_config_energy_meter_t atoem(const char *value)
 {
-    if (!strcmp(value, "internal")) {
-        return BOARD_CONFIG_ENERGY_METER_INTERNAL;
+    if (!strcmp(value, "cur")) {
+        return BOARD_CONFIG_ENERGY_METER_CUR;
     }
-    if (!strcmp(value, "external_pulse")) {
-        return BOARD_CONFIG_ENERGY_METER_EXTERNAL_PULSE;
+    if (!strcmp(value, "cur_vlt")) {
+        return BOARD_CONFIG_ENERGY_METER_CUR_VLT;
+    }
+    if (!strcmp(value, "ext_pulse")) {
+        return BOARD_CONFIG_ENERGY_METER_EXT_PULSE;
     }
     return BOARD_CONFIG_ENERGY_METER_NONE;
 }
@@ -84,19 +87,19 @@ void board_config_load()
                     SET_CONFIG_VALUE("CABLE_LOCK_R_GPIO", cable_lock_r_gpio, atoi);
                     SET_CONFIG_VALUE("CABLE_LOCK_W_GPIO", cable_lock_w_gpio, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER", energy_meter, atoem);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_NUM_PHASES", energy_meter_internal_num_phases, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L1_CUR_ADC_CHANNEL", energy_meter_internal_l1_cur_adc_channel, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L2_CUR_ADC_CHANNEL", energy_meter_internal_l2_cur_adc_channel, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L3_CUR_ADC_CHANNEL", energy_meter_internal_l3_cur_adc_channel, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L1_VLT_ADC_CHANNEL", energy_meter_internal_l1_vlt_adc_channel, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L2_VLT_ADC_CHANNEL", energy_meter_internal_l2_vlt_adc_channel, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_L3_VLT_ADC_CHANNEL", energy_meter_internal_l3_vlt_adc_channel, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_CUR_SCALE", energy_meter_internal_cur_scale, atoff);
-                    SET_CONFIG_VALUE("ENERGY_METER_INTERNAL_VLT_SCALE", energy_meter_internal_vlt_scale, atoff);
-                    SET_CONFIG_VALUE("ENERGY_METER_EXTERNAL_PULSE_GPIO", energy_meter_external_pulse_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_EXTERNAL_PULSE_AMOUNT", energy_meter_external_pulse_amount, atoff);
+                    SET_CONFIG_VALUE("ENERGY_METER_THREE_PHASES", energy_meter_three_phases, atob);
+                    SET_CONFIG_VALUE("ENERGY_METER_L1_CUR_ADC_CHANNEL", energy_meter_l1_cur_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_L2_CUR_ADC_CHANNEL", energy_meter_l2_cur_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_L3_CUR_ADC_CHANNEL", energy_meter_l3_cur_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_CUR_SCALE", energy_meter_cur_scale, atoff);
+                    SET_CONFIG_VALUE("ENERGY_METER_L1_VLT_ADC_CHANNEL", energy_meter_l1_vlt_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_L2_VLT_ADC_CHANNEL", energy_meter_l2_vlt_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_L3_VLT_ADC_CHANNEL", energy_meter_l3_vlt_adc_channel, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_VLT_SCALE", energy_meter_vlt_scale, atoff);
+                    SET_CONFIG_VALUE("ENERGY_METER_EXT_PULSE_GPIO", energy_meter_ext_pulse_gpio, atoi);
+                    SET_CONFIG_VALUE("ENERGY_METER_EXT_PULSE_AMOUNT", energy_meter_ext_pulse_amount, atoff);
 
-                    ESP_LOGW(TAG, "Unknown config value %s", value);
+                    ESP_LOGE(TAG, "Unknown config value %s", value);
                 }
             }
         }

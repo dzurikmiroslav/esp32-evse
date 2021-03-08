@@ -34,7 +34,7 @@ static uint16_t periodicity;
 
 static uint16_t counter;
 
-static void subcribe_topics()
+static void subcribe_topics(void)
 {
     char topic[48];
     mqtt_get_base_topic(topic);
@@ -200,7 +200,7 @@ void mqtt_set_config(bool enabled, const char *server, const char *base_topic, c
     xSemaphoreGive(mutex);
 }
 
-bool mqtt_get_enabled()
+bool mqtt_get_enabled(void)
 {
     uint8_t value = false;
     nvs_get_u8(nvs, NVS_ENABLED, &value);
@@ -235,14 +235,14 @@ void mqtt_get_password(char *value)
     nvs_get_str(nvs, NVS_PASSWORD, value, &len);
 }
 
-uint16_t mqtt_get_periodicity()
+uint16_t mqtt_get_periodicity(void)
 {
     uint16_t value = 30;
     nvs_get_u16(nvs, NVS_PERIODICITY, &value);
     return value;
 }
 
-void mqtt_periodic_handle()
+void mqtt_process(void)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
 

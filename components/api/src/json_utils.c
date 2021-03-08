@@ -12,21 +12,20 @@
 #include "timeout_utils.h"
 #include "evse.h"
 #include "board_config.h"
+#include "energy_meter.h"
 
 cJSON* json_get_evse_config(void)
 {
     cJSON *root = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current() / 10.0);
+    cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current());
 
     return root;
 }
 
 void json_set_evse_config(cJSON *root)
 {
-    uint16_t charging_current = cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10;
-
-    evse_set_chaging_current(charging_current);
+    evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble);
 }
 
 cJSON* json_get_wifi_config(void)
@@ -91,9 +90,14 @@ cJSON* json_get_state(void)
     state[0] = 'A' + evse_get_state();
     cJSON_AddStringToObject(root, "state", state);
     cJSON_AddNumberToObject(root, "error", evse_get_error());
-    cJSON_AddNumberToObject(root, "elapsed", evse_get_session_elapsed());
-    cJSON_AddNumberToObject(root, "consumption", evse_get_session_consumption());
-    cJSON_AddNumberToObject(root, "actualPower", evse_get_session_actual_power());
+    cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
+    cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
+    cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());
+    float values[3];
+    energy_meter_get_voltage(values);
+    cJSON_AddItemToObject(root, "voltage", cJSON_CreateFloatArray(values, 3));
+    energy_meter_get_current(values);
+    cJSON_AddItemToObject(root, "current", cJSON_CreateFloatArray(values, 3));
 
     return root;
 }
@@ -131,8 +135,20 @@ cJSON* json_get_board_config(void)
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(root, "maxChargingCurrent", board_config.max_charging_current);
-    cJSON_AddNumberToObject(root, "cableLock", board_config.cable_lock);
-    cJSON_AddNumberToObject(root, "energyMeter", board_config.energy_meter);
+    cJSON_AddBoolToObject(root, "cableLock", board_config.cable_lock);
+    switch (board_config.energy_meter) {
+        case BOARD_CONFIG_ENERGY_METER_CUR:
+            cJSON_AddStringToObject(root, "energyMeter", "cur");
+            break;
+        case BOARD_CONFIG_ENERGY_METER_CUR_VLT:
+            cJSON_AddStringToObject(root, "energyMeter", "cur_vlt");
+            break;
+        case BOARD_CONFIG_ENERGY_METER_EXT_PULSE:
+            cJSON_AddStringToObject(root, "energyMeter", "ext_pulse");
+            break;
+        default:
+            cJSON_AddStringToObject(root, "energyMeter", "none");
+    }
 
     return root;
 }

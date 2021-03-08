@@ -64,6 +64,9 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
             ESP_LOGI(TAG, "WiFi STA got ip:" IPSTR, IP2STR(&event->ip_info.ip));
             xEventGroupClearBits(wifi_event_group, WIFI_DISCONNECTED_BIT);
             xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+        } else if (event_id  == IP_EVENT_GOT_IP6) {
+            ip_event_got_ip6_t *event =  (ip_event_got_ip6_t*) event_data;
+            ESP_LOGI(TAG, "WiFi STA got ip6:" IPV6STR, IPV62STR(event->ip6_info.ip));
         }
     }
 }
