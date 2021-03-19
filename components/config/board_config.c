@@ -83,9 +83,9 @@ void board_config_load()
                     SET_CONFIG_VALUE("MAX_CHARGING_CURRENT", max_charging_current, atoi);
                     SET_CONFIG_VALUE("AC_RELAY_GPIO", ac_relay_gpio, atoi);
                     SET_CONFIG_VALUE("CABLE_LOCK", cable_lock, atob);
+                    SET_CONFIG_VALUE("CABLE_LOCK_A_GPIO", cable_lock_a_gpio, atoi);
                     SET_CONFIG_VALUE("CABLE_LOCK_B_GPIO", cable_lock_b_gpio, atoi);
-                    SET_CONFIG_VALUE("CABLE_LOCK_R_GPIO", cable_lock_r_gpio, atoi);
-                    SET_CONFIG_VALUE("CABLE_LOCK_W_GPIO", cable_lock_w_gpio, atoi);
+                    SET_CONFIG_VALUE("CABLE_LOCK_TEST_GPIO", cable_lock_test_gpio, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER", energy_meter, atoem);
                     SET_CONFIG_VALUE("ENERGY_METER_THREE_PHASES", energy_meter_three_phases, atob);
                     SET_CONFIG_VALUE("ENERGY_METER_L1_CUR_ADC_CHANNEL", energy_meter_l1_cur_adc_channel, atoi);

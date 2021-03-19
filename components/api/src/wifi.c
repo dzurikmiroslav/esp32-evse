@@ -21,7 +21,7 @@
 
 static const char *TAG = "wifi";
 
-static nvs_handle nvs;
+static nvs_handle_t nvs;
 
 static bool sta_valid_config = false;
 

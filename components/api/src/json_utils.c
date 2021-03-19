@@ -1,4 +1,5 @@
 #include <time.h>
+#include <string.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
@@ -13,6 +14,7 @@
 #include "evse.h"
 #include "board_config.h"
 #include "energy_meter.h"
+#include "cable_lock.h"
 
 cJSON* json_get_evse_config(void)
 {
@@ -20,12 +22,38 @@ cJSON* json_get_evse_config(void)
 
     cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current());
 
+    switch (cable_lock_get_type()) {
+        case CABLE_LOCK_TYPE_MOTOR:
+            cJSON_AddStringToObject(root, "cableLock", "motor");
+            break;
+        case CABLE_LOCK_TYPE_SOLENOID:
+            cJSON_AddStringToObject(root, "cableLock", "solenoid");
+            break;
+        default:
+            cJSON_AddStringToObject(root, "cableLock", "none");
+    }
+
     return root;
 }
 
 void json_set_evse_config(cJSON *root)
 {
-    evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble);
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
+        evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble);
+    }
+
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "cableLock"))) {
+        cable_lock_type_t type = CABLE_LOCK_TYPE_NONE;
+
+        if (!strcmp(cJSON_GetObjectItem(root, "cableLock")->valuestring, "motor")) {
+            type = CABLE_LOCK_TYPE_MOTOR;
+        } else if (!strcmp(cJSON_GetObjectItem(root, "cableLock")->valuestring, "solenoid")) {
+            type = CABLE_LOCK_TYPE_SOLENOID;
+        }
+
+        cable_lock_set_type(type);
+    }
+
 }
 
 cJSON* json_get_wifi_config(void)
@@ -43,9 +71,9 @@ cJSON* json_get_wifi_config(void)
 
 void json_set_wifi_config(cJSON *root)
 {
-    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "wifiEnabled"));
-    char *ssid = cJSON_GetObjectItem(root, "wifiSSID")->valuestring;
-    char *password = cJSON_GetObjectItem(root, "wifiPassword")->valuestring;
+    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
+    char *ssid = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ssid"));
+    char *password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
 
     timeout_set_wifi_config(enabled, ssid, password);
 }
@@ -73,10 +101,10 @@ cJSON* json_get_mqtt_config(void)
 void json_set_mqtt_config(cJSON *root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
-    char *server = cJSON_GetObjectItem(root, "server")->valuestring;
-    char *base_topic = cJSON_GetObjectItem(root, "baseTopic")->valuestring;
-    char *user = cJSON_GetObjectItem(root, "user")->valuestring;
-    char *password = cJSON_GetObjectItem(root, "password")->valuestring;
+    char *server = cJSON_GetStringValue(cJSON_GetObjectItem(root, "server"));
+    char *base_topic = cJSON_GetStringValue(cJSON_GetObjectItem(root, "baseTopic"));
+    char *user = cJSON_GetStringValue(cJSON_GetObjectItem(root, "user"));
+    char *password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
     uint16_t periodicity = cJSON_GetObjectItem(root, "periodicity")->valuedouble;
 
     mqtt_set_config(enabled, server, base_topic, user, password, periodicity);
@@ -152,4 +180,3 @@ cJSON* json_get_board_config(void)
 
     return root;
 }
-

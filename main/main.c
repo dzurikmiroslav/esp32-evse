@@ -22,6 +22,7 @@
 #include "led.h"
 #include "pilot.h"
 #include "relay.h"
+#include "cable_lock.h"
 #include "energy_meter.h"
 #include "board_config.h"
 #include "mqtt.h"
@@ -243,6 +244,7 @@ void app_main()
 
     pilot_init();
     ac_relay_init();
+    cable_lock_init();
     energy_meter_init();
     led_init();
     button_init();

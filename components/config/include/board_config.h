@@ -34,9 +34,9 @@ typedef struct
     gpio_num_t ac_relay_gpio;
 
     bool cable_lock: 1;
+    gpio_num_t cable_lock_a_gpio;
     gpio_num_t cable_lock_b_gpio;
-    gpio_num_t cable_lock_r_gpio;
-    gpio_num_t cable_lock_w_gpio;
+    gpio_num_t cable_lock_test_gpio;
 
     board_config_energy_meter_t energy_meter;
     bool energy_meter_three_phases: 1;

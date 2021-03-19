@@ -26,7 +26,7 @@
 
 static const char *TAG = "webserver";
 
-static nvs_handle nvs;
+static nvs_handle_t nvs;
 
 static char user[32];
 static char password[32];

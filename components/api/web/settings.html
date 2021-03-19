@@ -77,6 +77,7 @@
                 method: 'GET'
             }).then(function (data) {
                 $('#evseChargingCurrent').val(data.evse.chargingCurrent);
+                $('#evseCableLock').val(data.evse.cableLock);
                 $('#wifiEnabled').prop('checked', data.wifi.enabled).change();
                 $('#wifiSsid').val(data.wifi.ssid);
                 $('#wifiPassword').val('');
@@ -100,6 +101,7 @@
                 method: 'GET'
             }).then(function (data) {
                 $('#evseChargingCurrent').val(data.chargingCurrent);
+                $('#evseCableLock').val(data.cableLock);
             }).always(function (config, info) {
                 $('#loading').animate({opacity: '0'}).hide();
                 $('#evseForm').removeClass('was-validated');
@@ -148,7 +150,8 @@
                 $('#loading').show().animate({opacity: '0.5'});
 
                 const config = {
-                    chargingCurrent: parseFloat($('#evseChargingCurrent').val())
+                    chargingCurrent: parseFloat($('#evseChargingCurrent').val()),
+                    cableLock: $('#evseCableLock').val()
                 };
 
                 $.ajax({
@@ -171,9 +174,9 @@
                 $('#loading').show().animate({opacity: '0.5'});
 
                 const config = {
-                    wifiEnabled: $('#wifiEnabled').prop('checked'),
-                    wifiSsid: $('#wifiSSID').val(),
-                    wifiPassword: $('#wifiPassword').val(),
+                    enabled: $('#wifiEnabled').prop('checked'),
+                    ssid: $('#wifiSsid').val(),
+                    password: $('#wifiPassword').val(),
                 };
 
                 $.ajax({
@@ -258,6 +261,7 @@
                 method: 'GET'
             }).then(function (data) {
                 $('#evseChargingCurrent').attr('max', data.maxChargingCurrent);
+                $('#evseCableLock').prop('disabled', !data.cableLock);
             });
             $('#evseChargingCurrent').on('input', function () {
                 this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
@@ -315,6 +319,15 @@
                             <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
                                    step="0.1"
                                    required>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label for="evseCableLock">Cable lock</label>
+                            <select class="form-control" id="evseCableLock">
+                                <option value="none">None</option>
+                                <option value="motor">Motor</option>
+                                <option value="solenoid">Solenoid</option>
+                            </select>
                         </div>
                     </div>
 

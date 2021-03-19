@@ -9,6 +9,7 @@
 #include "board_config.h"
 #include "pilot.h"
 #include "relay.h"
+#include "cable_lock.h"
 
 #define EVSE_MAX_CHARGING_CURRENT_MIN       6
 
@@ -25,8 +26,6 @@ static evse_err_t error = EVSE_ERR_NONE;
 static uint8_t error_count = 0;
 
 static float charging_current;
-
-
 
 bool evse_process(void)
 {
@@ -119,9 +118,11 @@ bool evse_process(void)
                 case EVSE_STATE_A:
                     pilot_pwm_set_level(true);
                     ac_relay_set_state(false);
+                    cable_lock_unlock();
                     break;
                 case EVSE_STATE_B:
                     ac_relay_set_state(false);
+                    cable_lock_lock();
                     break;
                 case EVSE_STATE_C:
                 case EVSE_STATE_D:
@@ -131,6 +132,7 @@ bool evse_process(void)
                 case EVSE_STATE_F:
                     pilot_pwm_set_level(false);
                     ac_relay_set_state(false);
+                    cable_lock_unlock();
                     break;
             }
 
