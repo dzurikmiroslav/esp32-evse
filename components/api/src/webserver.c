@@ -425,13 +425,9 @@ static esp_err_t restart_post_handler(httpd_req_t *req)
     if (autorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
 
-        if (!evse_try_disable()) {
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Cannot be restarted at this time");
-            return ESP_FAIL;
-        } else {
-            httpd_resp_sendstr(req, "Restart in one second");
-            timeout_restart();
-        }
+        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+        httpd_resp_sendstr(req, "Restart in one second");
+        timeout_restart();
     }
     return ESP_OK;
 }
@@ -467,19 +463,16 @@ static esp_err_t firmware_check_update_get_handler(httpd_req_t *req)
 static esp_err_t firmware_update_post_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
+        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+
         httpd_resp_set_type(req, "text/plain");
 
-        if (!evse_try_disable()) {
-            ESP_LOGE(TAG, "Cannot be updated at this time");
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware cannot be updated at this time");
-            return ESP_FAIL;
-        } else {
-            char avl_version[32];
-            if (ota_get_available_version(avl_version) == ESP_OK) {
-                const esp_app_desc_t *app_desc = esp_ota_get_app_description();
+        char avl_version[32];
+        if (ota_get_available_version(avl_version) == ESP_OK) {
+            const esp_app_desc_t *app_desc = esp_ota_get_app_description();
 
-                if (ota_is_newer_version(app_desc->version, avl_version)) {
-                    extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
+            if (ota_is_newer_version(app_desc->version, avl_version)) {
+                extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 
 // @formatter:off
                     esp_http_client_config_t config = {
@@ -488,25 +481,25 @@ static esp_err_t firmware_update_post_handler(httpd_req_t *req)
                     };
 // @formatter:on
 
-                    esp_err_t err = esp_https_ota(&config);
-                    if (err == ESP_OK) {
-                        ESP_LOGI(TAG, "OTA upgrade done");
-                        timeout_restart();
-                    } else {
-                        ESP_LOGE(TAG, "OTA failed (%s)", esp_err_to_name(err));
-                        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upgrade failed");
-                        evse_enable();
-                        return ESP_FAIL;
-                    }
+                esp_err_t err = esp_https_ota(&config);
+                if (err == ESP_OK) {
+                    ESP_LOGI(TAG, "OTA upgrade done");
+                    timeout_restart();
+                } else {
+                    ESP_LOGE(TAG, "OTA failed (%s)", esp_err_to_name(err));
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upgrade failed");
+                    evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                    return ESP_FAIL;
                 }
-            } else {
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
-                evse_enable();
-                return ESP_FAIL;
             }
-
-            httpd_resp_sendstr(req, "Firmware upgraded successfully");
+        } else {
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
+            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            return ESP_FAIL;
         }
+
+        httpd_resp_sendstr(req, "Firmware upgraded successfully");
+
     }
     return ESP_OK;
 }
@@ -514,102 +507,98 @@ static esp_err_t firmware_update_post_handler(httpd_req_t *req)
 static esp_err_t firmware_upload_post_handler(httpd_req_t *req)
 {
     if (autorize_req(req)) {
+        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+
         httpd_resp_set_type(req, "text/plain");
 
-        if (!evse_try_disable()) {
-            ESP_LOGE(TAG, "Cannot be flashed at this time");
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware cannot be uploaded at this time");
+        esp_err_t err;
+        esp_ota_handle_t update_handle = 0;
+        const esp_partition_t *update_partition = NULL;
+        int received = 0;
+        int remaining = req->content_len;
+        char buf[SCRATCH_BUFSIZE];
+        bool image_header_was_checked = false;
+
+        update_partition = esp_ota_get_next_update_partition(NULL);
+        ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
+        if (update_partition == NULL) {
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
+            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
             return ESP_FAIL;
-        } else {
-            esp_err_t err;
-            esp_ota_handle_t update_handle = 0;
-            const esp_partition_t *update_partition = NULL;
-            int received = 0;
-            int remaining = req->content_len;
-            char buf[SCRATCH_BUFSIZE];
-            bool image_header_was_checked = false;
-
-            update_partition = esp_ota_get_next_update_partition(NULL);
-            ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
-            if (update_partition == NULL) {
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
-                evse_enable();
-                return ESP_FAIL;
-            }
-
-            while (remaining > 0) {
-                if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
-                    ESP_LOGE(TAG, "File receive failed");
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive request");
-                    evse_enable();
-                    return ESP_FAIL;
-                } else if (image_header_was_checked == false) {
-                    if (received > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
-                        esp_app_desc_t new_app_desc;
-                        memcpy(&new_app_desc, &buf[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
-                        ESP_LOGI(TAG, "New firmware version: %s", new_app_desc.version);
-
-                        const esp_app_desc_t *app_desc = esp_ota_get_app_description();
-                        if (strcmp(app_desc->project_name, new_app_desc.project_name) != 0) {
-                            ESP_LOGE(TAG, "Received firmware is not %s", app_desc->project_name);
-                            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
-                            evse_enable();
-                            return ESP_FAIL;
-                        }
-                    } else {
-                        ESP_LOGE(TAG, "Received package is not fit length");
-                        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
-                        evse_enable();
-                        return ESP_FAIL;
-                    }
-
-                    image_header_was_checked = true;
-
-                    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
-                    if (err != ESP_OK) {
-                        ESP_LOGE(TAG, "OTA begin failed (%s)", esp_err_to_name(err));
-                        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-                        evse_enable();
-                        return ESP_FAIL;
-                    }
-                    ESP_LOGI(TAG, "OTA begin succeeded");
-                }
-
-                err = esp_ota_write(update_handle, (const void*) buf, received);
-                if (err != ESP_OK) {
-                    ESP_LOGE(TAG, "OTA write failed (%s)", esp_err_to_name(err));
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-                    evse_enable();
-                    return ESP_FAIL;
-                }
-
-                remaining -= received;
-            }
-
-            err = esp_ota_end(update_handle);
-            if (err != ESP_OK) {
-                if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
-                    ESP_LOGE(TAG, "Image validation failed, image is corrupted");
-                }
-                ESP_LOGE(TAG, "OTA end failed (%s)!", esp_err_to_name(err));
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-                evse_enable();
-                return ESP_FAIL;
-            }
-
-            err = esp_ota_set_boot_partition(update_partition);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "OTA set boot partition failed (%s)", esp_err_to_name(err));
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-                evse_enable();
-                return ESP_FAIL;
-            }
-
-            ESP_LOGI(TAG, "Prepare to restart system!");
-            timeout_restart();
-
-            httpd_resp_sendstr(req, "File uploaded successfully");
         }
+
+        while (remaining > 0) {
+            if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
+                ESP_LOGE(TAG, "File receive failed");
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive request");
+                evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                return ESP_FAIL;
+            } else if (image_header_was_checked == false) {
+                if (received > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
+                    esp_app_desc_t new_app_desc;
+                    memcpy(&new_app_desc, &buf[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
+                    ESP_LOGI(TAG, "New firmware version: %s", new_app_desc.version);
+
+                    const esp_app_desc_t *app_desc = esp_ota_get_app_description();
+                    if (strcmp(app_desc->project_name, new_app_desc.project_name) != 0) {
+                        ESP_LOGE(TAG, "Received firmware is not %s", app_desc->project_name);
+                        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
+                        evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                        return ESP_FAIL;
+                    }
+                } else {
+                    ESP_LOGE(TAG, "Received package is not fit length");
+                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
+                    evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                    return ESP_FAIL;
+                }
+
+                image_header_was_checked = true;
+
+                err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+                if (err != ESP_OK) {
+                    ESP_LOGE(TAG, "OTA begin failed (%s)", esp_err_to_name(err));
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+                    evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                    return ESP_FAIL;
+                }
+                ESP_LOGI(TAG, "OTA begin succeeded");
+            }
+
+            err = esp_ota_write(update_handle, (const void*) buf, received);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "OTA write failed (%s)", esp_err_to_name(err));
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+                evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                return ESP_FAIL;
+            }
+
+            remaining -= received;
+        }
+
+        err = esp_ota_end(update_handle);
+        if (err != ESP_OK) {
+            if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
+                ESP_LOGE(TAG, "Image validation failed, image is corrupted");
+            }
+            ESP_LOGE(TAG, "OTA end failed (%s)!", esp_err_to_name(err));
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            return ESP_FAIL;
+        }
+
+        err = esp_ota_set_boot_partition(update_partition);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "OTA set boot partition failed (%s)", esp_err_to_name(err));
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            return ESP_FAIL;
+        }
+
+        ESP_LOGI(TAG, "Prepare to restart system!");
+        timeout_restart();
+
+        httpd_resp_sendstr(req, "File uploaded successfully");
     }
     return ESP_OK;
 }

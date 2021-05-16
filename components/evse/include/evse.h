@@ -4,8 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define evse_state_in_session(state)             (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
-#define evse_state_relay_closed(state)           (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
+#define EVSE_DISABLE_BIT_SYSTEM             0
+#define EVSE_DISABLE_BIT_USER               0
+#define evse_state_in_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
+#define evse_state_relay_closed(state)      (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
 
 typedef enum
 {
@@ -20,13 +22,13 @@ typedef enum
 
 void evse_init(void);
 
-void evse_enable(void);
+void evse_enable(uint8_t bit);
 
-void evse_disable(void);
+void evse_disable(uint8_t bit);
 
-bool evse_try_disable(void);
+bool evse_is_enabled(void);
 
-bool evse_process(void);
+void evse_process(void);
 
 evse_state_t evse_get_state(void);
 

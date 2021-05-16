@@ -9,8 +9,6 @@
 #include "board_config.h"
 
 #define BLOCK_TIME              10
-#define LED_TIMER               LEDC_TIMER_1
-#define LED_SPEED_MODE          LEDC_LOW_SPEED_MODE
 
 static const char *TAG = "led";
 

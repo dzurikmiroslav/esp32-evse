@@ -1,6 +1,8 @@
 #ifndef LED_H_
 #define LED_H_
 
+#include <stdint.h>
+
 typedef enum
 {
     LED_ID_WIFI,

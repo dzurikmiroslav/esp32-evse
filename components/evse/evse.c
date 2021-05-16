@@ -11,13 +11,13 @@
 #include "relay.h"
 #include "cable_lock.h"
 
-#define EVSE_MAX_CHARGING_CURRENT_MIN       6
+#define CHARGING_CURRENT_MIN       6
 
 static const char *TAG = "evse";
 
 static SemaphoreHandle_t mutex;
 
-static bool enabled = true;
+static uint8_t disable_bits = 0;
 
 static evse_state_t state = EVSE_STATE_A;
 
@@ -27,13 +27,39 @@ static uint8_t error_count = 0;
 
 static float charging_current;
 
-bool evse_process(void)
+void set_state(evse_state_t next_state)
 {
-    bool state_changed = false;
+    switch (next_state) {
+        case EVSE_STATE_A:
+            pilot_pwm_set_level(true);
+            ac_relay_set_state(false);
+            cable_lock_unlock();
+            break;
+        case EVSE_STATE_B:
+            ac_relay_set_state(false);
+            cable_lock_lock();
+            break;
+        case EVSE_STATE_C:
+        case EVSE_STATE_D:
+            ac_relay_set_state(true);
+            pilot_pwm_set_amps(charging_current);
+            break;
+        case EVSE_STATE_E:
+        case EVSE_STATE_F:
+            pilot_pwm_set_level(false);
+            ac_relay_set_state(false);
+            cable_lock_unlock();
+            break;
+    }
 
+    state = next_state;
+}
+
+void evse_process(void)
+{
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    if (enabled) {
+    if (!disable_bits) {
         evse_state_t next_state = state;
 
         switch (state) {
@@ -113,83 +139,37 @@ bool evse_process(void)
 
         if (next_state != state) {
             ESP_LOGI(TAG, "Enter %c state", 'A' + next_state);
-            // apply next state settings
-            switch (next_state) {
-                case EVSE_STATE_A:
-                    pilot_pwm_set_level(true);
-                    ac_relay_set_state(false);
-                    cable_lock_unlock();
-                    break;
-                case EVSE_STATE_B:
-                    ac_relay_set_state(false);
-                    cable_lock_lock();
-                    break;
-                case EVSE_STATE_C:
-                case EVSE_STATE_D:
-                    ac_relay_set_state(true);
-                    break;
-                case EVSE_STATE_E:
-                case EVSE_STATE_F:
-                    pilot_pwm_set_level(false);
-                    ac_relay_set_state(false);
-                    cable_lock_unlock();
-                    break;
-            }
-
-            state = next_state;
-            state_changed = true;
-        }
-
-        switch (state) {
-            case EVSE_STATE_C:
-            case EVSE_STATE_D:
-                pilot_pwm_set_amps(charging_current);
-                break;
-            default:
-                break;
+            set_state(next_state);
         }
     }
 
     xSemaphoreGive(mutex);
-
-    return state_changed;
 }
 
-void evse_enable(void)
+void evse_enable(uint8_t bit)
 {
+    ESP_LOGI(TAG, "Enable bit %d", bit);
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    enabled = true;
+    disable_bits &= ~(1 << bit);
 
     xSemaphoreGive(mutex);
 }
 
-void evse_disable(void)
+void evse_disable(uint8_t bit)
 {
+    ESP_LOGI(TAG, "Disable bit %d", bit);
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    enabled = false;
-    pilot_pwm_set_level(true);
+    disable_bits |= (1 << bit);
+    set_state(EVSE_STATE_A);
 
     xSemaphoreGive(mutex);
 }
 
-bool evse_try_disable(void)
+bool evse_is_enabled(void)
 {
-    bool sucess = false;
-
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    if (state != EVSE_STATE_B && state != EVSE_STATE_C && state != EVSE_STATE_D) {
-        enabled = false;
-        pilot_pwm_set_level(true);
-
-        sucess = true;
-    }
-
-    xSemaphoreGive(mutex);
-
-    return sucess;
+    return !disable_bits;
 }
 
 void evse_init()
@@ -217,8 +197,16 @@ float evse_get_chaging_current(void)
 
 void evse_set_chaging_current(float value)
 {
-    value = MAX(value, EVSE_MAX_CHARGING_CURRENT_MIN);
+    xSemaphoreTake(mutex, portMAX_DELAY);
+
+    value = MAX(value, CHARGING_CURRENT_MIN);
     value = MIN(value, board_config.max_charging_current);
     charging_current = value;
+
+    if (state == EVSE_STATE_C || state == EVSE_STATE_D) {
+        pilot_pwm_set_amps(charging_current);
+    }
+
+    xSemaphoreGive(mutex);
 }
 

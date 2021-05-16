@@ -37,9 +37,13 @@ static uint16_t counter;
 static void subcribe_topics(void)
 {
     char topic[48];
+
     mqtt_get_base_topic(topic);
     strcat(topic, "/request/#");
+    esp_mqtt_client_subscribe(client, topic, 0);
 
+    mqtt_get_base_topic(topic);
+    strcat(topic, "/enable");
     esp_mqtt_client_subscribe(client, topic, 0);
 }
 
@@ -63,7 +67,16 @@ static void handle_message(const char *topic, const char *data)
     if (strncmp(topic, base_topic, strlen(base_topic)) == 0) {
         const char *sub_topic = &topic[strlen(base_topic)];
 
-        if (strcmp(sub_topic, "/request/config/evse") == 0) {
+        if (strcmp(sub_topic, "/enable") == 0) {
+            cJSON *root = cJSON_Parse(data);
+            if (cJSON_IsTrue(root)) {
+                evse_enable(EVSE_DISABLE_BIT_USER);
+            }
+            if (cJSON_IsFalse(root)) {
+                evse_disable(EVSE_DISABLE_BIT_USER);
+            }
+            cJSON_Delete(root);
+        } else if (strcmp(sub_topic, "/request/config/evse") == 0) {
             cJSON *root = json_get_evse_config();
             publish_message("/response/config/evse", root);
             cJSON_Delete(root);
@@ -246,7 +259,7 @@ void mqtt_process(void)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    if (client != NULL && periodicity > 0 ) {
+    if (client != NULL && periodicity > 0) {
         if (++counter == periodicity) {
             counter = 0;
             if (xEventGroupGetBits(mqtt_event_group) & MQTT_CONNECTED_BIT) {

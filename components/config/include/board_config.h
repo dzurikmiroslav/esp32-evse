@@ -51,7 +51,7 @@ typedef struct
     float energy_meter_vlt_scale;
 
     gpio_num_t energy_meter_ext_pulse_gpio;
-    float energy_meter_ext_pulse_amount;
+    uint16_t energy_meter_ext_pulse_amount;
 } board_config_t;
 
 extern board_config_t board_config;

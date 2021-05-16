@@ -2,6 +2,7 @@
 #include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "driver/ledc.h"
 #include "driver/gpio.h"
@@ -45,6 +46,8 @@ static float vlt_sens_zero[3] = { 1650, 1650, 1650 }; //Default zero, midpoint 3
 
 static int64_t prev_time = 0;
 
+static SemaphoreHandle_t ext_pulse_semhr;
+
 static uint32_t get_detla_ms()
 {
     int64_t now = esp_timer_get_time();
@@ -53,24 +56,31 @@ static uint32_t get_detla_ms()
     return delta / 1000;
 }
 
-static float (*calc_power_fn)(void);
+static void (*measure_fn)(void);
 
-float calc_power_none(void)
+static void set_calc_power(float p)
+{
+    session_consumption += roundf((p * get_detla_ms()) / 1000.0f);
+    power = roundf(p);
+}
+
+static void measure_none(void)
 {
     float va = AC_VOLTAGE * evse_get_chaging_current();
     if (board_config.energy_meter_three_phases) {
         va *= 3;
     }
-    return va;
+
+    set_calc_power(va);
 }
 
-uint32_t read_adc(adc_channel_t channel)
+static uint32_t read_adc(adc_channel_t channel)
 {
     int adc_reading = adc1_get_raw(board_config.energy_meter_l1_cur_adc_channel);
     return esp_adc_cal_raw_to_voltage(adc_reading, &sens_adc_char);
 }
 
-float calc_power_single_phase_cur(void)
+static void measure_single_phase_cur(void)
 {
     float cur_sum = 0;
     uint16_t samples = 0;
@@ -87,10 +97,10 @@ float calc_power_single_phase_cur(void)
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
     ESP_LOGI(TAG, "Current %f (samples %d)", cur[0], samples);
 
-    return vlt[0] * cur[0];
+    set_calc_power(vlt[0] * cur[0]);
 }
 
-float calc_power_single_phase_cur_vlt(void)
+static void measure_single_phase_cur_vlt(void)
 {
     float cur_sum = 0;
     float vlt_sum = 0;
@@ -121,10 +131,10 @@ float calc_power_single_phase_cur_vlt(void)
     vlt[0] = sqrt(vlt_sum / samples) * board_config.energy_meter_vlt_scale;
     ESP_LOGI(TAG, "Voltage %f (samples %d)", vlt[0], samples);
 
-    return power_sum / samples;
+    set_calc_power(power_sum / samples);
 }
 
-float calc_power_three_phase_cur(void)
+static void measure_three_phase_cur(void)
 {
     float cur_sum[3] = { 0, 0, 0 };
     uint32_t sample_cur;
@@ -158,10 +168,10 @@ float calc_power_three_phase_cur(void)
     cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
     ESP_LOGI(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
 
-    return vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2];
+    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
 }
 
-float calc_power_three_phase_cur_vlt(void)
+static void measure_three_phase_cur_vlt(void)
 {
     float cur_sum[3] = { 0, 0, 0 };
     float vlt_sum[3] = { 0, 0, 0 };
@@ -218,24 +228,44 @@ float calc_power_three_phase_cur_vlt(void)
     vlt[2] = sqrt(vlt_sum[2] / samples) * board_config.energy_meter_vlt_scale;
     ESP_LOGI(TAG, "Voltages %f %f %f (samples %d)", vlt[0], vlt[1], vlt[2], samples);
 
-    return vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2];
+    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
 }
 
-float calc_power_ext_pulse(void)
+static void IRAM_ATTR ext_pulse_isr_handler(void *arg)
 {
-    ESP_LOGW(TAG, "TODO process_ext_pulse");
-    return 0;
+    BaseType_t higher_task_woken = pdFALSE;
+
+    xSemaphoreGiveFromISR(ext_pulse_semhr, &higher_task_woken);
+
+    if (higher_task_woken) {
+        portYIELD_FROM_ISR();
+    }
+}
+
+static void measure_ext_pulse(void)
+{
+    uint8_t count = 0;
+    while (xSemaphoreTake(ext_pulse_semhr, 0)) {
+        count++;
+    }
+
+    uint16_t delta_consumtion = count * board_config.energy_meter_ext_pulse_amount;
+    session_consumption += delta_consumtion;
+
+    if (delta_consumtion > 0) {
+        power = (delta_consumtion / get_detla_ms()) * 1000.0f;
+    }
 }
 
 void energy_meter_init(void)
 {
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_NONE) {
-        calc_power_fn = &calc_power_none;
+        measure_fn = &measure_none;
     }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
-        vlt[0] = 230; //set constant voltage, TODO may from board.cfg ??
+        vlt[0] = AC_VOLTAGE;
 
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
         if (board_config.energy_meter_three_phases) {
@@ -243,9 +273,9 @@ void energy_meter_init(void)
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
             vlt[1] = AC_VOLTAGE;
             vlt[2] = AC_VOLTAGE;
-            calc_power_fn = &calc_power_three_phase_cur;
+            measure_fn = &measure_three_phase_cur;
         } else {
-            calc_power_fn = &calc_power_single_phase_cur;
+            measure_fn = &measure_single_phase_cur;
         }
     }
 
@@ -260,14 +290,22 @@ void energy_meter_init(void)
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_vlt_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_vlt_adc_channel, ADC_ATTEN_DB_11));
-            calc_power_fn = &calc_power_three_phase_cur_vlt;
+            measure_fn = &measure_three_phase_cur_vlt;
         } else {
-            calc_power_fn = &calc_power_single_phase_cur_vlt;
+            measure_fn = &measure_single_phase_cur_vlt;
         }
     }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_EXT_PULSE) {
-        calc_power_fn = &calc_power_ext_pulse;
+        ext_pulse_semhr = xSemaphoreCreateCounting(10, 0);
+
+        gpio_pad_select_gpio(board_config.energy_meter_ext_pulse_gpio);
+        gpio_set_direction(board_config.energy_meter_ext_pulse_gpio, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(board_config.energy_meter_ext_pulse_gpio, GPIO_PULLDOWN_ONLY);
+        gpio_set_intr_type(board_config.energy_meter_ext_pulse_gpio, GPIO_INTR_POSEDGE);
+        gpio_isr_handler_add(board_config.energy_meter_ext_pulse_gpio, ext_pulse_isr_handler, NULL);
+
+        measure_fn = &measure_ext_pulse;
     }
 }
 
@@ -289,8 +327,7 @@ void energy_meter_process(void)
     }
 
     if (evse_state_relay_closed(state)) {
-        power = roundf((*calc_power_fn)());
-        session_consumption += roundf((power * get_detla_ms()) / 1000.0f);
+        (*measure_fn)();
     } else {
         power = 0;
     }

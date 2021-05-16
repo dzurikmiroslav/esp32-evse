@@ -118,6 +118,7 @@ cJSON* json_get_state(void)
     state[0] = 'A' + evse_get_state();
     cJSON_AddStringToObject(root, "state", state);
     cJSON_AddNumberToObject(root, "error", evse_get_error());
+    cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
     cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
     cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());
