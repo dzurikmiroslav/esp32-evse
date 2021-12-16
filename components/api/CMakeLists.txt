@@ -4,7 +4,8 @@ set(srcs
     "src/timeout_utils.c"
     "src/webserver.c"
     "src/wifi.c"
-    "src/mqtt.c")
+    "src/mqtt.c"
+    "src/tcp_logger.c")
 
 set(embed_files
     "web-gz/index.html"
@@ -12,7 +13,6 @@ set(embed_files
     "web-gz/management.html"
     "web-gz/about.html"
     "web-gz/bootstrap.min.css"
-    "web-gz/jquery.min.js"
     "web-gz/bootstrap.bundle.min.js"
     "web-gz/favicon.ico"
     "server_certs/ca_cert.pem")

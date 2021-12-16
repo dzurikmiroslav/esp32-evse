@@ -23,9 +23,9 @@ uint32_t energy_meter_get_session_elapsed(void);
  */
 uint32_t energy_meter_get_session_consumption(void);
 
-void energy_meter_get_voltage(float *voltage);
+void energy_meter_get_voltage(float* voltage);
 
-void energy_meter_get_current(float *current);
+void energy_meter_get_current(float* current);
 
 
 #endif /* ENERGY_METER_H_ */

@@ -4,7 +4,7 @@
 #include "relay.h"
 #include "board_config.h"
 
-static const char *TAG = "relay";
+static const char* TAG = "relay";
 
 void ac_relay_init(void)
 {

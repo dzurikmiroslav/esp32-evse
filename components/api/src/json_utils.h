@@ -5,15 +5,19 @@
 
 cJSON* json_get_evse_config(void);
 
-void json_set_evse_config(cJSON *root);
+void json_set_evse_config(cJSON* root);
 
 cJSON* json_get_wifi_config(void);
 
-void json_set_wifi_config(cJSON *root);
+void json_set_wifi_config(cJSON* root);
 
 cJSON* json_get_mqtt_config(void);
 
-void json_set_mqtt_config(cJSON *root);
+void json_set_mqtt_config(cJSON* root);
+
+cJSON* json_get_tcp_logger_config(void);
+
+void json_set_tcp_logger_config(cJSON* root);
 
 cJSON* json_get_state(void);
 

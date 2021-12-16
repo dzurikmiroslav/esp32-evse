@@ -18,13 +18,13 @@ extern EventGroupHandle_t wifi_mode_event_group;    // WIFI_AP_MODE_BIT | WIFI_S
 
 void wifi_init(void);
 
-void wifi_set_config(bool enabled, const char *ssid, const char *password);
+void wifi_set_config(bool enabled, const char* ssid, const char* password);
 
 bool wifi_get_enabled(void);
 
-void wifi_get_ssid(char *value); //string length 32
+void wifi_get_ssid(char* value); //string length 32
 
-void wifi_get_password(char *value); //string length 64
+void wifi_get_password(char* value); //string length 64
 
 bool wifi_is_valid_config(void);
 

@@ -22,7 +22,7 @@
 #define MEASURE_US              40000   //2 periods at 50Hz
 #define AC_VOLTAGE              230     //TODO from board config?
 
-static const char *TAG = "energy_meter";
+static const char* TAG = "energy_meter";
 
 static esp_adc_cal_characteristics_t sens_adc_char;
 
@@ -95,7 +95,7 @@ static void measure_single_phase_cur(void)
     }
 
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGI(TAG, "Current %f (samples %d)", cur[0], samples);
+    ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
 
     set_calc_power(vlt[0] * cur[0]);
 }
@@ -126,10 +126,10 @@ static void measure_single_phase_cur_vlt(void)
     }
 
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGI(TAG, "Current %f (samples %d)", cur[0], samples);
+    ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
 
     vlt[0] = sqrt(vlt_sum / samples) * board_config.energy_meter_vlt_scale;
-    ESP_LOGI(TAG, "Voltage %f (samples %d)", vlt[0], samples);
+    ESP_LOGD(TAG, "Voltage %f (samples %d)", vlt[0], samples);
 
     set_calc_power(power_sum / samples);
 }
@@ -166,7 +166,7 @@ static void measure_three_phase_cur(void)
     cur[0] = sqrt(cur_sum[0] / samples) * board_config.energy_meter_cur_scale;
     cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
     cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGI(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
+    ESP_LOGD(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
 
     set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
 }
@@ -221,17 +221,17 @@ static void measure_three_phase_cur_vlt(void)
     cur[0] = sqrt(cur_sum[0] / samples) * board_config.energy_meter_cur_scale;
     cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
     cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGI(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
+    ESP_LOGD(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
 
     vlt[0] = sqrt(vlt_sum[0] / samples) * board_config.energy_meter_vlt_scale;
     vlt[1] = sqrt(vlt_sum[1] / samples) * board_config.energy_meter_vlt_scale;
     vlt[2] = sqrt(vlt_sum[2] / samples) * board_config.energy_meter_vlt_scale;
-    ESP_LOGI(TAG, "Voltages %f %f %f (samples %d)", vlt[0], vlt[1], vlt[2], samples);
+    ESP_LOGD(TAG, "Voltages %f %f %f (samples %d)", vlt[0], vlt[1], vlt[2], samples);
 
     set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
 }
 
-static void IRAM_ATTR ext_pulse_isr_handler(void *arg)
+static void IRAM_ATTR ext_pulse_isr_handler(void* arg)
 {
     BaseType_t higher_task_woken = pdFALSE;
 
@@ -279,7 +279,8 @@ void energy_meter_init(void)
         }
     }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
+    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT)
+    {
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
 
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
@@ -331,7 +332,6 @@ void energy_meter_process(void)
     } else {
         power = 0;
     }
-
 }
 
 uint16_t energy_meter_get_power(void)
@@ -357,12 +357,12 @@ uint32_t energy_meter_get_session_consumption(void)
     return session_consumption;
 }
 
-void energy_meter_get_voltage(float *voltage)
+void energy_meter_get_voltage(float* voltage)
 {
     memcpy(voltage, vlt, sizeof(vlt));
 }
 
-void energy_meter_get_current(float *current)
+void energy_meter_get_current(float* current)
 {
     memcpy(current, cur, sizeof(cur));
 }

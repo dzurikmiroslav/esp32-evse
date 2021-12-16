@@ -13,7 +13,7 @@
 #define NVS_NAMESPACE           "cable_lock"
 #define NVS_TYPE                "type"
 
-static const char *TAG = "cable_lock";
+static const char* TAG = "cable_lock";
 
 static nvs_handle_t nvs;
 
@@ -57,7 +57,7 @@ void cable_lock_set_type(cable_lock_type_t value)
     }
 }
 
-static void lock_task_func(void *param)
+static void lock_task_func(void* param)
 {
     while ((type == CABLE_LOCK_TYPE_MOTOR || type == CABLE_LOCK_TYPE_SOLENOID) && lock) {
         gpio_set_level(board_config.cable_lock_a_gpio, 1);
@@ -77,7 +77,7 @@ static void lock_task_func(void *param)
     vTaskDelete(NULL);
 }
 
-static void unlock_task_func(void *param)
+static void unlock_task_func(void* param)
 {
     while ((type == CABLE_LOCK_TYPE_MOTOR || type == CABLE_LOCK_TYPE_SOLENOID) && !lock) {
         gpio_set_level(board_config.cable_lock_a_gpio, 0);

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
+
 <head>
     <title>EVSE</title>
     <meta charset="utf-8">
@@ -7,26 +8,6 @@
 
     <link rel="stylesheet" href="/bootstrap.min.css">
     <style rel="stylesheet">
-        html {
-            position: relative;
-            min-height: 100%;
-        }
-
-        body {
-            /* Margin bottom by footer height */
-            margin-bottom: 60px;
-        }
-
-        .footer {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            /* Set the fixed height of the footer here */
-            height: 60px;
-            line-height: 60px; /* Vertically center the text there */
-            background-color: #f5f5f5;
-        }
-
         .overlay {
             position: absolute;
             left: 0;
@@ -38,6 +19,10 @@
             z-index: 10;
         }
 
+        .overlay:not(.show) {
+            visibility: hidden;
+        }
+
         .overlay .spinner-border {
             position: fixed;
             top: 50%;
@@ -46,447 +31,547 @@
             margin-top: -1rem;
         }
 
-        body > .container {
-            padding: 60px 15px 0;
-        }
-
-        .footer > .container {
-            padding-right: 15px;
-            padding-left: 15px;
+        main>.container {
+            padding-top: 60px;
         }
     </style>
 
-    <script src="/jquery.min.js"></script>
     <script src="/bootstrap.bundle.min.js"></script>
     <script>
-        function showError(jqXHR) {
-            if (jqXHR.status === 400 || jqXHR.status === 500)
-                $('#alertModalBody').html('<p>' + jqXHR.responseText + '</p>');
-            else
-                $('#alertModalBody').html('Network error, try <a href="/settings.html" class="alert-link">reload this page</a>');
-            $('#alertModal').modal('show');
+        function showError(response) {
+            const errorModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('errorModal'));
+            const errorModalBody = document.getElementById('errorModalBody');
+
+            console.error(response);
+
+            if (response.status === 400 || response.status === 500) {
+                errorModalBody.innerText = response.statusText;
+            } else {
+                errorModalBody.innerHTML = 'Network error, try <a href="/" class="alert-link">reload this page</a>';
+            }
+            errorModal.show();
         }
 
-        let requireRestart = false;
+        function jsonResponse(response) {
+            if (!response.ok) {
+                throw response;
+            }
+            return response.json();
+        }
+
+        function checkResponse(response) {
+            if (!response.ok) {
+                throw response;
+            }
+        }
 
         function loadSettings() {
-            $('#loading').show().animate({opacity: '0.5'});
+            document.getElementById('loading').classList.add('show');
 
-            $.ajax({
-                url: '/api/v1/config',
-                method: 'GET'
-            }).then(function (data) {
-                $('#evseChargingCurrent').val(data.evse.chargingCurrent);
-                $('#evseCableLock').val(data.evse.cableLock);
-                $('#wifiEnabled').prop('checked', data.wifi.enabled).change();
-                $('#wifiSsid').val(data.wifi.ssid);
-                $('#wifiPassword').val('');
-                $('#mqttEnabled').prop('checked', data.mqtt.enabled).change();
-                $('#mqttServer').val(data.mqtt.server);
-                $('#mqttBaseTopic').val(data.mqtt.baseTopic);
-                $('#mqttUser').val(data.mqtt.user);
-                $('#mqttPassword').val('');
-                $('#mqttPeriodicity').val(data.mqtt.periodicity);
-            }).always(function (config, info) {
-                $('#loading').animate({opacity: '0'}).hide();
-                $('form').removeClass('was-validated');
-            }).fail(showError);
+            fetch('/api/v1/config')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('evseChargingCurrent').value = data.evse.chargingCurrent;
+                    document.getElementById('evseCableLock').value = data.evse.cableLock;
+                    document.getElementById('wifiEnabled').checked = data.wifi.enabled;
+                    document.getElementById('wifiEnabled').dispatchEvent(new Event("change"));
+                    document.getElementById('wifiSsid').value = data.wifi.ssid;
+                    document.getElementById('wifiPassword').value = '';
+                    document.getElementById('mqttEnabled').checked = data.mqtt.enabled;
+                    document.getElementById('mqttEnabled').dispatchEvent(new Event("change"));
+                    document.getElementById('mqttServer').value = data.mqtt.server;
+                    document.getElementById('mqttBaseTopic').value = data.mqtt.baseTopic;
+                    document.getElementById('mqttUser').value = data.mqtt.user;
+                    document.getElementById('mqttPassword').value = '';
+                    document.getElementById('mqttPeriodicity').value = data.mqtt.periodicity;
+                    document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;
+                    document.getElementById('tcpLoggerEnabled').dispatchEvent(new Event("change"));
+                    document.getElementById('tcpLoggerPort').value = data.tcpLogger.port;
+                })
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
         }
 
         function loadEvseSettings() {
-            $('#loading').show().animate({opacity: '0.5'});
+            document.getElementById('loading').classList.add('show');
 
-            $.ajax({
-                url: '/api/v1/config/evse',
-                method: 'GET'
-            }).then(function (data) {
-                $('#evseChargingCurrent').val(data.chargingCurrent);
-                $('#evseCableLock').val(data.cableLock);
-            }).always(function (config, info) {
-                $('#loading').animate({opacity: '0'}).hide();
-                $('#evseForm').removeClass('was-validated');
-            }).fail(showError);
+            fetch('/api/v1/config/evse')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('evseChargingCurrent').value = data.chargingCurrent;
+                    document.getElementById('evseCableLock').value = data.cableLock;
+                })
+                .finally(() => {
+                    document.getElementById('evseForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
         }
 
         function loadWifiSettings() {
-            $('#loading').show().animate({opacity: '0.5'});
+            document.getElementById('loading').classList.add('show');
 
-            $.ajax({
-                url: '/api/v1/config/wifi',
-                method: 'GET'
-            }).then(function (data) {
-                $('#wifiEnabled').prop('checked', data.enabled).change();
-                $('#wifiSsid').val(data.ssid);
-                $('#wifiPassword').val('');
-            }).always(function (config, info) {
-                $('#loading').animate({opacity: '0'}).hide();
-                $('#wifiForm').removeClass('was-validated');
-            }).fail(showError);
+            fetch('/api/v1/config/wifi')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('wifiEnabled').checked = data.enabled;
+                    document.getElementById('wifiEnabled').dispatchEvent(new Event("change"));
+                    document.getElementById('wifiSsid').value = data.ssid;
+                    document.getElementById('wifiPassword').value = '';
+                })
+                .finally(() => {
+                    document.getElementById('wifiForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
         }
 
         function loadMqttSettings() {
-            $('#loading').show().animate({opacity: '0.5'});
+            document.getElementById('loading').classList.add('show');
 
-            $.ajax({
-                url: '/api/v1/config/mqtt',
-                method: 'GET'
-            }).then(function (data) {
-                $('#mqttEnabled').prop('checked', data.enabled).change();
-                $('#mqttServer').val(data.server);
-                $('#mqttBaseTopic').val(data.baseTopic);
-                $('#mqttUser').val(data.user);
-                $('#mqttPassword').val('');
-                $('#mqttPeriodicity').val(data.periodicity);
-            }).always(function (config, info) {
-                $('#loading').animate({opacity: '0'}).hide();
-                $('#mqttForm').removeClass('was-validated');
-            }).fail(showError);
+            fetch('/api/v1/config/mqtt')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('mqttEnabled').checked = data.enabled;
+                    document.getElementById('mqttEnabled').dispatchEvent(new Event("change"));
+                    document.getElementById('mqttServer').value = data.server;
+                    document.getElementById('mqttBaseTopic').value = data.baseTopic;
+                    document.getElementById('mqttUser').value = data.user;
+                    document.getElementById('mqttPassword').value = '';
+                    document.getElementById('mqttPeriodicity').value = data.periodicity;
+                })
+                .finally(() => {
+                    document.getElementById('mqttForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
+        function loadTcpLoggerSettings() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/config/tcpLogger')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('tcpLoggerEnabled').checked = data.enabled;
+                    document.getElementById('tcpLoggerEnabled').dispatchEvent(new Event("change"));
+                    document.getElementById('tcpLoggerPort').value = data.port;
+                })
+                .finally(() => {
+                    document.getElementById('tcpLoggerForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
         }
 
         function submitEvseSettings() {
-            if (!$('#evseForm')[0].checkValidity()) {
-                $('#evseForm').addClass('was-validated');
+            if (!document.getElementById('evseForm').checkValidity()) {
+                document.getElementById('evseForm').classList.addClass('was-validated');
             } else {
-                $('#loading').show().animate({opacity: '0.5'});
+                document.getElementById('loading').classList.add('show');
 
                 const config = {
-                    chargingCurrent: parseFloat($('#evseChargingCurrent').val()),
-                    cableLock: $('#evseCableLock').val()
+                    chargingCurrent: parseFloat(document.getElementById('evseChargingCurrent').value),
+                    cableLock: document.getElementById('evseCableLock').value
                 };
 
-                $.ajax({
-                    url: '/api/v1/config/evse',
+                fetch('/api/v1/config/evse', {
                     method: 'POST',
-                    data: JSON.stringify(config),
-                    contentType: 'application/json'
-                }).then(function () {
-                }).always(function (config, info) {
-                    $('#loading').animate({opacity: '0'}).hide();
-                    $('#wifiForm').removeClass('was-validated');
-                }).fail(showError);
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('evseForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
             }
         }
 
         function submitWifiSettings() {
-            if (!$('#evseForm')[0].checkValidity()) {
-                $('#evseForm').addClass('was-validated');
+            if (!document.getElementById('wifiForm').checkValidity()) {
+                document.getElementById('wifiForm').classList.addClass('was-validated');
             } else {
-                $('#loading').show().animate({opacity: '0.5'});
+                document.getElementById('loading').classList.add('show');
 
                 const config = {
-                    enabled: $('#wifiEnabled').prop('checked'),
-                    ssid: $('#wifiSsid').val(),
-                    password: $('#wifiPassword').val(),
+                    enabled: document.getElementById('wifiEnabled').checked,
+                    ssid: document.getElementById('wifiSsid').value,
+                    password: document.getElementById('wifiPassword').value
                 };
 
-                $.ajax({
-                    url: '/api/v1/config/wifi',
+                fetch('/api/v1/config/wifi', {
                     method: 'POST',
-                    data: JSON.stringify(config),
-                    contentType: 'application/json'
-                }).then(function () {
-                }).always(function (config, info) {
-                    $('#loading').animate({opacity: '0'}).hide();
-                    $('#wifiForm').removeClass('was-validated');
-                }).fail(showError);
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('wifiForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
             }
         }
 
         function submitMqttSettings() {
-            if (!$('#evseForm')[0].checkValidity()) {
-                $('#evseForm').addClass('was-validated');
+            if (!document.getElementById('mqttForm').checkValidity()) {
+                document.getElementById('mqttForm').classList.addClass('was-validated');
             } else {
-                $('#loading').show().animate({opacity: '0.5'});
+                document.getElementById('loading').classList.add('show');
 
                 const config = {
-                    enabled: $('#mqttEnabled').prop('checked'),
-                    server: $('#mqttServer').val(),
-                    baseTopic: $('#mqttBaseTopic').val(),
-                    user: $('#mqttUser').val(),
-                    password: $('#mqttPassword').val(),
-                    periodicity: parseInt($('#mqttPeriodicity').val()),
+                    enabled: document.getElementById('mqttEnabled').checked,
+                    server: document.getElementById('mqttServer').value,
+                    baseTopic: document.getElementById('mqttBaseTopic').value,
+                    user: document.getElementById('mqttUser').value,
+                    password: document.getElementById('mqttPassword').value,
+                    periodicity: parseInt(document.getElementById('mqttPeriodicity').value)
                 };
 
-                $.ajax({
-                    url: '/api/v1/config/mqtt',
+                fetch('/api/v1/config/mqtt', {
                     method: 'POST',
-                    data: JSON.stringify(config),
-                    contentType: 'application/json'
-                }).then(function () {
-                }).always(function (config, info) {
-                    $('#loading').animate({opacity: '0'}).hide();
-                    $('#wifiForm').removeClass('was-validated');
-                }).fail(showError);
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('mqttForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
+            }
+        }
+
+        function submitTcpLoggerSettings() {
+            if (!document.getElementById('tcpLoggerForm').checkValidity()) {
+                document.getElementById('tcpLoggerForm').classList.addClass('was-validated');
+            } else {
+                document.getElementById('loading').classList.add('show');
+
+                const config = {
+                    enabled: document.getElementById('tcpLoggerEnabled').checked,
+                    port: parseInt(document.getElementById('tcpLoggerPort').value)
+                };
+
+                fetch('/api/v1/config/tcpLogger', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('tcpLoggerForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
             }
         }
 
         function restart() {
-            $('#loading').show().animate({opacity: '0.5'});
+            document.getElementById('loading').classList.add('show');
 
-            $.ajax({
-                url: '/api/v1/restart',
-                method: 'POST'
-            }).then(function () {
-                $('#reloadModal').modal('show');
+            fetch('/api/v1/restart', { method: 'POST' })
+                .then(checkResponse)
+                .then(() => {
+                    const reloadModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('reloadModal'));
+                    const reloadCountdown = document.getElementById('reloadCountdown');
+                    let counter = 20;
 
-                let counter = 20;
-                $('#reloadCountdown').html(counter--);
-                setInterval(function () {
-                    if (counter > 0)
-                        $('#reloadCountdown').html(counter--);
-                    else
-                        window.location.reload();
-                }, 1000);
-            }).always(function (config, info) {
-                $('#loading').animate({opacity: '0'}).hide();
-                $('#form').removeClass('was-validated');
-            }).fail(showError);
+                    reloadModal.show();
+                    reloadCountdown.innerText = counter--;
+                    setInterval(function () {
+                        if (counter > 0)
+                            reloadCountdown.innerText = counter--;
+                        else
+                            window.location.reload();
+                    }, 1000);
+                })
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
         }
 
-        $(document).ready(function () {
-            $('#wifiEnabled').change(function (event) {
-                $('#wifiSsid, #wifiPassword').prop('disabled', !event.target.checked);
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('wifiEnabled').addEventListener('change', event => {
+                document.querySelectorAll('#wifiForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
             });
 
-            // $('#wifiEnabled, #wifiSsid, #wifiPassword').change(function (event) {
-            //     requireRestart = true;
-            // });
-
-            $('#mqttEnabled').change(function (event) {
-                $('#mqttServer, #mqttBaseTopic, #mqttUser, #mqttPassword, #mqttPeriodicity').prop('disabled', !event.target.checked);
+            document.getElementById('mqttEnabled').addEventListener('change', event => {
+                document.querySelectorAll('#mqttForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
             });
 
-            $.ajax({
-                url: '/api/v1/boardConfig',
-                method: 'GET'
-            }).then(function (data) {
-                $('#evseChargingCurrent').attr('max', data.maxChargingCurrent);
-                $('#evseCableLock').prop('disabled', !data.cableLock);
+            document.getElementById('tcpLoggerEnabled').addEventListener('change', event => {
+                document.querySelectorAll('#tcpLoggerForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
             });
-            $('#evseChargingCurrent').on('input', function () {
-                this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+
+            fetch('/api/v1/boardConfig')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('evseChargingCurrent').max = data.maxChargingCurrent;
+                    document.getElementById('evseCableLock').disabled = !data.cableLock;
+                })
+                .catch(showError);
+
+            // FF and IE workaround
+            document.getElementById('evseChargingCurrent').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
             });
 
             loadSettings();
         });
     </script>
 </head>
-<body>
 
-<header>
-    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-        <a class="navbar-brand" href="/">EVSE</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
-                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarCollapse">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="/index.html">Home</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="/settings.html">Settings <span class="sr-only">(current)</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/management.html">Management</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/about.html">About</a>
-                </li>
-            </ul>
+<body class="d-flex flex-column h-100">
+
+    <header>
+        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">EVSE</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                    aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarCollapse">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/index.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="/settings.html">Settings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/management.html">Management</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/about.html">About</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-shrink-0 position-relative my-3">
+        <div id="loading" class="overlay fade show text-center">
+            <div class="spinner-border" role="status"></div>
         </div>
-    </nav>
-</header>
-
-<main role="main" class="container">
-    <div class="py-3 position-relative">
-        <div id="loading" class="overlay">
-            <div class="spinner-border" role="status">
-                <span class="sr-only">Loading...</span>
-            </div>
-        </div>
-
-        <div class="card mb-3">
-            <div class="card-header">
-                EVSE
-            </div>
-            <div class="card-body">
-                <form id="evseForm" novalidate>
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="evseChargingCurrent">Charging current</label>
-                            <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
-                                   step="0.1"
-                                   required>
-                        </div>
-
-                        <div class="form-group col-md-6">
-                            <label for="evseCableLock">Cable lock</label>
-                            <select class="form-control" id="evseCableLock">
-                                <option value="none">None</option>
-                                <option value="motor">Motor</option>
-                                <option value="solenoid">Solenoid</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="button" class="btn btn-primary" onclick="submitEvseSettings()">Submit</button>
-                    <button type="button" class="btn btn-secondary" onclick="loadEvseSettings()">Reset</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card mb-3">
-            <div class="card-header">
-                WiFi
-            </div>
-            <div class="card-body">
-                <form id="wifiForm" novalidate>
-                    <div class="form-row">
-                        <div class="form-group col-md-12">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input" id="wifiEnabled">
-                                <label class="custom-control-label" for="wifiEnabled">Enabled</label>
+        <div class="container">
+            <div class="card mb-3">
+                <div class="card-header">
+                    EVSE
+                </div>
+                <div class="card-body">
+                    <form id="evseForm" novalidate>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="evseChargingCurrent">Charging current</label>
+                                <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
+                                    step="0.1" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="evseCableLock">Cable lock</label>
+                                <select class="form-control" id="evseCableLock">
+                                    <option value="none">None</option>
+                                    <option value="motor">Motor</option>
+                                    <option value="solenoid">Solenoid</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitEvseSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadEvseSettings()">Reset</button>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="wifiSsid">SSID</label>
-                            <input type="text" disabled class="form-control" id="wifiSsid">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="wifiPassword">Password</label>
-                            <input type="password" disabled class="form-control" id="wifiPassword">
-                        </div>
-                    </div>
-
-                    <button type="button" class="btn btn-primary" onclick="submitWifiSettings()">Submit</button>
-                    <button type="button" class="btn btn-secondary" onclick="loadWifiSettings()">Reset</button>
-                </form>
+                    </form>
+                </div>
             </div>
-        </div>
 
-        <div class="card mb-3">
-            <div class="card-header">
-                MQTT
-            </div>
-            <div class="card-body">
-                <form id="mqttForm" novalidate>
-                    <div class="form-row">
-                        <div class="form-group col-md-12">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input" id="mqttEnabled">
-                                <label class="custom-control-label" for="mqttEnabled">Enabled</label>
+            <div class="card mb-3">
+                <div class="card-header">
+                    WiFi
+                </div>
+                <div class="card-body">
+                    <form id="wifiForm" novalidate>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="wifiEnabled">
+                                    <label class="form-check-label" for="wifiEnabled">Enabled</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="wifiSsid">SSID</label>
+                                <input type="text" disabled class="form-control" id="wifiSsid">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="wifiPassword">Password</label>
+                                <input type="password" disabled class="form-control" id="wifiPassword">
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitWifiSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadWifiSettings()">Reset</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="mqttServer">Server</label>
-                            <input type="text" disabled class="form-control" id="mqttServer">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="mqttBaseTopic">Base topic</label>
-                            <input type="text" disabled class="form-control" id="mqttBaseTopic">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="mqttUser">User</label>
-                            <input type="text" disabled class="form-control" id="mqttUser">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="mqttPassword">Password</label>
-                            <input type="password" disabled class="form-control" id="mqttPassword">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="mqttPeriodicity">Periodicity</label>
-                            <input type="number" disabled class="form-control" id="mqttPeriodicity"
-                                   step="1" required>
-                        </div>
-                    </div>
+                    </form>
+                </div>
+            </div>
 
-                    <button type="button" class="btn btn-primary" onclick="submitMqttSettings()">Submit</button>
-                    <button type="button" class="btn btn-secondary" onclick="loadMqttSettings()">Reset</button>
-                </form>
+            <div class="card mb-3">
+                <div class="card-header">
+                    MQTT
+                </div>
+                <div class="card-body">
+                    <form id="mqttForm" novalidate>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="mqttEnabled">
+                                    <label class="form-check-label" for="mqttEnabled">Enabled</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="mqttServer">Server</label>
+                                <input type="text" disabled class="form-control" id="mqttServer">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="mqttBaseTopic">Base topic</label>
+                                <input type="text" disabled class="form-control" id="mqttBaseTopic">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="mqttUser">User</label>
+                                <input type="text" disabled class="form-control" id="mqttUser">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="mqttPassword">Password</label>
+                                <input type="password" disabled class="form-control" id="mqttPassword">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="mqttPeriodicity">Periodicity</label>
+                                <input type="number" disabled class="form-control" id="mqttPeriodicity" step="1"
+                                    required>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitMqttSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadMqttSettings()">Reset</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    TCP Logger
+                </div>
+                <div class="card-body">
+                    <form id="tcpLoggerForm" novalidate>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="tcpLoggerEnabled">
+                                    <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" for="tcpLoggerPort">Port</label>
+                                <input type="number" disabled class="form-control" id="tcpLoggerPort" step="1"
+                                    min="1000" max="65535" required>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitTcpLoggerSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadTcpLoggerSettings()">Reset</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    System
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-danger" onclick="restart()">Restart</button>
+                </div>
             </div>
         </div>
+    </main>
 
-        <div class="card mb-3">
-            <div class="card-header">
-                System
-            </div>
-            <div class="card-body">
-                <button type="button" class="btn btn-danger" onclick="restart()">Restart</button>
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container">
+            <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+        </div>
+    </footer>
+
+    <div class="modal fade" id="errorModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
+        aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
+                </div>
+                <div class="modal-body" id="errorModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-</main>
 
-<footer class="footer">
-    <div class="container">
-        <span class="text-muted">ESP32 electric vehicle supply equipment</span>
-    </div>
-</footer>
-
-<div class="modal fade" id="alertModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
-     aria-labelledby="alertModalLabel"
-     aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="alertModalLabel">Error</h5>
-            </div>
-            <div class="modal-body" id="alertModalBody">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+    <div class="modal fade" id="restartModal" tabindex="-1" role="dialog" aria-labelledby="restartModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="restartModalLabel">Restart required</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Your settings require restart of EVSE controller.</p>
+                    <p>Restart now?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal"
+                        onclick="restart()">Restart</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="modal fade" id="restartModal" tabindex="-1" role="dialog" aria-labelledby="restartModalLabel"
-     aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="restartModalLabel">Restart required</h5>
-            </div>
-            <div class="modal-body">
-                <p>Your settings require restart of EVSE controller.</p>
-                <p>Restart now?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" data-dismiss="modal" onclick="restart()">Restart</button>
+    <div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
+        aria-labelledby="reloadModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reloadModalLabel">Reload</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Reload in <span id="reloadCountdown"></span> seconds</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="window.location.reload()">Reload now</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
-<div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
-     aria-labelledby="reloadModalLabel"
-     aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="reloadModalLabel">Reload</h5>
-            </div>
-            <div class="modal-body">
-                <p>Reload in <span id="reloadCountdown"></span> seconds</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="window.location.reload()">Reload now</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 </body>
+
 </html>

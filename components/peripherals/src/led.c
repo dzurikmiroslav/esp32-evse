@@ -10,12 +10,12 @@
 
 #define BLOCK_TIME              10
 
-static const char *TAG = "led";
+static const char* TAG = "led";
 
 static struct led_s
 {
     gpio_num_t gpio;
-    bool on :1;
+    bool on : 1;
     uint16_t ontime, offtime;
     TimerHandle_t timer;
 } leds[3];
@@ -53,7 +53,7 @@ void led_init(void)
 
 static void timer_callback(TimerHandle_t xTimer)
 {
-    struct led_s *led = (struct led_s*) pvTimerGetTimerID(xTimer);
+    struct led_s* led = (struct led_s*)pvTimerGetTimerID(xTimer);
 
     led->on = !led->on;
     gpio_set_level(led->gpio, led->on);
@@ -63,7 +63,7 @@ static void timer_callback(TimerHandle_t xTimer)
 
 void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
 {
-    struct led_s *led = &leds[led_id];
+    struct led_s* led = &leds[led_id];
     if (led->gpio != GPIO_NUM_NC) {
         if (led->timer != NULL) {
             xTimerStop(led->timer, BLOCK_TIME);
@@ -88,7 +88,7 @@ void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
             gpio_set_level(led->gpio, led->on);
 
             if (led->timer == NULL) {
-                led->timer = xTimerCreate("led_timer", ontime / portTICK_RATE_MS, pdFALSE, (void*) led, timer_callback);
+                led->timer = xTimerCreate("led_timer", ontime / portTICK_RATE_MS, pdFALSE, (void*)led, timer_callback);
             }
             xTimerStart(led->timer, BLOCK_TIME);
         }

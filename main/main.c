@@ -28,14 +28,15 @@
 #include "mqtt.h"
 #include "webserver.h"
 #include "wifi.h"
+#include "tcp_logger.h"
 
-#define AP_CONNECTION_TIMEOUT       60000  // 60sec
-#define RESET_HOLD_TIME             10000  // 10sec
+#define AP_CONNECTION_TIMEOUT   60000 // 60sec
+#define RESET_HOLD_TIME         10000 // 10sec
 
-#define PRESS_BIT                   BIT0
-#define RELEASED_BIT                BIT1
+#define PRESS_BIT               BIT0
+#define RELEASED_BIT            BIT1
 
-static const char *TAG = "app_main";
+static const char* TAG = "app_main";
 
 static TaskHandle_t user_input_task;
 
@@ -54,7 +55,7 @@ static void reset_and_reboot(void)
     esp_restart();
 }
 
-static void wifi_event_task_func(void *param)
+static void wifi_event_task_func(void* param)
 {
     EventBits_t mode_bits;
     EventBits_t connect_bits;
@@ -69,7 +70,7 @@ static void wifi_event_task_func(void *param)
             if (connect_bits & WIFI_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
                 do {
-                } while ( WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_ap_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
+                } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_ap_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
             } else {
                 if (xEventGroupGetBits(wifi_mode_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
@@ -88,7 +89,7 @@ static void wifi_event_task_func(void *param)
     }
 }
 
-static void user_input_task_func(void *param)
+static void user_input_task_func(void* param)
 {
     uint32_t notification;
 
@@ -118,7 +119,7 @@ static void user_input_task_func(void *param)
     }
 }
 
-static void IRAM_ATTR button_isr_handler(void *arg)
+static void IRAM_ATTR button_isr_handler(void* arg)
 {
     BaseType_t higher_task_woken = pdFALSE;
 
@@ -144,14 +145,12 @@ static void button_init(void)
 
 static esp_err_t init_spiffs()
 {
-// @formatter:off
     esp_vfs_spiffs_conf_t conf = {
-            .base_path = "/cfg",
-            .partition_label = "cfg",
-            .max_files = 5,
-            .format_if_mount_failed = false
+        .base_path = "/cfg",
+        .partition_label = "cfg",
+        .max_files = 5,
+        .format_if_mount_failed = false
     };
-// @formatter:on
     esp_err_t ret = esp_vfs_spiffs_register(&conf);
 
     if (ret != ESP_OK) {
@@ -189,24 +188,24 @@ static void set_led_state()
 
         if (enabled) {
             switch (state) {
-                case EVSE_STATE_A:
-                    led_set_state(LED_ID_CHARGING, 100, 1900);
-                    led_set_off(LED_ID_ERROR);
-                    break;
-                case EVSE_STATE_B:
-                    led_set_state(LED_ID_CHARGING, 250, 250);
-                    led_set_off(LED_ID_ERROR);
-                    break;
-                case EVSE_STATE_C:
-                case EVSE_STATE_D:
-                    led_set_on(LED_ID_CHARGING);
-                    led_set_off(LED_ID_ERROR);
-                    break;
-                case EVSE_STATE_E:
-                case EVSE_STATE_F:
-                    led_set_off(LED_ID_CHARGING);
-                    led_set_on(LED_ID_ERROR);
-                    break;
+            case EVSE_STATE_A:
+                led_set_off(LED_ID_CHARGING);
+                led_set_off(LED_ID_ERROR);
+                break;
+            case EVSE_STATE_B:
+                led_set_state(LED_ID_CHARGING, 250, 250);
+                led_set_off(LED_ID_ERROR);
+                break;
+            case EVSE_STATE_C:
+            case EVSE_STATE_D:
+                led_set_on(LED_ID_CHARGING);
+                led_set_off(LED_ID_ERROR);
+                break;
+            case EVSE_STATE_E:
+            case EVSE_STATE_F:
+                led_set_off(LED_ID_CHARGING);
+                led_set_on(LED_ID_ERROR);
+                break;
             }
         } else {
             led_set_off(LED_ID_CHARGING);
@@ -217,7 +216,7 @@ static void set_led_state()
 
 void app_main()
 {
-    const esp_partition_t *running = esp_ota_get_running_partition();
+    const esp_partition_t* running = esp_ota_get_running_partition();
     ESP_LOGI(TAG, "Running partition: %s", running->label);
 
     esp_ota_img_states_t ota_state;
@@ -263,6 +262,7 @@ void app_main()
     wifi_init();
     mqtt_init();
     evse_init();
+    tcp_logger_init();
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 10, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 10, &user_input_task);

@@ -7,16 +7,16 @@
 
 #include "board_config.h"
 
-static const char *TAG = "board_config";
+static const char* TAG = "board_config";
 
 board_config_t board_config;
 
-bool atob(const char *value)
+bool atob(const char* value)
 {
     return value[0] == 'y';
 }
 
-board_config_energy_meter_t atoem(const char *value)
+board_config_energy_meter_t atoem(const char* value)
 {
     if (!strcmp(value, "cur")) {
         return BOARD_CONFIG_ENERGY_METER_CUR;
@@ -40,7 +40,7 @@ void board_config_load()
 {
     memset(&board_config, 0, sizeof(board_config_t));
 
-    FILE *file = fopen("/cfg/board.cfg", "r");
+    FILE* file = fopen("/cfg/board.cfg", "r");
     if (file == NULL) {
         ESP_ERROR_CHECK(ESP_ERR_NOT_FOUND);
     }
@@ -59,13 +59,13 @@ void board_config_load()
         } while (buf_end > 0 && !isspace(buffer[buf_end]));
 
         buffer[buf_end] = '\0';
-        char *line = &buffer[buf_start];
+        char* line = &buffer[buf_start];
 
         if (line[0] != '#') {
-            char *saveptr;
-            char *key = strtok_r(line, "=", &saveptr);
+            char* saveptr;
+            char* key = strtok_r(line, "=", &saveptr);
             if (key != NULL) {
-                char *value = strtok_r(NULL, "=", &saveptr);
+                char* value = strtok_r(NULL, "=", &saveptr);
                 if (value != NULL) {
                     SET_CONFIG_VALUE("LED_CHARGING", led_charging, atob);
                     SET_CONFIG_VALUE("LED_CHARGING_GPIO", led_charging_gpio, atoi);

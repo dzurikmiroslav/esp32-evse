@@ -2,59 +2,43 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/ledc.h"
-#include "driver/gpio.h"
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 
 #include "pilot.h"
 #include "board_config.h"
 
-#define PILOT_PWM_TIMER         LEDC_TIMER_0
-#define PILOT_PWM_CHANNEL       LEDC_CHANNEL_0
-#define PILOT_PWM_SPEED_MODE    LEDC_HIGH_SPEED_MODE
-#define PILOT_PWM_MAX_DUTY      1023
+#define PILOT_PWM_TIMER LEDC_TIMER_0
+#define PILOT_PWM_CHANNEL LEDC_CHANNEL_0
+#define PILOT_PWM_SPEED_MODE LEDC_HIGH_SPEED_MODE
+#define PILOT_PWM_MAX_DUTY 1023
+#define PILOT_SENS_SAMPLES 64
 
-static const char *TAG = "peripherals";
+static const char* TAG = "peripherals";
 
 static esp_adc_cal_characteristics_t pilot_sens_adc_char;
 
-static bool cp_pwm = false;
-
 void pilot_init(void)
 {
-// @formatter:off
     ledc_timer_config_t ledc_timer = {
-            .duty_resolution = LEDC_TIMER_10_BIT,   //1023
-            .freq_hz    = 1000,
-            .speed_mode = PILOT_PWM_SPEED_MODE,
-            .timer_num  = PILOT_PWM_TIMER
+        .duty_resolution = LEDC_TIMER_10_BIT, //1023
+        .freq_hz = 1000,
+        .speed_mode = PILOT_PWM_SPEED_MODE,
+        .timer_num = PILOT_PWM_TIMER
     };
-// @formatter:on
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
-// @formatter:off
     ledc_channel_config_t ledc_channel = {
-            .gpio_num   = board_config.pilot_pwm_gpio,
-            .channel    = PILOT_PWM_CHANNEL,
-            .speed_mode = PILOT_PWM_SPEED_MODE,
-            .intr_type  = LEDC_INTR_DISABLE,
-            .timer_sel  = PILOT_PWM_TIMER,
-            .duty       = 0
+        .gpio_num = board_config.pilot_pwm_gpio,
+        .channel = PILOT_PWM_CHANNEL,
+        .speed_mode = PILOT_PWM_SPEED_MODE,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = PILOT_PWM_TIMER,
+        .duty = PILOT_PWM_MAX_DUTY
     };
-// @formatter:on
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
-    ledc_timer_pause(PILOT_PWM_SPEED_MODE, PILOT_PWM_TIMER);
-
-    //ledc_fade_func_install(0);
-
-// @formatter:off
-    gpio_config_t io_conf = {
-            .mode = GPIO_MODE_OUTPUT,
-            .pin_bit_mask = 1ULL << board_config.pilot_pwm_gpio
-    };
-// @formatter:on
-    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ledc_fade_func_install(0);
 
     ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.pilot_sens_adc_channel, ADC_ATTEN_DB_11));
 
@@ -63,23 +47,14 @@ void pilot_init(void)
 
 void pilot_pwm_set_level(bool level)
 {
-    if (cp_pwm) {
-        ledc_timer_pause(PILOT_PWM_SPEED_MODE, PILOT_PWM_TIMER);
-        cp_pwm = false;
-    }
-
-    gpio_set_level(board_config.pilot_pwm_gpio, level);
-
     ESP_LOGD(TAG, "Set level %d", level);
+
+    ledc_set_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, level ? PILOT_PWM_MAX_DUTY : 0);
+    ledc_update_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL);
 }
 
 void pilot_pwm_set_amps(uint8_t amps)
 {
-    if (!cp_pwm) {
-        ledc_timer_resume(PILOT_PWM_SPEED_MODE, PILOT_PWM_TIMER);
-        cp_pwm = true;
-    }
-
     uint32_t duty = 0;
     if ((amps >= 6) && (amps <= 51)) {
         // amps = (duty cycle %) X 0.6

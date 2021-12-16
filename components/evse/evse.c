@@ -11,9 +11,9 @@
 #include "relay.h"
 #include "cable_lock.h"
 
-#define CHARGING_CURRENT_MIN       6
+#define CHARGING_CURRENT_MIN 6
 
-static const char *TAG = "evse";
+static const char* TAG = "evse";
 
 static SemaphoreHandle_t mutex;
 
@@ -30,26 +30,26 @@ static float charging_current;
 void set_state(evse_state_t next_state)
 {
     switch (next_state) {
-        case EVSE_STATE_A:
-            pilot_pwm_set_level(true);
-            ac_relay_set_state(false);
-            cable_lock_unlock();
-            break;
-        case EVSE_STATE_B:
-            ac_relay_set_state(false);
-            cable_lock_lock();
-            break;
-        case EVSE_STATE_C:
-        case EVSE_STATE_D:
-            ac_relay_set_state(true);
-            pilot_pwm_set_amps(charging_current);
-            break;
-        case EVSE_STATE_E:
-        case EVSE_STATE_F:
-            pilot_pwm_set_level(false);
-            ac_relay_set_state(false);
-            cable_lock_unlock();
-            break;
+    case EVSE_STATE_A:
+        pilot_pwm_set_level(true);
+        ac_relay_set_state(false);
+        cable_lock_unlock();
+        break;
+    case EVSE_STATE_B:
+        ac_relay_set_state(false);
+        cable_lock_lock();
+        pilot_pwm_set_amps(charging_current);
+        break;
+    case EVSE_STATE_C:
+    case EVSE_STATE_D:
+        ac_relay_set_state(true);
+        break;
+    case EVSE_STATE_E:
+    case EVSE_STATE_F:
+        pilot_pwm_set_level(false);
+        ac_relay_set_state(false);
+        cable_lock_unlock();
+        break;
     }
 
     state = next_state;
@@ -63,82 +63,85 @@ void evse_process(void)
         evse_state_t next_state = state;
 
         switch (state) {
-            case EVSE_STATE_A:
-                switch (pilot_get_voltage()) {
-                    case PILOT_VOLTAGE_12:
-                        // stay in current state
-                        break;
-                    case PILOT_VOLTAGE_9:
-                        next_state = EVSE_STATE_B;
-                        break;
-                    default:
-                        next_state = EVSE_STATE_E;
-                        error = EVSE_ERR_PILOT_FAULT;
+        case EVSE_STATE_A:
+            switch (pilot_get_voltage()) {
+            case PILOT_VOLTAGE_12:
+                // stay in current state
+                break;
+            case PILOT_VOLTAGE_9:
+                next_state = EVSE_STATE_B;
+                break;
+            default:
+                next_state = EVSE_STATE_E;
+                error = EVSE_ERR_PILOT_FAULT;
+            }
+            break;
+        case EVSE_STATE_B:
+            switch (pilot_get_voltage()) {
+            case PILOT_VOLTAGE_12:
+                next_state = EVSE_STATE_A;
+                break;
+            case PILOT_VOLTAGE_9:
+                // stay in current state
+                break;
+            case PILOT_VOLTAGE_6:
+                next_state = EVSE_STATE_C;
+                break;
+            default:
+                next_state = EVSE_STATE_E;
+                error = EVSE_ERR_PILOT_FAULT;
+            }
+            break;
+        case EVSE_STATE_C:
+            switch (pilot_get_voltage()) {
+            case PILOT_VOLTAGE_12:
+                next_state = EVSE_STATE_A;
+                break;
+            case PILOT_VOLTAGE_9:
+                next_state = EVSE_STATE_B;
+                break;
+            case PILOT_VOLTAGE_6:
+                // stay in current state
+                break;
+            case PILOT_VOLTAGE_3:
+                next_state = EVSE_STATE_D;
+                break;
+            default:
+                next_state = EVSE_STATE_E;
+                error = EVSE_ERR_PILOT_FAULT;
+            }
+            break;
+        case EVSE_STATE_D:
+            switch (pilot_get_voltage()) {
+            case PILOT_VOLTAGE_6:
+                next_state = EVSE_STATE_C;
+                break;
+            case PILOT_VOLTAGE_3:
+                // stay in current state
+                break;
+            default:
+                next_state = EVSE_STATE_E;
+                error = EVSE_ERR_PILOT_FAULT;
+            }
+            break;
+        case EVSE_STATE_E:
+            if (error == EVSE_ERR_PILOT_FAULT) {
+                if (error_count++ > 5) {
+                    error_count = 0;
+                    next_state = EVSE_STATE_A;
+                    error = EVSE_ERR_NONE;
                 }
-                break;
-            case EVSE_STATE_B:
-                switch (pilot_get_voltage()) {
-                    case PILOT_VOLTAGE_12:
-                        next_state = EVSE_STATE_A;
-                        break;
-                    case PILOT_VOLTAGE_9:
-                        // stay in current state
-                        break;
-                    case PILOT_VOLTAGE_6:
-                        next_state = EVSE_STATE_C;
-                        break;
-                    default:
-                        next_state = EVSE_STATE_E;
-                        error = EVSE_ERR_PILOT_FAULT;
-                }
-                break;
-            case EVSE_STATE_C:
-                switch (pilot_get_voltage()) {
-                    case PILOT_VOLTAGE_12:
-                        next_state = EVSE_STATE_A;
-                        break;
-                    case PILOT_VOLTAGE_9:
-                        next_state = EVSE_STATE_B;
-                        break;
-                    case PILOT_VOLTAGE_6:
-                        // stay in current state
-                        break;
-                    case PILOT_VOLTAGE_3:
-                        next_state = EVSE_STATE_D;
-                        break;
-                    default:
-                        next_state = EVSE_STATE_E;
-                        error = EVSE_ERR_PILOT_FAULT;
-                }
-                break;
-            case EVSE_STATE_D:
-                switch (pilot_get_voltage()) {
-                    case PILOT_VOLTAGE_6:
-                        next_state = EVSE_STATE_C;
-                        break;
-                    case PILOT_VOLTAGE_3:
-                        // stay in current state
-                        break;
-                    default:
-                        next_state = EVSE_STATE_E;
-                        error = EVSE_ERR_PILOT_FAULT;
-                }
-                break;
-            case EVSE_STATE_E:
-                if (error == EVSE_ERR_PILOT_FAULT) {
-                    if (error_count++ > 5) {
-                        error_count = 0;
-                        next_state = EVSE_STATE_A;
-                        error = EVSE_ERR_NONE;
-                    }
-                }
-                break;
-            case EVSE_STATE_F:
-                break;
+            }
+            break;
+        case EVSE_STATE_F:
+            break;
         }
 
         if (next_state != state) {
             ESP_LOGI(TAG, "Enter %c state", 'A' + next_state);
+            if (error != EVSE_ERR_NONE) {
+                ESP_LOGI(TAG, "Error number %d", error);
+            }
             set_state(next_state);
         }
     }
@@ -197,6 +200,7 @@ float evse_get_chaging_current(void)
 
 void evse_set_chaging_current(float value)
 {
+    ESP_LOGI(TAG, "evse_set_chaging_current %f", value);
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     value = MAX(value, CHARGING_CURRENT_MIN);
@@ -209,4 +213,3 @@ void evse_set_chaging_current(float value)
 
     xSemaphoreGive(mutex);
 }
-

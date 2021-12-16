@@ -6,9 +6,9 @@
 #include "timeout_utils.h"
 #include "wifi.h"
 
-static void restart_fucn(void *arg)
+static void restart_fucn(void* arg)
 {
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(5000));
 
     esp_restart();
 
@@ -29,20 +29,20 @@ typedef struct
     char password[64];
 } wifi_set_config_arg_t;
 
-static void wifi_set_config_func(void *arg)
+static void wifi_set_config_func(void* arg)
 {
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    wifi_set_config_arg_t *config = (wifi_set_config_arg_t*) arg;
+    wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)arg;
     wifi_set_config(config->enabled, config->ssid_blank ? NULL : config->ssid, config->password_blank ? NULL : config->password);
-    free((void*) config);
+    free((void*)config);
 
     vTaskDelete(NULL);
 }
 
-void timeout_set_wifi_config(bool enabled, const char *ssid, const char *password)
+void timeout_set_wifi_config(bool enabled, const char* ssid, const char* password)
 {
-    wifi_set_config_arg_t *config = (wifi_set_config_arg_t*) malloc(sizeof(wifi_set_config_arg_t));
+    wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)malloc(sizeof(wifi_set_config_arg_t));
     config->enabled = enabled;
     if (ssid == NULL || ssid[0] == '\0') {
         config->ssid_blank = true;
@@ -57,5 +57,5 @@ void timeout_set_wifi_config(bool enabled, const char *ssid, const char *passwor
         strcpy(config->password, password);
     }
 
-    xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*) config, 10, NULL);
+    xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*)config, 10, NULL);
 }

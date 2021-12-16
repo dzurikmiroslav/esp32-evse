@@ -13,11 +13,11 @@ typedef enum {
 
 typedef struct
 {
-    bool led_charging :1;
+    bool led_charging : 1;
     gpio_num_t led_charging_gpio;
-    bool led_error :1;
+    bool led_error : 1;
     gpio_num_t led_error_gpio;
-    bool led_wifi :1;
+    bool led_wifi : 1;
     gpio_num_t led_wifi_gpio;
 
     gpio_num_t button_wifi_gpio;
@@ -33,13 +33,13 @@ typedef struct
 
     gpio_num_t ac_relay_gpio;
 
-    bool cable_lock: 1;
+    bool cable_lock : 1;
     gpio_num_t cable_lock_a_gpio;
     gpio_num_t cable_lock_b_gpio;
     gpio_num_t cable_lock_test_gpio;
 
     board_config_energy_meter_t energy_meter;
-    bool energy_meter_three_phases: 1;
+    bool energy_meter_three_phases : 1;
 
     adc_channel_t energy_meter_l1_cur_adc_channel;
     adc_channel_t energy_meter_l2_cur_adc_channel;

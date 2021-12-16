@@ -4,3 +4,4 @@ sdkconfig.old
 .cproject
 .project
 .settings
+.vscode

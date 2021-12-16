@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
+
 <head>
     <title>EVSE</title>
     <meta charset="utf-8">
@@ -7,26 +8,6 @@
 
     <link rel="stylesheet" href="/bootstrap.min.css">
     <style rel="stylesheet">
-        html {
-            position: relative;
-            min-height: 100%;
-        }
-
-        body {
-            /* Margin bottom by footer height */
-            margin-bottom: 60px;
-        }
-
-        .footer {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            /* Set the fixed height of the footer here */
-            height: 60px;
-            line-height: 60px; /* Vertically center the text there */
-            background-color: #f5f5f5;
-        }
-
         .overlay {
             position: absolute;
             left: 0;
@@ -38,6 +19,10 @@
             z-index: 10;
         }
 
+        .overlay:not(.show) {
+            visibility: hidden;
+        }
+
         .overlay .spinner-border {
             position: fixed;
             top: 50%;
@@ -46,128 +31,134 @@
             margin-top: -1rem;
         }
 
-        body > .container {
-            padding: 60px 15px 0;
-        }
-
-        .footer > .container {
-            padding-right: 15px;
-            padding-left: 15px;
+        main>.container {
+            padding-top: 60px;
         }
     </style>
 
-    <script src="/jquery.min.js"></script>
     <script src="/bootstrap.bundle.min.js"></script>
     <script>
-        function showError(jqXHR) {
-            if (jqXHR.status === 400 || jqXHR.status === 500)
-                $('#alertModalBody').html('<p>' + jqXHR.responseText + '</p>');
-            else
-                $('#alertModalBody').html('Network error, try <a href="/settings.html" class="alert-link">reload this page</a>');
-            $('#alertModal').modal('show');
+        function showError(response) {
+            const errorModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('errorModal'));
+            const errorModalBody = document.getElementById('errorModalBody');
+
+            console.error(response);
+
+            if (response.status === 400 || response.status === 500) {
+                errorModalBody.innerText = response.statusText;
+            } else {
+                errorModalBody.innerHTML = 'Network error, try <a href="/" class="alert-link">reload this page</a>';
+            }
+            errorModal.show();
         }
 
         function submitCredentials() {
-            $('#loading').show().animate({opacity: '0.5'});
+            document.getElementById('loading').classList.add('show');
+
+            document.getElementById('user').value
 
             const credentials = {
-                user: $('#user').val(),
-                password: $('#password').val(),
+                user: document.getElementById('user').value,
+                password: document.getElementById('password').value
             };
 
-            $.ajax({
-                url: '/api/v1/credentials',
+            fetch('/api/v1/credentials', {
                 method: 'POST',
-                data: JSON.stringify(credentials),
-                contentType: 'application/json'
-            }).then(function () {
-                $('#alertContainer').append(UPDATED_ALERT_HTML);
-            }).always(function () {
-                $('#loading').animate({opacity: '0'}).hide();
-            }).fail(showError);
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(credentials)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw response;
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    const alert = document.getElementById('alert');
+                    alert.innerHTML = `<div class="alert alert-success alert-dismissible" role="alert">${text}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                })
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
         }
-
-        $(document).ready(function () {
-            $('#loading').hide();
-        });
     </script>
 </head>
-<body>
 
-<header>
-    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-        <a class="navbar-brand" href="/">EVSE</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
-                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarCollapse">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="/index.html">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/settings.html">Settings</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="/management.html">Management <span class="sr-only">(current)</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/about.html">About</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-</header>
-
-<main role="main" class="container">
-    <div class="py-3 position-relative">
-        <div id="loading" class="overlay text-center pt-4">
-            <div class="spinner-border" role="status">
-                <span class="sr-only">Loading...</span>
+<body class="d-flex flex-column h-100">
+    <header>
+        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">EVSE</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                    aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarCollapse">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/index.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/settings.html">Settings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="/management.html">Management</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/about.html">About</a>
+                        </li>
+                    </ul>
+                </div>
             </div>
+        </nav>
+    </header>
+
+    <main class="flex-shrink-0 position-relative my-3">
+        <div id="loading" class="overlay fade text-center">
+            <div class="spinner-border" role="status"></div>
         </div>
-        <form id="form">
+        <div class="container">
+            <div id="alert"></div>
             <p class="lead">Change web user and password</p>
-
-            <div class="form-row">
-                <div class="form-group col-md-6">
-                    <label for="user">User</label>
-                    <input id="user" type="text" class="form-control">
+            <form id="form">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="user" class="form-label">User</label>
+                        <input id="user" type="text" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Password</label>
+                        <input id="password" type="password" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" onclick="submitCredentials()">Submit</button>
+                    </div>
                 </div>
-                <div class="form-group col-md-6">
-                    <label for="password">Password</label>
-                    <input id="password" type="password" class="form-control">
+            </form>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container">
+            <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+        </div>
+    </footer>
+
+    <div class="modal fade" id="errorModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
+        aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
                 </div>
-            </div>
-
-            <button type="button" class="btn btn-primary" onclick="submitCredentials()">Submit</button>
-        </form>
-    </div>
-</main>
-
-<footer class="footer">
-    <div class="container">
-        <span class="text-muted">ESP32 electric vehicle supply equipment</span>
-    </div>
-</footer>
-
-<div class="modal fade" id="alertModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
-     aria-labelledby="alertModalLabel"
-     aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="alertModalLabel">Error</h5>
-            </div>
-            <div class="modal-body" id="alertModalBody">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <div class="modal-body" id="errorModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
 </body>
+
 </html>

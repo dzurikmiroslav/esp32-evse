@@ -20,7 +20,7 @@
 #define NVS_PASSWORD        "password"
 #define NVS_PERIODICITY     "periodicity"
 
-static const char *TAG = "mqtt";
+static const char* TAG = "mqtt";
 
 static nvs_handle nvs;
 
@@ -47,28 +47,28 @@ static void subcribe_topics(void)
     esp_mqtt_client_subscribe(client, topic, 0);
 }
 
-static void publish_message(const char *topic, cJSON *root)
+static void publish_message(const char* topic, cJSON* root)
 {
     char target_topic[48];
 
     mqtt_get_base_topic(target_topic);
     strcat(target_topic, topic);
 
-    const char *json = cJSON_PrintUnformatted(root);
+    const char* json = cJSON_PrintUnformatted(root);
     esp_mqtt_client_publish(client, target_topic, json, 0, 1, 0);
-    free((void*) json);
+    free((void*)json);
 }
 
-static void handle_message(const char *topic, const char *data)
+static void handle_message(const char* topic, const char* data)
 {
     char base_topic[32];
     mqtt_get_base_topic(base_topic);
 
     if (strncmp(topic, base_topic, strlen(base_topic)) == 0) {
-        const char *sub_topic = &topic[strlen(base_topic)];
+        const char* sub_topic = &topic[strlen(base_topic)];
 
         if (strcmp(sub_topic, "/enable") == 0) {
-            cJSON *root = cJSON_Parse(data);
+            cJSON* root = cJSON_Parse(data);
             if (cJSON_IsTrue(root)) {
                 evse_enable(EVSE_DISABLE_BIT_USER);
             }
@@ -77,36 +77,44 @@ static void handle_message(const char *topic, const char *data)
             }
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/config/evse") == 0) {
-            cJSON *root = json_get_evse_config();
+            cJSON* root = json_get_evse_config();
             publish_message("/response/config/evse", root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/config/wifi") == 0) {
-            cJSON *root = json_get_wifi_config();
+            cJSON* root = json_get_wifi_config();
             publish_message("/response/config/wifi", root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/config/mqtt") == 0) {
-            cJSON *root = json_get_mqtt_config();
+            cJSON* root = json_get_mqtt_config();
             publish_message("/response/config/mqtt", root);
             cJSON_Delete(root);
+        } else if (strcmp(sub_topic, "/request/config/tcpLogger") == 0) {
+            cJSON* root = json_get_tcp_logger_config();
+            publish_message("/response/config/tcpLogger", root);
+            cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/boardConfig") == 0) {
-            cJSON *root = json_get_board_config();
+            cJSON* root = json_get_board_config();
             publish_message("/response/boardConfig", root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/info") == 0) {
-            cJSON *root = json_get_info();
+            cJSON* root = json_get_info();
             publish_message("/response/info", root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/set/config/evse") == 0) {
-            cJSON *root = cJSON_Parse(data);
+            cJSON* root = cJSON_Parse(data);
             json_set_evse_config(root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/set/config/wifi") == 0) {
-            cJSON *root = cJSON_Parse(data);
+            cJSON* root = cJSON_Parse(data);
             json_set_wifi_config(root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/set/config/mqtt") == 0) {
-            cJSON *root = cJSON_Parse(data);
+            cJSON* root = cJSON_Parse(data);
             json_set_mqtt_config(root);
+            cJSON_Delete(root);
+        } else if (strcmp(sub_topic, "/set/config/tcpLogger") == 0) {
+            cJSON* root = cJSON_Parse(data);
+            json_set_tcp_logger_config(root);
             cJSON_Delete(root);
         }
     }
@@ -118,37 +126,37 @@ static void mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     char data[256];
 
     switch (event->event_id) {
-        case MQTT_EVENT_CONNECTED:
-            ESP_LOGI(TAG, "Connected");
-            xEventGroupClearBits(mqtt_event_group, MQTT_DISCONNECTED_BIT);
-            xEventGroupSetBits(mqtt_event_group, MQTT_CONNECTED_BIT);
-            subcribe_topics();
-            break;
-        case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "Disconnected");
-            xEventGroupClearBits(mqtt_event_group, MQTT_CONNECTED_BIT);
-            xEventGroupSetBits(mqtt_event_group, MQTT_DISCONNECTED_BIT);
-            break;
-        case MQTT_EVENT_DATA:
-            memset(topic, 0, sizeof(topic));
-            strncpy(topic, event->topic, MIN(event->topic_len, sizeof(topic) - 1));
-            memset(data, 0, sizeof(data));
-            strncpy(data, event->data, MIN(event->data_len, sizeof(data) - 1));
-            ESP_LOGI(TAG, "topic %s", topic);
-            ESP_LOGI(TAG, "data %s", data);
-            handle_message(topic, data);
-            break;
-        default:
-            break;
+    case MQTT_EVENT_CONNECTED:
+        ESP_LOGI(TAG, "Connected");
+        xEventGroupClearBits(mqtt_event_group, MQTT_DISCONNECTED_BIT);
+        xEventGroupSetBits(mqtt_event_group, MQTT_CONNECTED_BIT);
+        subcribe_topics();
+        break;
+    case MQTT_EVENT_DISCONNECTED:
+        ESP_LOGI(TAG, "Disconnected");
+        xEventGroupClearBits(mqtt_event_group, MQTT_CONNECTED_BIT);
+        xEventGroupSetBits(mqtt_event_group, MQTT_DISCONNECTED_BIT);
+        break;
+    case MQTT_EVENT_DATA:
+        memset(topic, 0, sizeof(topic));
+        strncpy(topic, event->topic, MIN(event->topic_len, sizeof(topic) - 1));
+        memset(data, 0, sizeof(data));
+        strncpy(data, event->data, MIN(event->data_len, sizeof(data) - 1));
+        ESP_LOGI(TAG, "topic %s", topic);
+        ESP_LOGI(TAG, "data %s", data);
+        handle_message(topic, data);
+        break;
+    default:
+        break;
     }
 }
 
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+static void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data)
 {
     mqtt_event_handler_cb(event_data);
 }
 
-void try_start(void)
+static void try_start(void)
 {
     if (mqtt_get_enabled()) {
         char server[64];
@@ -161,13 +169,11 @@ void try_start(void)
         periodicity = mqtt_get_periodicity();
         counter = 0;
 
-// @formatter:off
         esp_mqtt_client_config_t mqtt_cfg = {
                 .uri = server,
                 .username = user,
                 .password = password
         };
-// @formatter:on
         client = esp_mqtt_client_init(&mqtt_cfg);
         esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
         esp_mqtt_client_start(client);
@@ -184,7 +190,7 @@ void mqtt_init(void)
     try_start();
 }
 
-void mqtt_set_config(bool enabled, const char *server, const char *base_topic, const char *user, const char *password, uint16_t periodicity)
+void mqtt_set_config(bool enabled, const char* server, const char* base_topic, const char* user, const char* password, uint16_t periodicity)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
 
@@ -220,28 +226,28 @@ bool mqtt_get_enabled(void)
     return value;
 }
 
-void mqtt_get_server(char *value)
+void mqtt_get_server(char* value)
 {
     size_t len = 64;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_SERVER, value, &len);
 }
 
-void mqtt_get_base_topic(char *value)
+void mqtt_get_base_topic(char* value)
 {
     size_t len = 32;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_BASE_TOPIC, value, &len);
 }
 
-void mqtt_get_user(char *value)
+void mqtt_get_user(char* value)
 {
     size_t len = 32;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_USER, value, &len);
 }
 
-void mqtt_get_password(char *value)
+void mqtt_get_password(char* value)
 {
     size_t len = 64;
     value[0] = '\0';
@@ -263,7 +269,7 @@ void mqtt_process(void)
         if (++counter == periodicity) {
             counter = 0;
             if (xEventGroupGetBits(mqtt_event_group) & MQTT_CONNECTED_BIT) {
-                cJSON *root = json_get_state();
+                cJSON* root = json_get_state();
                 publish_message("/state", root);
                 cJSON_Delete(root);
             }
