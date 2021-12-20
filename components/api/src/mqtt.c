@@ -80,6 +80,10 @@ static void handle_message(const char* topic, const char* data)
             cJSON* root = json_get_evse_config();
             publish_message("/response/config/evse", root);
             cJSON_Delete(root);
+        } else if (strcmp(sub_topic, "/request/config/energyMeter") == 0) {
+            cJSON* root = json_get_energy_meter_config();
+            publish_message("/response/config/energyMeter", root);
+            cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/config/wifi") == 0) {
             cJSON* root = json_get_wifi_config();
             publish_message("/response/config/wifi", root);
@@ -103,6 +107,10 @@ static void handle_message(const char* topic, const char* data)
         } else if (strcmp(sub_topic, "/set/config/evse") == 0) {
             cJSON* root = cJSON_Parse(data);
             json_set_evse_config(root);
+            cJSON_Delete(root);
+        } else if (strcmp(sub_topic, "/set/config/energyMeter") == 0) {
+            cJSON* root = cJSON_Parse(data);
+            json_set_energy_meter_config(root);
             cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/set/config/wifi") == 0) {
             cJSON* root = cJSON_Parse(data);

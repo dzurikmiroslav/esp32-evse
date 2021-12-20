@@ -130,6 +130,24 @@ void json_set_tcp_logger_config(cJSON* root)
     tcp_logger_set_config(enabled, port);
 }
 
+cJSON* json_get_energy_meter_config(void)
+{
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "extPulseAmount", energy_meter_get_ext_pulse_amount());
+    cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
+
+    return root;
+}
+
+void json_set_energy_meter_config(cJSON* root)
+{
+    uint16_t ext_pulse_amount = cJSON_GetObjectItem(root, "extPulseAmount")->valuedouble;
+    uint16_t ac_voltage = cJSON_GetObjectItem(root, "acVoltage")->valuedouble;
+
+    energy_meter_set_config(ext_pulse_amount, ac_voltage);
+}
+
 cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();

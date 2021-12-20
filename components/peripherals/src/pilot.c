@@ -33,10 +33,10 @@ void pilot_init(void)
         .channel = PILOT_PWM_CHANNEL,
         .speed_mode = PILOT_PWM_SPEED_MODE,
         .intr_type = LEDC_INTR_DISABLE,
-        .timer_sel = PILOT_PWM_TIMER,
-        .duty = PILOT_PWM_MAX_DUTY
+        .timer_sel = PILOT_PWM_TIMER
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+    ESP_ERROR_CHECK(ledc_stop(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, 1));
 
     ledc_fade_func_install(0);
 
@@ -49,8 +49,7 @@ void pilot_pwm_set_level(bool level)
 {
     ESP_LOGD(TAG, "Set level %d", level);
 
-    ledc_set_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, level ? PILOT_PWM_MAX_DUTY : 0);
-    ledc_update_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL);
+    ledc_stop(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, level);
 }
 
 void pilot_pwm_set_amps(uint8_t amps)

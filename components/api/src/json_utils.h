@@ -19,6 +19,10 @@ cJSON* json_get_tcp_logger_config(void);
 
 void json_set_tcp_logger_config(cJSON* root);
 
+cJSON* json_get_energy_meter_config(void);
+
+void json_set_energy_meter_config(cJSON* root);
+
 cJSON* json_get_state(void);
 
 cJSON* json_get_info(void);

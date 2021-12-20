@@ -97,7 +97,6 @@ void board_config_load()
                     SET_CONFIG_VALUE("ENERGY_METER_L3_VLT_ADC_CHANNEL", energy_meter_l3_vlt_adc_channel, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER_VLT_SCALE", energy_meter_vlt_scale, atoff);
                     SET_CONFIG_VALUE("ENERGY_METER_EXT_PULSE_GPIO", energy_meter_ext_pulse_gpio, atoi);
-                    SET_CONFIG_VALUE("ENERGY_METER_EXT_PULSE_AMOUNT", energy_meter_ext_pulse_amount, atoff);
 
                     ESP_LOGE(TAG, "Unknown config value %s", value);
                 }

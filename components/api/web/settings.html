@@ -73,6 +73,8 @@
                 .then(data => {
                     document.getElementById('evseChargingCurrent').value = data.evse.chargingCurrent;
                     document.getElementById('evseCableLock').value = data.evse.cableLock;
+                    document.getElementById('energyMeterAcVoltage').value = data.energyMeter.acVoltage;
+                    document.getElementById('energyMeterExtPulseAmount').value = data.energyMeter.extPulseAmount;
                     document.getElementById('wifiEnabled').checked = data.wifi.enabled;
                     document.getElementById('wifiEnabled').dispatchEvent(new Event("change"));
                     document.getElementById('wifiSsid').value = data.wifi.ssid;
@@ -103,6 +105,22 @@
                 })
                 .finally(() => {
                     document.getElementById('evseForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
+        function loadEnergyMeterSettings() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/config/energyMeter')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('energyMeterAcVoltage').value = data.acVoltage;
+                    document.getElementById('energyMeterExtPulseAmount').value = data.extPulseAmount;
+                })
+                .finally(() => {
+                    document.getElementById('energyMeterForm').classList.remove('was-validated');
                     document.getElementById('loading').classList.remove('show');
                 })
                 .catch(showError);
@@ -166,7 +184,7 @@
 
         function submitEvseSettings() {
             if (!document.getElementById('evseForm').checkValidity()) {
-                document.getElementById('evseForm').classList.addClass('was-validated');
+                document.getElementById('evseForm').classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -191,9 +209,36 @@
             }
         }
 
+        function submitEnergyMeterSettings() {
+            if (!document.getElementById('energyMeterForm').checkValidity()) {
+                document.getElementById('energyMeterForm').classList.add('was-validated');
+            } else {
+                document.getElementById('loading').classList.add('show');
+
+                const config = {
+                    acVoltage: parseInt(document.getElementById('energyMeterAcVoltage').value),
+                    extPulseAmount: parseInt(document.getElementById('energyMeterExtPulseAmount').value)
+                };
+
+                fetch('/api/v1/config/energyMeter', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('energyMeterForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
+            }
+        }
+
         function submitWifiSettings() {
             if (!document.getElementById('wifiForm').checkValidity()) {
-                document.getElementById('wifiForm').classList.addClass('was-validated');
+                document.getElementById('wifiForm').classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -221,7 +266,7 @@
 
         function submitMqttSettings() {
             if (!document.getElementById('mqttForm').checkValidity()) {
-                document.getElementById('mqttForm').classList.addClass('was-validated');
+                document.getElementById('mqttForm').classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -252,7 +297,7 @@
 
         function submitTcpLoggerSettings() {
             if (!document.getElementById('tcpLoggerForm').checkValidity()) {
-                document.getElementById('tcpLoggerForm').classList.addClass('was-validated');
+                document.getElementById('tcpLoggerForm').classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -317,7 +362,20 @@
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('evseChargingCurrent').max = data.maxChargingCurrent;
-                    document.getElementById('evseCableLock').disabled = !data.cableLock;
+                    if (data.cableLock) {
+                        document.getElementById('evseCableLock').disabled = false;
+                        document.getElementById('evseCableLockField').classList.remove('d-none');
+                    }
+                    if (data.energyMeter === 'ext_pulse') {
+                        document.getElementById('energyMeterExtPulseAmount').disabled = false;
+                        document.getElementById('energyMeterExtPulseAmountField').classList.remove('d-none');
+                        document.getElementById('energyMeterContainer').classList.remove('d-none');                        
+                    }
+                    if (data.energyMeter === 'none' || data.energyMeter === 'cur') {          
+                        document.getElementById('energyMeterAcVoltage').disabled = false;
+                        document.getElementById('energyMeterAcVoltageField').classList.remove('d-none');
+                        document.getElementById('energyMeterContainer').classList.remove('d-none');
+                    }
                 })
                 .catch(showError);
 
@@ -378,9 +436,9 @@
                                 <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
                                     step="0.1" required>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 d-none" id="evseCableLockField">
                                 <label class="form-label" for="evseCableLock">Cable lock</label>
-                                <select class="form-control" id="evseCableLock">
+                                <select class="form-select" id="evseCableLock" disabled>
                                     <option value="none">None</option>
                                     <option value="motor">Motor</option>
                                     <option value="solenoid">Solenoid</option>
@@ -391,6 +449,35 @@
                                     onclick="submitEvseSettings()">Submit</button>
                                 <button type="button" class="btn btn-secondary"
                                     onclick="loadEvseSettings()">Reset</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-3 d-none" id="energyMeterContainer">
+                <div class="card-header">
+                    Energy meter
+                </div>
+                <div class="card-body">
+                    <form id="energyMeterForm" novalidate>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6 d-none" id="energyMeterAcVoltageField">
+                                <label class="form-label" for="energyMeterAcVoltage">AC voltage</label>
+                                <input type="number" class="form-control" id="energyMeterAcVoltage" min="100" max="300"
+                                    step="1" disabled required>
+                            </div>
+                            <div class="col-12 col-md-6 d-none" id="energyMeterExtPulseAmountField">
+                                <label class="form-label" for="energyMeterExtPulseAmount">External pulse meter impulse
+                                    amount Wh</label>
+                                <input type="number" class="form-control" id="energyMeterExtPulseAmount" min="0"
+                                    max="65535" step="1" disabled required>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitEnergyMeterSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadEnergyMeterSettings()">Reset</button>
                             </div>
                         </div>
                     </form>

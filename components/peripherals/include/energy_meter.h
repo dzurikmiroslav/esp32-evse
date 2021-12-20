@@ -6,6 +6,12 @@
 
 void energy_meter_init(void);
 
+void energy_meter_set_config(uint16_t ext_pulse_amount, uint16_t ac_voltage);
+
+uint16_t energy_meter_get_ext_pulse_amount(void);
+
+uint16_t energy_meter_get_ac_voltage(void);
+
 void energy_meter_process(void);
 
 /*
@@ -26,6 +32,7 @@ uint32_t energy_meter_get_session_consumption(void);
 void energy_meter_get_voltage(float* voltage);
 
 void energy_meter_get_current(float* current);
+
 
 
 #endif /* ENERGY_METER_H_ */

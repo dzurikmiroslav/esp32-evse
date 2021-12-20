@@ -9,10 +9,15 @@
 #include "driver/adc.h"
 #include "driver/timer.h"
 #include "esp_adc_cal.h"
+#include "nvs.h"
 
 #include "energy_meter.h"
 #include "evse.h"
 #include "board_config.h"
+
+#define NVS_NAMESPACE           "evse_emeter"
+#define NVS_AC_VOLTAGE          "ac_voltage"
+#define NVS_EXT_PULSE_AMOUNT    "ext_pluse_amt"
 
 #define PILOT_PWM_TIMER         LEDC_TIMER_0
 #define PILOT_PWM_CHANNEL       LEDC_CHANNEL_0
@@ -20,9 +25,11 @@
 #define PILOT_PWM_MAX_DUTY      1023
 #define ZERO_FIX                5000
 #define MEASURE_US              40000   //2 periods at 50Hz
-#define AC_VOLTAGE              230     //TODO from board config?
+
 
 static const char* TAG = "energy_meter";
+
+static nvs_handle nvs;
 
 static esp_adc_cal_characteristics_t sens_adc_char;
 
@@ -46,6 +53,10 @@ static float vlt_sens_zero[3] = { 1650, 1650, 1650 }; //Default zero, midpoint 3
 
 static int64_t prev_time = 0;
 
+static uint16_t ac_voltage;
+
+static uint16_t ext_pulse_amount;
+
 static SemaphoreHandle_t ext_pulse_semhr;
 
 static uint32_t get_detla_ms()
@@ -66,8 +77,12 @@ static void set_calc_power(float p)
 
 static void measure_none(void)
 {
-    float va = AC_VOLTAGE * evse_get_chaging_current();
+    vlt[0] = ac_voltage;
+    cur[0] = evse_get_chaging_current();
+    float va = vlt[0] * cur[0];
     if (board_config.energy_meter_three_phases) {
+        vlt[1] = vlt[2] = vlt[0];
+        cur[1] = cur[2] = cur[0];
         va *= 3;
     }
 
@@ -249,7 +264,7 @@ static void measure_ext_pulse(void)
         count++;
     }
 
-    uint16_t delta_consumtion = count * board_config.energy_meter_ext_pulse_amount;
+    uint16_t delta_consumtion = count * ext_pulse_amount;
     session_consumption += delta_consumtion;
 
     if (delta_consumtion > 0) {
@@ -259,28 +274,32 @@ static void measure_ext_pulse(void)
 
 void energy_meter_init(void)
 {
+    ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
+
+    ac_voltage = energy_meter_get_ac_voltage();
+    ext_pulse_amount = energy_meter_get_ext_pulse_amount();
+
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_NONE) {
         measure_fn = &measure_none;
     }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
-        vlt[0] = AC_VOLTAGE;
+        vlt[0] = ac_voltage;
 
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
         if (board_config.energy_meter_three_phases) {
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_cur_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
-            vlt[1] = AC_VOLTAGE;
-            vlt[2] = AC_VOLTAGE;
+            vlt[1] = ac_voltage;
+            vlt[2] = ac_voltage;
             measure_fn = &measure_three_phase_cur;
         } else {
             measure_fn = &measure_single_phase_cur;
         }
     }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT)
-    {
+    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
 
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
@@ -310,6 +329,31 @@ void energy_meter_init(void)
     }
 }
 
+void energy_meter_set_config(uint16_t _ext_pulse_amount, uint16_t _ac_voltage)
+{
+    nvs_set_u16(nvs, NVS_EXT_PULSE_AMOUNT, _ext_pulse_amount);
+    nvs_set_u16(nvs, NVS_AC_VOLTAGE, _ac_voltage);
+
+    nvs_commit(nvs);
+
+    ac_voltage = _ac_voltage;
+    ext_pulse_amount = _ext_pulse_amount;
+}
+
+uint16_t energy_meter_get_ext_pulse_amount(void)
+{
+    uint16_t value = 1000;
+    nvs_get_u16(nvs, NVS_EXT_PULSE_AMOUNT, &value);
+    return value;
+}
+
+uint16_t energy_meter_get_ac_voltage(void)
+{
+    uint16_t value = 250;
+    nvs_get_u16(nvs, NVS_AC_VOLTAGE, &value);
+    return value;
+}
+
 void energy_meter_process(void)
 {
     evse_state_t state = evse_get_state();
@@ -330,6 +374,8 @@ void energy_meter_process(void)
     if (evse_state_relay_closed(state)) {
         (*measure_fn)();
     } else {
+        vlt[0] = vlt[1] = vlt[2] = 0;
+        cur[0] = cur[1] = cur[2] = 0;
         power = 0;
     }
 }
