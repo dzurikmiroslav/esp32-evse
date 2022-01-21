@@ -20,7 +20,7 @@
 #define MAX_JSON_SIZE               (200*1024) // 200 KB
 #define MAX_JSON_SIZE_STR           "200KB"
 
-#define NVS_NAMESPACE               "evse_webserver"
+#define NVS_NAMESPACE               "webserver"
 #define NVS_USER                    "user"
 #define NVS_PASSWORD                "password"
 
@@ -246,6 +246,7 @@ static esp_err_t web_get_handler(httpd_req_t* req)
                 httpd_resp_send_chunk(req, (const char*)(buf_end - remaining), MIN(remaining, SCRATCH_BUFSIZE));
                 remaining -= SCRATCH_BUFSIZE;
             }
+            httpd_resp_send_chunk(req, NULL, 0);
         }
 
         return ESP_OK;
@@ -371,9 +372,37 @@ static esp_err_t restart_post_handler(httpd_req_t* req)
     if (autorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
 
-        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+        evse_disable();
         httpd_resp_sendstr(req, "Restart in one second");
         timeout_restart();
+
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+static esp_err_t state_post_handler(httpd_req_t* req)
+{
+    if (autorize_req(req)) {
+        httpd_resp_set_type(req, "text/plain");
+        const char* res_msg;
+
+        if (strcmp(req->uri, "/api/v1/state/authorize") == 0) {
+            evse_authorize();
+            res_msg = "Auhtorized";
+        }
+        if (strcmp(req->uri, "/api/v1/state/pause") == 0) {
+            evse_pause();
+            res_msg = "Paused";
+        }
+        if (strcmp(req->uri, "/api/v1/state/unpause") == 0) {
+            evse_unpause();
+            res_msg = "Unpased";
+        }
+
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, res_msg);
 
         return ESP_OK;
     } else {
@@ -384,7 +413,7 @@ static esp_err_t restart_post_handler(httpd_req_t* req)
 static esp_err_t firmware_update_post_handler(httpd_req_t* req)
 {
     if (autorize_req(req)) {
-        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+        evse_disable();
 
         httpd_resp_set_type(req, "text/plain");
 
@@ -407,13 +436,13 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
                 } else {
                     ESP_LOGE(TAG, "OTA failed (%s)", esp_err_to_name(err));
                     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upgrade failed");
-                    evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                    evse_enable();
                     return ESP_FAIL;
                 }
             }
         } else {
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
-            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            evse_enable();
             return ESP_FAIL;
         }
 
@@ -428,7 +457,7 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
 static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 {
     if (autorize_req(req)) {
-        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+        evse_disable();
 
         httpd_resp_set_type(req, "text/plain");
 
@@ -444,7 +473,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
         if (update_partition == NULL) {
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
-            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            evse_enable();
             return ESP_FAIL;
         }
 
@@ -452,7 +481,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
             if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
                 ESP_LOGE(TAG, "File receive failed");
                 httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive request");
-                evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                evse_enable();
                 return ESP_FAIL;
             } else if (image_header_was_checked == false) {
                 if (received > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
@@ -465,13 +494,13 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
                     {
                         ESP_LOGE(TAG, "Received firmware is not %s", app_desc->project_name);
                         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
-                        evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                        evse_enable();
                         return ESP_FAIL;
                     }
                 } else {
                     ESP_LOGE(TAG, "Received package is not fit length");
                     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
-                    evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                    evse_enable();
                     return ESP_FAIL;
                 }
 
@@ -481,7 +510,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
                 if (err != ESP_OK) {
                     ESP_LOGE(TAG, "OTA begin failed (%s)", esp_err_to_name(err));
                     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-                    evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                    evse_enable();
                     return ESP_FAIL;
                 }
                 ESP_LOGI(TAG, "OTA begin succeeded");
@@ -491,7 +520,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "OTA write failed (%s)", esp_err_to_name(err));
                 httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-                evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+                evse_enable();
                 return ESP_FAIL;
             }
 
@@ -505,7 +534,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
             }
             ESP_LOGE(TAG, "OTA end failed (%s)!", esp_err_to_name(err));
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            evse_enable();
             return ESP_FAIL;
         }
 
@@ -513,7 +542,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "OTA set boot partition failed (%s)", esp_err_to_name(err));
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
-            evse_enable(EVSE_DISABLE_BIT_SYSTEM);
+            evse_enable();
             return ESP_FAIL;
         }
 
@@ -556,6 +585,13 @@ void webserver_init(void)
        .handler = json_get_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_get_uri));
+
+    httpd_uri_t state_post_uri = {
+        .uri = "/api/v1/state/*",
+        .method = HTTP_POST,
+        .handler = state_post_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &state_post_uri));
 
     httpd_uri_t restart_post_uri = {
         .uri = "/api/v1/restart",

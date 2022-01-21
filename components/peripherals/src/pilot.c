@@ -14,9 +14,15 @@
 #define PILOT_PWM_MAX_DUTY 1023
 #define PILOT_SENS_SAMPLES 64
 
-static const char* TAG = "peripherals";
+static const char* TAG = "pilot";
 
 static esp_adc_cal_characteristics_t pilot_sens_adc_char;
+
+pilot_voltage_t up_voltage;
+
+bool down_voltage_n12;
+
+bool pwm = false;
 
 void pilot_init(void)
 {
@@ -47,13 +53,17 @@ void pilot_init(void)
 
 void pilot_pwm_set_level(bool level)
 {
-    ESP_LOGD(TAG, "Set level %d", level);
+    ESP_LOGI(TAG, "Set level %d", level);
+
+    pwm = false;
 
     ledc_stop(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, level);
 }
 
 void pilot_pwm_set_amps(uint8_t amps)
 {
+    pwm = true;
+
     uint32_t duty = 0;
     if ((amps >= 6) && (amps <= 51)) {
         // amps = (duty cycle %) X 0.6
@@ -66,13 +76,18 @@ void pilot_pwm_set_amps(uint8_t amps)
         return;
     }
 
-    ESP_LOGD(TAG, "Set amp %d duty %d", amps, duty);
+    ESP_LOGI(TAG, "Set amp %d duty %d", amps, duty);
 
     ledc_set_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, duty);
     ledc_update_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL);
 }
 
-pilot_voltage_t pilot_get_voltage(void)
+bool pilot_is_pwm(void)
+{
+    return pwm;
+}
+
+void pilot_measure(void)
 {
     uint32_t high = 0;
     uint32_t low = 3300;
@@ -88,21 +103,32 @@ pilot_voltage_t pilot_get_voltage(void)
         ets_delay_us(100);
     }
 
-    pilot_voltage_t voltage;
+    ESP_LOGD(TAG, "Measure: %dmV - %dmV", low, high);
 
     if (high >= board_config.pilot_sens_down_treshold_12) {
-        voltage = PILOT_VOLTAGE_12;
+        up_voltage = PILOT_VOLTAGE_12;
     } else if (high >= board_config.pilot_sens_down_treshold_9) {
-        voltage = PILOT_VOLTAGE_9;
+        up_voltage = PILOT_VOLTAGE_9;
     } else if (high >= board_config.pilot_sens_down_treshold_6) {
-        voltage = PILOT_VOLTAGE_6;
+        up_voltage = PILOT_VOLTAGE_6;
     } else if (high >= board_config.pilot_sens_down_treshold_3) {
-        voltage = PILOT_VOLTAGE_3;
+        up_voltage = PILOT_VOLTAGE_3;
     } else {
-        voltage = PILOT_VOLTAGE_1;
+        up_voltage = PILOT_VOLTAGE_1;
     }
 
-    ESP_LOGD(TAG, "CP read: %dmV - %dmV (%d)", low, high, voltage);
+    down_voltage_n12 = low <= board_config.pilot_sens_down_treshold_n12;
 
-    return voltage;
+    ESP_LOGD(TAG, "Up volate %d", up_voltage);
+    ESP_LOGD(TAG, "Down volate belov 12V %d", down_voltage_n12);
+}
+
+pilot_voltage_t pilot_get_voltage(void)
+{
+    return up_voltage;
+}
+
+bool pilot_test_diode(void)
+{
+    return !pwm || down_voltage_n12;
 }

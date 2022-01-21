@@ -12,7 +12,7 @@
 #include "json_utils.h"
 #include "wifi.h"
 
-#define NVS_NAMESPACE       "evse_mqtt"
+#define NVS_NAMESPACE       "mqtt"
 #define NVS_ENABLED         "enabled"
 #define NVS_SERVER          "server"
 #define NVS_BASE_TOPIC      "base_topic"
@@ -32,7 +32,7 @@ EventGroupHandle_t mqtt_event_group;
 
 static uint16_t periodicity;
 
-static uint16_t counter;
+static TickType_t send_tick = 0;
 
 static void subcribe_topics(void)
 {
@@ -67,16 +67,7 @@ static void handle_message(const char* topic, const char* data)
     if (strncmp(topic, base_topic, strlen(base_topic)) == 0) {
         const char* sub_topic = &topic[strlen(base_topic)];
 
-        if (strcmp(sub_topic, "/enable") == 0) {
-            cJSON* root = cJSON_Parse(data);
-            if (cJSON_IsTrue(root)) {
-                evse_enable(EVSE_DISABLE_BIT_USER);
-            }
-            if (cJSON_IsFalse(root)) {
-                evse_disable(EVSE_DISABLE_BIT_USER);
-            }
-            cJSON_Delete(root);
-        } else if (strcmp(sub_topic, "/request/config/evse") == 0) {
+        if (strcmp(sub_topic, "/request/config/evse") == 0) {
             cJSON* root = json_get_evse_config();
             publish_message("/response/config/evse", root);
             cJSON_Delete(root);
@@ -150,8 +141,6 @@ static void mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         strncpy(topic, event->topic, MIN(event->topic_len, sizeof(topic) - 1));
         memset(data, 0, sizeof(data));
         strncpy(data, event->data, MIN(event->data_len, sizeof(data) - 1));
-        ESP_LOGI(TAG, "topic %s", topic);
-        ESP_LOGI(TAG, "data %s", data);
         handle_message(topic, data);
         break;
     default:
@@ -175,16 +164,17 @@ static void try_start(void)
         mqtt_get_user(user);
         mqtt_get_password(password);
         periodicity = mqtt_get_periodicity();
-        counter = 0;
 
-        esp_mqtt_client_config_t mqtt_cfg = {
-                .uri = server,
-                .username = user,
-                .password = password
-        };
-        client = esp_mqtt_client_init(&mqtt_cfg);
-        esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-        esp_mqtt_client_start(client);
+        if (strlen(server) > 0) {
+            esp_mqtt_client_config_t mqtt_cfg = {
+                    .uri = server,
+                    .username = user,
+                    .password = password
+            };
+            client = esp_mqtt_client_init(&mqtt_cfg);
+            esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+            esp_mqtt_client_start(client);
+        }
     }
 }
 
@@ -274,8 +264,9 @@ void mqtt_process(void)
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     if (client != NULL && periodicity > 0) {
-        if (++counter == periodicity) {
-            counter = 0;
+        TickType_t tick = xTaskGetTickCount();
+        if (tick >= send_tick + pdMS_TO_TICKS(periodicity * 1000)) {
+            send_tick = tick;
             if (xEventGroupGetBits(mqtt_event_group) & MQTT_CONNECTED_BIT) {
                 cJSON* root = json_get_state();
                 publish_message("/state", root);

@@ -27,10 +27,14 @@ void led_init(void)
         leds[i].gpio = GPIO_NUM_NC;
     }
 
-    gpio_config_t io_conf;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = 0;
-
+    gpio_config_t io_conf =  {
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pin_bit_mask = 0
+    };
+    
     if (board_config.led_wifi) {
         leds[LED_ID_WIFI].gpio = board_config.led_wifi_gpio;
         io_conf.pin_bit_mask |= 1ULL << board_config.led_wifi_gpio;

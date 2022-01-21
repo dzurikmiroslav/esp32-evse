@@ -4,29 +4,37 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define EVSE_DISABLE_BIT_SYSTEM             0
-#define EVSE_DISABLE_BIT_USER               0
-#define evse_state_in_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
-#define evse_state_relay_closed(state)      (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
+#define evse_state_is_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
+#define evse_state_is_charging(state)       (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
 
 typedef enum
 {
-    EVSE_STATE_A, EVSE_STATE_B, EVSE_STATE_C, EVSE_STATE_D, EVSE_STATE_E, EVSE_STATE_F
+    EVSE_STATE_A,
+    EVSE_STATE_B,
+    EVSE_STATE_C,
+    EVSE_STATE_D,
+    EVSE_STATE_ERROR,  
+    EVSE_STATE_DISABLED   
 } evse_state_t;
 
 typedef enum
 {
     EVSE_ERR_NONE,
-    EVSE_ERR_PILOT_FAULT
+    EVSE_ERR_PILOT_FAULT,
+    EVSE_ERR_DIODE_SHORT
 } evse_err_t;
 
 void evse_init(void);
 
-void evse_enable(uint8_t bit);
+/**
+ * Enable evse controller
+ */
+void evse_enable(void);
 
-void evse_disable(uint8_t bit);
-
-bool evse_is_enabled(void);
+/**
+ * Disable evse controller, for system update, restart, etc..
+ */
+void evse_disable(void);
 
 void evse_process(void);
 
@@ -44,5 +52,40 @@ float evse_get_chaging_current(void);
  */
 void evse_set_chaging_current(float charging_current);
 
+/**
+ * Get default charging current, stored in NVS
+ */
+float evse_get_default_chaging_current(void);
+
+/**
+ * Set default charging current, stored in NVS
+ */
+void evse_set_default_chaging_current(float charging_current);
+
+/**
+ * Is required authorization to start charging
+ */
+bool evse_is_require_auth(void);
+
+/**
+ * Set authorization required to start charging
+ */
+void evse_set_require_auth(bool require_auth);
+
+/**
+ * Authorize to start charging when authorization is required
+ */
+void evse_authorize(void);
+
+/**
+ * Pending authorize to start charging
+ */
+bool evse_is_pending_auth(void);
+
+bool evse_is_paused(void);
+
+void evse_pause(void);
+
+void evse_unpause(void);
 
 #endif /* EVSE_H_ */

@@ -14,7 +14,7 @@
 
 #define AP_SSID             "evse-%02x%02x%02x"
 
-#define NVS_NAMESPACE       "evse_wifi"
+#define NVS_NAMESPACE       "wifi"
 #define NVS_ENABLED         "enabled"
 #define NVS_SSID            "ssid"
 #define NVS_PASSWORD        "password"

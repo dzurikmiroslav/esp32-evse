@@ -19,6 +19,15 @@ void pilot_pwm_set_level(bool level);
 
 void pilot_pwm_set_amps(uint8_t amps);
 
+bool pilot_is_pwm(void);
+
+void pilot_measure(void);
+
 pilot_voltage_t pilot_get_voltage(void);
+
+/**
+ * Test negative voltage to 12V when PWM run
+ */
+bool pilot_test_diode(void);
 
 #endif /* PILOT_H_ */

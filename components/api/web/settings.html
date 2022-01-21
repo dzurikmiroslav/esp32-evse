@@ -72,7 +72,12 @@
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('evseChargingCurrent').value = data.evse.chargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrent').value = data.evse.defaultChargingCurrent;
+                    document.getElementById('evseRequireAuth').checked = data.evse.requireAuth;
                     document.getElementById('evseCableLock').value = data.evse.cableLock;
+                    document.getElementById('evseAux1').value = data.evse.aux1;
+                    document.getElementById('evseAux2').value = data.evse.aux2;
+                    document.getElementById('evseAux3').value = data.evse.aux3;
                     document.getElementById('energyMeterAcVoltage').value = data.energyMeter.acVoltage;
                     document.getElementById('energyMeterExtPulseAmount').value = data.energyMeter.extPulseAmount;
                     document.getElementById('wifiEnabled').checked = data.wifi.enabled;
@@ -101,7 +106,12 @@
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('evseChargingCurrent').value = data.chargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrent').value = data.defaultChargingCurrent;
+                    document.getElementById('evseRequireAuth').checked = data.requireAuth;
                     document.getElementById('evseCableLock').value = data.cableLock;
+                    document.getElementById('evseAux1').value = data.aux1;
+                    document.getElementById('evseAux2').value = data.aux2;
+                    document.getElementById('evseAux3').value = data.aux3;
                 })
                 .finally(() => {
                     document.getElementById('evseForm').classList.remove('was-validated');
@@ -190,7 +200,12 @@
 
                 const config = {
                     chargingCurrent: parseFloat(document.getElementById('evseChargingCurrent').value),
-                    cableLock: document.getElementById('evseCableLock').value
+                    defaultChargingCurrent: parseFloat(document.getElementById('evseDefaultChargingCurrent').value),
+                    requireAuth: document.getElementById('evseRequireAuth').checked,
+                    cableLock: document.getElementById('evseCableLock').value,
+                    aux1: document.getElementById('evseAux1').value,
+                    aux2: document.getElementById('evseAux2').value,
+                    aux3: document.getElementById('evseAux3').value
                 };
 
                 fetch('/api/v1/config/evse', {
@@ -362,16 +377,29 @@
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('evseChargingCurrent').max = data.maxChargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
                     if (data.cableLock) {
                         document.getElementById('evseCableLock').disabled = false;
                         document.getElementById('evseCableLockField').classList.remove('d-none');
                     }
+                    if (data.aux1) {
+                        document.getElementById('evseAux1').disabled = false;
+                        document.getElementById('evseAux1Field').classList.remove('d-none');
+                    }
+                    if (data.aux2) {
+                        document.getElementById('evseAux2').disabled = false;
+                        document.getElementById('evseAux2Field').classList.remove('d-none');
+                    }
+                    if (data.aux3) {
+                        document.getElementById('evseAux3').disabled = false;
+                        document.getElementById('evseAux3Field').classList.remove('d-none');
+                    }
                     if (data.energyMeter === 'ext_pulse') {
                         document.getElementById('energyMeterExtPulseAmount').disabled = false;
                         document.getElementById('energyMeterExtPulseAmountField').classList.remove('d-none');
-                        document.getElementById('energyMeterContainer').classList.remove('d-none');                        
+                        document.getElementById('energyMeterContainer').classList.remove('d-none');
                     }
-                    if (data.energyMeter === 'none' || data.energyMeter === 'cur') {          
+                    if (data.energyMeter === 'none' || data.energyMeter === 'cur') {
                         document.getElementById('energyMeterAcVoltage').disabled = false;
                         document.getElementById('energyMeterAcVoltageField').classList.remove('d-none');
                         document.getElementById('energyMeterContainer').classList.remove('d-none');
@@ -381,6 +409,9 @@
 
             // FF and IE workaround
             document.getElementById('evseChargingCurrent').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseDefaultChargingCurrent').addEventListener('input', event => {
                 event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
             });
 
@@ -434,9 +465,21 @@
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="evseChargingCurrent">Charging current</label>
                                 <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
-                                    step="0.1" required>
+                                    step="any" required>
                             </div>
-                            <div class="col-12 col-md-6 d-none" id="evseCableLockField">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="evseDefaultChargingCurrent">Default charging
+                                    current</label>
+                                <input type="number" class="form-control" id="evseDefaultChargingCurrent" min="6"
+                                    max="80" step="any" required>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="evseRequireAuth">
+                                    <label class="form-check-label" for="evseRequireAuth">Require authorization</label>
+                                </div>
+                            </div>
+                            <div class="col-12 d-none" id="evseCableLockField">
                                 <label class="form-label" for="evseCableLock">Cable lock</label>
                                 <select class="form-select" id="evseCableLock" disabled>
                                     <option value="none">None</option>
@@ -444,6 +487,40 @@
                                     <option value="solenoid">Solenoid</option>
                                 </select>
                             </div>
+                            <div class="col-12 col-md-6 d-none" id="evseAux1Field">
+                                <label class="form-label" for="evseAux1">AUX 1</label>
+                                <select class="form-select" id="evseAux1" disabled>
+                                    <option value="none">None</option>
+                                    <option value="pause_button">Pause button</option>
+                                    <option value="pause_switch">Pause switch</option>
+                                    <option value="unpause_switch">Unpause switch</option>
+                                    <option value="authorize_button">Authorize button</option>
+                                    <option value="pulse_energy_meter">Pulse energy meter</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6 d-none" id="evseAux2Field">
+                                <label class="form-label" for="evseAux2">AUX 2</label>
+                                <select class="form-select" id="evseAux2" disabled>
+                                    <option value="none">None</option>
+                                    <option value="pause_button">Pause button</option>
+                                    <option value="pause_switch">Pause switch</option>
+                                    <option value="unpause_switch">Unpause switch</option>
+                                    <option value="authorize_button">Authorize button</option>
+                                    <option value="pulse_energy_meter">Pulse energy meter</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6 d-none" id="evseAux3Field">
+                                <label class="form-label" for="evseAux3">AUX 3</label>
+                                <select class="form-select" id="evseAux3" disabled>
+                                    <option value="none">None</option>
+                                    <option value="pause_button">Pause button</option>
+                                    <option value="pause_switch">Pause switch</option>
+                                    <option value="unpause_switch">Unpause switch</option>
+                                    <option value="authorize_button">Authorize button</option>
+                                    <option value="pulse_energy_meter">Pulse energy meter</option>
+                                </select>
+                            </div>
+
                             <div class="col-12">
                                 <button type="button" class="btn btn-primary"
                                     onclick="submitEvseSettings()">Submit</button>

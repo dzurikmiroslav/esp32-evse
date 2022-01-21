@@ -1,5 +1,5 @@
-#ifndef PERIPHERALS_H_
-#define PERIPHERALS_H_
+#ifndef AC_RELAY_H_
+#define AC_RELAY_H_
 
 #include <stdbool.h>
 
@@ -9,4 +9,4 @@ void ac_relay_init(void);
 
 void ac_relay_set_state(bool state);
 
-#endif /* PERIPHERALS_H_ */
+#endif /* AC_RELAY_H_ */

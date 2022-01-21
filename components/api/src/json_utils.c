@@ -16,12 +16,34 @@
 #include "board_config.h"
 #include "energy_meter.h"
 #include "cable_lock.h"
+#include "aux.h"
+
+
+const char* sw_mode_to_str(aux_mode_t mode) {
+    switch (mode)
+    {
+    case AUX_MODE_PAUSE_BUTTON:
+        return "pause_button";
+    case AUX_MODE_PAUSE_SWITCH:
+        return "pause_switch";
+    case AUX_MODE_UNPAUSE_SWITCH:
+        return "pause_switch";
+    case AUX_MODE_AUTHORIZE_BUTTON:
+        return "authorize_button";
+    case AUX_MODE_PULSE_ENERGY_METER:
+        return "pulse_energy_meter";
+    default:
+        return "none";
+    }
+}
 
 cJSON* json_get_evse_config(void)
 {
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current());
+    cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_chaging_current());
+    cJSON_AddBoolToObject(root, "requireAuth", evse_is_require_auth());
 
     switch (cable_lock_get_type()) {
     case CABLE_LOCK_TYPE_MOTOR:
@@ -34,13 +56,45 @@ cJSON* json_get_evse_config(void)
         cJSON_AddStringToObject(root, "cableLock", "none");
     }
 
+    cJSON_AddStringToObject(root, "aux1", sw_mode_to_str(aux_get_mode(AUX_ID_1)));
+    cJSON_AddStringToObject(root, "aux2", sw_mode_to_str(aux_get_mode(AUX_ID_2)));
+    cJSON_AddStringToObject(root, "aux3", sw_mode_to_str(aux_get_mode(AUX_ID_3)));
+
     return root;
 }
+
+aux_mode_t str_to_sw_mode(const char* string) {
+    if (!strcmp(string, "pause_button")) {
+        return AUX_MODE_PAUSE_BUTTON;
+    }
+    if (!strcmp(string, "pause_switch")) {
+        return AUX_MODE_PAUSE_SWITCH;
+    }
+    if (!strcmp(string, "unpause_switch")) {
+        return AUX_MODE_UNPAUSE_SWITCH;
+    }
+    if (!strcmp(string, "authorize_button")) {
+        return AUX_MODE_AUTHORIZE_BUTTON;
+    }
+    if (!strcmp(string, "pulse_energy_meter")) {
+        return AUX_MODE_PULSE_ENERGY_METER;
+    }
+    return AUX_MODE_NONE;
+}
+
 
 void json_set_evse_config(cJSON* root)
 {
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
         evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble);
+    }
+
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultChargingCurrent"))) {
+        evse_set_default_chaging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble);
+    }
+
+    if (cJSON_IsBool(cJSON_GetObjectItem(root, "requireAuth"))) {
+        evse_set_require_auth(cJSON_IsTrue(cJSON_GetObjectItem(root, "requireAuth")));
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "cableLock"))) {
@@ -55,6 +109,15 @@ void json_set_evse_config(cJSON* root)
         cable_lock_set_type(type);
     }
 
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "aux1"))) {
+        aux_set_mode(AUX_ID_1, str_to_sw_mode(cJSON_GetObjectItem(root, "aux1")->valuestring));
+    }
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "aux2"))) {
+        aux_set_mode(AUX_ID_2, str_to_sw_mode(cJSON_GetObjectItem(root, "aux2")->valuestring));
+    }
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "aux3"))) {
+        aux_set_mode(AUX_ID_3, str_to_sw_mode(cJSON_GetObjectItem(root, "aux3")->valuestring));
+    }
 }
 
 cJSON* json_get_wifi_config(void)
@@ -152,11 +215,12 @@ cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    char state[2] = "A";
-    state[0] = 'A' + evse_get_state();
-    cJSON_AddStringToObject(root, "state", state);
-    cJSON_AddNumberToObject(root, "error", evse_get_error());
-    cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
+    cJSON_AddBoolToObject(root, "enabled", evse_get_state() != EVSE_STATE_DISABLED);
+    cJSON_AddBoolToObject(root, "error", evse_get_state() == EVSE_STATE_ERROR);
+    cJSON_AddBoolToObject(root, "session", evse_state_is_session(evse_get_state()));
+    cJSON_AddBoolToObject(root, "charging", evse_state_is_charging(evse_get_state()));
+    cJSON_AddBoolToObject(root, "paused", evse_is_paused());
+    cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
     cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
     cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
     cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());
@@ -217,6 +281,10 @@ cJSON* json_get_board_config(void)
         cJSON_AddStringToObject(root, "energyMeter", "none");
     }
     cJSON_AddBoolToObject(root, "energyMeterThreePhases", board_config.energy_meter_three_phases);
+
+    cJSON_AddBoolToObject(root, "aux1", board_config.aux_1);
+    cJSON_AddBoolToObject(root, "aux2", board_config.aux_2);
+    cJSON_AddBoolToObject(root, "aux3", board_config.aux_3);
 
     return root;
 }

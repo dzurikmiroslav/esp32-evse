@@ -80,6 +80,7 @@ void board_config_load()
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_9", pilot_sens_down_treshold_9, atoi);
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_6", pilot_sens_down_treshold_6, atoi);
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_3", pilot_sens_down_treshold_3, atoi);
+                    SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_N12", pilot_sens_down_treshold_n12, atoi);
                     SET_CONFIG_VALUE("MAX_CHARGING_CURRENT", max_charging_current, atoi);
                     SET_CONFIG_VALUE("AC_RELAY_GPIO", ac_relay_gpio, atoi);
                     SET_CONFIG_VALUE("CABLE_LOCK", cable_lock, atob);
@@ -97,6 +98,12 @@ void board_config_load()
                     SET_CONFIG_VALUE("ENERGY_METER_L3_VLT_ADC_CHANNEL", energy_meter_l3_vlt_adc_channel, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER_VLT_SCALE", energy_meter_vlt_scale, atoff);
                     SET_CONFIG_VALUE("ENERGY_METER_EXT_PULSE_GPIO", energy_meter_ext_pulse_gpio, atoi);
+                    SET_CONFIG_VALUE("AUX_1", aux_1, atob);
+                    SET_CONFIG_VALUE("AUX_1_GPIO", aux_1_gpio, atoi);
+                    SET_CONFIG_VALUE("AUX_2", aux_2, atob);
+                    SET_CONFIG_VALUE("AUX_2_GPIO", aux_2_gpio, atoi);
+                    SET_CONFIG_VALUE("AUX_3", aux_3, atob);
+                    SET_CONFIG_VALUE("AUX_3_GPIO", aux_3_gpio, atoi);
 
                     ESP_LOGE(TAG, "Unknown config value %s", value);
                 }

@@ -8,7 +8,7 @@ typedef enum {
     BOARD_CONFIG_ENERGY_METER_NONE,
     BOARD_CONFIG_ENERGY_METER_CUR,
     BOARD_CONFIG_ENERGY_METER_CUR_VLT,
-    BOARD_CONFIG_ENERGY_METER_EXT_PULSE
+    BOARD_CONFIG_ENERGY_METER_EXT_PULSE //TODO remove
 } board_config_energy_meter_t;
 
 typedef struct
@@ -28,6 +28,7 @@ typedef struct
     uint16_t pilot_sens_down_treshold_9;
     uint16_t pilot_sens_down_treshold_6;
     uint16_t pilot_sens_down_treshold_3;
+    uint16_t pilot_sens_down_treshold_n12;
 
     uint8_t max_charging_current;
 
@@ -51,6 +52,13 @@ typedef struct
     float energy_meter_vlt_scale;
 
     gpio_num_t energy_meter_ext_pulse_gpio;
+
+    bool aux_1 : 1;
+    gpio_num_t aux_1_gpio;
+    bool aux_2 : 1;
+    gpio_num_t aux_2_gpio;
+    bool aux_3 : 1;
+    gpio_num_t aux_3_gpio;
 } board_config_t;
 
 extern board_config_t board_config;

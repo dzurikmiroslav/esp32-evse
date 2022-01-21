@@ -17,7 +17,7 @@
 #define KEEPALIVE_COUNT     3
 #define DEFAULT_PORT        3000
 
-#define NVS_NAMESPACE       "evse_tcplog"
+#define NVS_NAMESPACE       "tcp_logger"
 #define NVS_ENABLED         "enabled"
 #define NVS_PORT            "port"
 

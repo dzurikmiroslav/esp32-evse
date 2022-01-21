@@ -156,6 +156,9 @@
                         document.getElementById('cableLock').innerText = YES_NO[data.cableLock];
                         document.getElementById('energyMeter').innerText = data.energyMeter;
                         document.getElementById('energyMeterThreePhases').innerText = YES_NO[data.energyMeterThreePhases];
+                        document.getElementById('aux1').innerText = YES_NO[data.aux1];
+                        document.getElementById('aux2').innerText = YES_NO[data.aux2];
+                        document.getElementById('aux3').innerText = YES_NO[data.aux3];
                     }),
                 fetch('/api/v1/info')
                     .then(jsonResponse)
@@ -282,6 +285,18 @@
                     <tr>
                         <th scope="row">Three phases</th>
                         <td id="energyMeterThreePhases"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">AUX 1</th>
+                        <td id="aux1"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">AUX 2</th>
+                        <td id="aux2"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">AUX 3</th>
+                        <td id="aux3"></td>
                     </tr>
                 </tbody>
             </table>

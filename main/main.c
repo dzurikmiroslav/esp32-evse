@@ -21,7 +21,7 @@
 #include "evse.h"
 #include "led.h"
 #include "pilot.h"
-#include "relay.h"
+#include "ac_relay.h"
 #include "cable_lock.h"
 #include "energy_meter.h"
 #include "board_config.h"
@@ -29,6 +29,7 @@
 #include "webserver.h"
 #include "wifi.h"
 #include "tcp_logger.h"
+#include "aux.h"
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
 #define RESET_HOLD_TIME         10000 // 10sec
@@ -40,9 +41,7 @@ static const char* TAG = "app_main";
 
 static TaskHandle_t user_input_task;
 
-static evse_state_t state;
-
-static bool enabled;
+static evse_state_t led_state;
 
 static void reset_and_reboot(void)
 {
@@ -105,7 +104,7 @@ static void user_input_task_func(void* param)
             if (notification & RELEASED_BIT) {
                 if (pressed) { // sometimes after connect debug UART emit RELEASED_BIT without preceding PRESS_BIT
                     if (xTaskGetTickCount() - press_tick >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
-                        evse_disable(EVSE_DISABLE_BIT_SYSTEM);
+                        evse_disable();
                         reset_and_reboot();
                     } else {
                         if (!(xEventGroupGetBits(wifi_mode_event_group) & WIFI_AP_MODE_BIT)) {
@@ -180,36 +179,33 @@ static bool ota_diagnostic(void)
     return true;
 }
 
-static void set_led_state()
+static void update_leds()
 {
-    if (enabled != evse_is_enabled() || state != evse_get_state()) {
-        enabled = evse_is_enabled();
-        state = evse_get_state();
+    if (led_state != evse_get_state()) {
+        led_state = evse_get_state();
 
-        if (enabled) {
-            switch (state) {
-            case EVSE_STATE_A:
-                led_set_off(LED_ID_CHARGING);
-                led_set_off(LED_ID_ERROR);
-                break;
-            case EVSE_STATE_B:
-                led_set_state(LED_ID_CHARGING, 250, 250);
-                led_set_off(LED_ID_ERROR);
-                break;
-            case EVSE_STATE_C:
-            case EVSE_STATE_D:
-                led_set_on(LED_ID_CHARGING);
-                led_set_off(LED_ID_ERROR);
-                break;
-            case EVSE_STATE_E:
-            case EVSE_STATE_F:
-                led_set_off(LED_ID_CHARGING);
-                led_set_on(LED_ID_ERROR);
-                break;
-            }
-        } else {
+        switch (led_state) {
+        case EVSE_STATE_A:
             led_set_off(LED_ID_CHARGING);
             led_set_off(LED_ID_ERROR);
+            break;
+        case EVSE_STATE_B:
+            led_set_state(LED_ID_CHARGING, 250, 250);
+            led_set_off(LED_ID_ERROR);
+            break;
+        case EVSE_STATE_C:
+        case EVSE_STATE_D:
+            led_set_on(LED_ID_CHARGING);
+            led_set_off(LED_ID_ERROR);
+            break;
+        case EVSE_STATE_ERROR:
+            led_set_off(LED_ID_CHARGING);
+            led_set_on(LED_ID_ERROR);
+            break;
+        case EVSE_STATE_DISABLED:
+            led_set_off(LED_ID_CHARGING);
+            led_set_off(LED_ID_ERROR);
+            break;
         }
     }
 }
@@ -263,20 +259,17 @@ void app_main()
     mqtt_init();
     evse_init();
     tcp_logger_init();
+    aux_init();
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 10, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 10, &user_input_task);
 
-    TickType_t tick;
-
     for (;;) {
-        tick = xTaskGetTickCount();
-
         evse_process();
         energy_meter_process();
         mqtt_process();
-        set_led_state();
+        update_leds();
 
-        vTaskDelay(MAX(0, pdMS_TO_TICKS(1000) - (xTaskGetTickCount() - tick)));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

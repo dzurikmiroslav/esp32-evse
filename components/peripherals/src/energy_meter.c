@@ -91,7 +91,7 @@ static void measure_none(void)
 
 static uint32_t read_adc(adc_channel_t channel)
 {
-    int adc_reading = adc1_get_raw(board_config.energy_meter_l1_cur_adc_channel);
+    int adc_reading = adc1_get_raw(channel);
     return esp_adc_cal_raw_to_voltage(adc_reading, &sens_adc_char);
 }
 
@@ -119,12 +119,12 @@ static void measure_single_phase_cur_vlt(void)
 {
     float cur_sum = 0;
     float vlt_sum = 0;
-    float power_sum = 0;
     uint32_t sample_cur;
     uint32_t sample_vlt;
     float filtered_cur;
     float filtered_vlt;
     uint16_t samples = 0;
+
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
         sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
         sample_vlt = read_adc(board_config.energy_meter_l1_vlt_adc_channel);
@@ -136,8 +136,6 @@ static void measure_single_phase_cur_vlt(void)
         vlt_sens_zero[0] += (sample_vlt - vlt_sens_zero[0]) / ZERO_FIX;
         filtered_vlt = sample_vlt - vlt_sens_zero[0];
         vlt_sum += filtered_vlt * filtered_vlt;
-
-        power_sum += (filtered_vlt * board_config.energy_meter_vlt_scale) * (filtered_cur * board_config.energy_meter_cur_scale);
     }
 
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
@@ -146,7 +144,7 @@ static void measure_single_phase_cur_vlt(void)
     vlt[0] = sqrt(vlt_sum / samples) * board_config.energy_meter_vlt_scale;
     ESP_LOGD(TAG, "Voltage %f (samples %d)", vlt[0], samples);
 
-    set_calc_power(power_sum / samples);
+    set_calc_power(cur[0] * vlt[0]);
 }
 
 static void measure_three_phase_cur(void)
@@ -358,20 +356,20 @@ void energy_meter_process(void)
 {
     evse_state_t state = evse_get_state();
 
-    if (!has_session && evse_state_in_session(state)) {
+    if (!has_session && evse_state_is_session(state)) {
         ESP_LOGI(TAG, "Start session");
         session_start_tick = xTaskGetTickCount();
         session_end_tick = 0;
         session_consumption = 0;
         prev_time = esp_timer_get_time();
         has_session = true;
-    } else if (!evse_state_in_session(state) && has_session) {
+    } else if (!evse_state_is_session(state) && has_session) {
         ESP_LOGI(TAG, "End session");
         session_end_tick = xTaskGetTickCount();
         has_session = false;
     }
 
-    if (evse_state_relay_closed(state)) {
+    if (evse_state_is_charging(state)) {
         (*measure_fn)();
     } else {
         vlt[0] = vlt[1] = vlt[2] = 0;

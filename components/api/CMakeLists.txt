@@ -22,5 +22,5 @@ idf_component_register(SRCS "${srcs}"
                     PRIV_INCLUDE_DIRS "src"
                     EMBED_FILES "${embed_files}"
                     PRIV_REQUIRES nvs_flash esp_http_server esp_http_client app_update esp_https_ota json mdns mqtt
-                    REQUIRES config evse)
+                    REQUIRES config evse peripherals)
             

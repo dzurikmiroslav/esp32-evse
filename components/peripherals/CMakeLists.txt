@@ -1,9 +1,10 @@
 set(srcs
     "src/led.c"
     "src/pilot.c"
-    "src/relay.c"
+    "src/ac_relay.c"
     "src/energy_meter.c"
-    "src/cable_lock.c")
+    "src/cable_lock.c"
+    "src/aux.c")
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include"
