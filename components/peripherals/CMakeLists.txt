@@ -1,6 +1,7 @@
 set(srcs
     "src/led.c"
     "src/pilot.c"
+    "src/proximity.c"
     "src/ac_relay.c"
     "src/energy_meter.c"
     "src/cable_lock.c"

@@ -75,11 +75,12 @@
                     document.getElementById('evseDefaultChargingCurrent').value = data.evse.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.evse.requireAuth;
                     document.getElementById('evseCableLock').value = data.evse.cableLock;
+                    document.getElementById('evseEnergyMeter').value = data.evse.energyMeter;
+                    document.getElementById('evseAcVoltage').value = data.evse.acVoltage;
+                    document.getElementById('evsePulseAmount').value = data.evse.pulseAmount;
                     document.getElementById('evseAux1').value = data.evse.aux1;
                     document.getElementById('evseAux2').value = data.evse.aux2;
                     document.getElementById('evseAux3').value = data.evse.aux3;
-                    document.getElementById('energyMeterAcVoltage').value = data.energyMeter.acVoltage;
-                    document.getElementById('energyMeterExtPulseAmount').value = data.energyMeter.extPulseAmount;
                     document.getElementById('wifiEnabled').checked = data.wifi.enabled;
                     document.getElementById('wifiEnabled').dispatchEvent(new Event("change"));
                     document.getElementById('wifiSsid').value = data.wifi.ssid;
@@ -109,28 +110,15 @@
                     document.getElementById('evseDefaultChargingCurrent').value = data.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.requireAuth;
                     document.getElementById('evseCableLock').value = data.cableLock;
+                    document.getElementById('evseEnergyMeter').value = data.energyMeter;
+                    document.getElementById('evseAcVoltage').value = data.acVoltage;
+                    document.getElementById('evsePulseAmount').value = data.pulseAmount;
                     document.getElementById('evseAux1').value = data.aux1;
                     document.getElementById('evseAux2').value = data.aux2;
                     document.getElementById('evseAux3').value = data.aux3;
                 })
                 .finally(() => {
                     document.getElementById('evseForm').classList.remove('was-validated');
-                    document.getElementById('loading').classList.remove('show');
-                })
-                .catch(showError);
-        }
-
-        function loadEnergyMeterSettings() {
-            document.getElementById('loading').classList.add('show');
-
-            fetch('/api/v1/config/energyMeter')
-                .then(jsonResponse)
-                .then(data => {
-                    document.getElementById('energyMeterAcVoltage').value = data.acVoltage;
-                    document.getElementById('energyMeterExtPulseAmount').value = data.extPulseAmount;
-                })
-                .finally(() => {
-                    document.getElementById('energyMeterForm').classList.remove('was-validated');
                     document.getElementById('loading').classList.remove('show');
                 })
                 .catch(showError);
@@ -203,6 +191,9 @@
                     defaultChargingCurrent: parseFloat(document.getElementById('evseDefaultChargingCurrent').value),
                     requireAuth: document.getElementById('evseRequireAuth').checked,
                     cableLock: document.getElementById('evseCableLock').value,
+                    energyMeter: document.getElementById('evseEnergyMeter').value,
+                    acVoltage: parseFloat(document.getElementById('evseAcVoltage').value),
+                    pulseAmount: parseFloat(document.getElementById('evsePulseAmount').value),
                     aux1: document.getElementById('evseAux1').value,
                     aux2: document.getElementById('evseAux2').value,
                     aux3: document.getElementById('evseAux3').value
@@ -219,33 +210,6 @@
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('evseForm').classList.remove('was-validated');
-                    })
-                    .catch(showError);
-            }
-        }
-
-        function submitEnergyMeterSettings() {
-            if (!document.getElementById('energyMeterForm').checkValidity()) {
-                document.getElementById('energyMeterForm').classList.add('was-validated');
-            } else {
-                document.getElementById('loading').classList.add('show');
-
-                const config = {
-                    acVoltage: parseInt(document.getElementById('energyMeterAcVoltage').value),
-                    extPulseAmount: parseInt(document.getElementById('energyMeterExtPulseAmount').value)
-                };
-
-                fetch('/api/v1/config/energyMeter', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(config)
-                })
-                    .then(checkResponse)
-                    .finally(() => {
-                        document.getElementById('loading').classList.remove('show');
-                        document.getElementById('energyMeterForm').classList.remove('was-validated');
                     })
                     .catch(showError);
             }
@@ -394,15 +358,12 @@
                         document.getElementById('evseAux3').disabled = false;
                         document.getElementById('evseAux3Field').classList.remove('d-none');
                     }
-                    if (data.energyMeter === 'ext_pulse') {
-                        document.getElementById('energyMeterExtPulseAmount').disabled = false;
-                        document.getElementById('energyMeterExtPulseAmountField').classList.remove('d-none');
-                        document.getElementById('energyMeterContainer').classList.remove('d-none');
+                    if (data.energyMeter === 'cur') {
+                        document.getElementById('evseEnergyMeterCur').disabled = false;
                     }
-                    if (data.energyMeter === 'none' || data.energyMeter === 'cur') {
-                        document.getElementById('energyMeterAcVoltage').disabled = false;
-                        document.getElementById('energyMeterAcVoltageField').classList.remove('d-none');
-                        document.getElementById('energyMeterContainer').classList.remove('d-none');
+                    if (data.energyMeter === 'cur_vlt') {
+                        document.getElementById('evseEnergyMeterCur').disabled = false;
+                        document.getElementById('evseEnergyMeterCurVlt').disabled = false;
                     }
                 })
                 .catch(showError);
@@ -465,27 +426,48 @@
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="evseChargingCurrent">Charging current</label>
                                 <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
-                                    step="any" required>
+                                    step="0.1" required>
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="evseDefaultChargingCurrent">Default charging
                                     current</label>
                                 <input type="number" class="form-control" id="evseDefaultChargingCurrent" min="6"
-                                    max="80" step="any" required>
+                                    max="80" step="0.1" required>
                             </div>
-                            <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="evseRequireAuth">
+                            <div class="col-12 mt-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="evseRequireAuth">
                                     <label class="form-check-label" for="evseRequireAuth">Require authorization</label>
                                 </div>
                             </div>
-                            <div class="col-12 d-none" id="evseCableLockField">
+                            <div class="col-12 mt-3 d-none" id="evseCableLockField">
                                 <label class="form-label" for="evseCableLock">Cable lock</label>
                                 <select class="form-select" id="evseCableLock" disabled>
                                     <option value="none">None</option>
                                     <option value="motor">Motor</option>
                                     <option value="solenoid">Solenoid</option>
                                 </select>
+                            </div>
+                            <div class="col-12 mt-3">
+                                <label class="form-label" for="evseEnergyMeter">Energy meter</label>
+                                <select class="form-select" id="evseEnergyMeter">
+                                    <option value="none">None</option>
+                                    <option id="evseEnergyMeterCur" value="cur" disabled>Current sensing</option>
+                                    <option id="evseEnergyMeterCurVlt" value="cur_vlt" disabled>Current and voltage
+                                        sensing</option>
+                                    <option value="pulse">Pulse energy meter</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="evseAcVoltage">AC voltage</label>
+                                <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
+                                    step="1" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="evsePulseAmount">External pulse meter impulse amount
+                                    Wh</label>
+                                <input type="number" class="form-control" id="evsePulseAmount" min="0" max="65535"
+                                    step="1" required>
                             </div>
                             <div class="col-12 col-md-6 d-none" id="evseAux1Field">
                                 <label class="form-label" for="evseAux1">AUX 1</label>
@@ -526,35 +508,6 @@
                                     onclick="submitEvseSettings()">Submit</button>
                                 <button type="button" class="btn btn-secondary"
                                     onclick="loadEvseSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card mb-3 d-none" id="energyMeterContainer">
-                <div class="card-header">
-                    Energy meter
-                </div>
-                <div class="card-body">
-                    <form id="energyMeterForm" novalidate>
-                        <div class="row g-3">
-                            <div class="col-12 col-md-6 d-none" id="energyMeterAcVoltageField">
-                                <label class="form-label" for="energyMeterAcVoltage">AC voltage</label>
-                                <input type="number" class="form-control" id="energyMeterAcVoltage" min="100" max="300"
-                                    step="1" disabled required>
-                            </div>
-                            <div class="col-12 col-md-6 d-none" id="energyMeterExtPulseAmountField">
-                                <label class="form-label" for="energyMeterExtPulseAmount">External pulse meter impulse
-                                    amount Wh</label>
-                                <input type="number" class="form-control" id="energyMeterExtPulseAmount" min="0"
-                                    max="65535" step="1" disabled required>
-                            </div>
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitEnergyMeterSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadEnergyMeterSettings()">Reset</button>
                             </div>
                         </div>
                     </form>

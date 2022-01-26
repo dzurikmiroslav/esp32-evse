@@ -1,4 +1,3 @@
-#include <time.h>
 #include <string.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
@@ -27,7 +26,7 @@ const char* sw_mode_to_str(aux_mode_t mode) {
     case AUX_MODE_PAUSE_SWITCH:
         return "pause_switch";
     case AUX_MODE_UNPAUSE_SWITCH:
-        return "pause_switch";
+        return "unpause_switch";
     case AUX_MODE_AUTHORIZE_BUTTON:
         return "authorize_button";
     case AUX_MODE_PULSE_ENERGY_METER:
@@ -37,24 +36,45 @@ const char* sw_mode_to_str(aux_mode_t mode) {
     }
 }
 
+const char* em_mode_to_str(energy_meter_mode_t mode) {
+    switch (mode)
+    {
+    case ENERGY_METER_MODE_CUR:
+        return "cur";
+    case ENERGY_METER_MODE_CUR_VLT:
+        return "cur_vlt";
+    case ENERGY_METER_MODE_PULSE:
+        return "pulse";
+    default:
+        return "none";
+    }
+}
+
+const char* cl_type_to_str(cable_lock_type_t type) {
+    switch (type)
+    {
+    case CABLE_LOCK_TYPE_MOTOR:
+        return "motor";
+    case CABLE_LOCK_TYPE_SOLENOID:
+        return "solenoid";
+    default:
+        return "none";
+    }
+}
+
 cJSON* json_get_evse_config(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current());
-    cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_chaging_current());
+    cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current() / 10.0);
+    cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_chaging_current() / 10.0);
     cJSON_AddBoolToObject(root, "requireAuth", evse_is_require_auth());
 
-    switch (cable_lock_get_type()) {
-    case CABLE_LOCK_TYPE_MOTOR:
-        cJSON_AddStringToObject(root, "cableLock", "motor");
-        break;
-    case CABLE_LOCK_TYPE_SOLENOID:
-        cJSON_AddStringToObject(root, "cableLock", "solenoid");
-        break;
-    default:
-        cJSON_AddStringToObject(root, "cableLock", "none");
-    }
+    cJSON_AddStringToObject(root, "cableLock", cl_type_to_str(cable_lock_get_type()));
+
+    cJSON_AddStringToObject(root, "energyMeter", em_mode_to_str(energy_meter_get_mode()));
+    cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
+    cJSON_AddNumberToObject(root, "pulseAmount", energy_meter_get_pulse_amount());
 
     cJSON_AddStringToObject(root, "aux1", sw_mode_to_str(aux_get_mode(AUX_ID_1)));
     cJSON_AddStringToObject(root, "aux2", sw_mode_to_str(aux_get_mode(AUX_ID_2)));
@@ -82,15 +102,37 @@ aux_mode_t str_to_sw_mode(const char* string) {
     return AUX_MODE_NONE;
 }
 
+energy_meter_mode_t str_to_em_mode(const char* string) {
+    if (!strcmp(string, "cur")) {
+        return ENERGY_METER_MODE_CUR;
+    }
+    if (!strcmp(string, "cur_vlt")) {
+        return ENERGY_METER_MODE_CUR_VLT;
+    }
+    if (!strcmp(string, "pulse")) {
+        return ENERGY_METER_MODE_PULSE;
+    }
+    return ENERGY_METER_MODE_NONE;
+}
+
+cable_lock_type_t str_to_cl_type(const char* string) {
+    if (!strcmp(string, "motor")) {
+        return CABLE_LOCK_TYPE_MOTOR;
+    }
+    if (!strcmp(string, "solenoid")) {
+        return CABLE_LOCK_TYPE_SOLENOID;
+    }
+    return CABLE_LOCK_TYPE_NONE;
+}
 
 void json_set_evse_config(cJSON* root)
 {
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
-        evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble);
+        evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10);
     }
 
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultChargingCurrent"))) {
-        evse_set_default_chaging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble);
+        evse_set_default_chaging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble * 10);
     }
 
     if (cJSON_IsBool(cJSON_GetObjectItem(root, "requireAuth"))) {
@@ -98,15 +140,17 @@ void json_set_evse_config(cJSON* root)
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "cableLock"))) {
-        cable_lock_type_t type = CABLE_LOCK_TYPE_NONE;
+        cable_lock_set_type(str_to_cl_type(cJSON_GetObjectItem(root, "cableLock")->valuestring));
+    }
 
-        if (!strcmp(cJSON_GetObjectItem(root, "cableLock")->valuestring, "motor")) {
-            type = CABLE_LOCK_TYPE_MOTOR;
-        } else if (!strcmp(cJSON_GetObjectItem(root, "cableLock")->valuestring, "solenoid")) {
-            type = CABLE_LOCK_TYPE_SOLENOID;
-        }
-
-        cable_lock_set_type(type);
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "energyMeter"))) {
+        energy_meter_set_mode(str_to_em_mode(cJSON_GetObjectItem(root, "energyMeter")->valuestring));
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "acVoltage"))) {
+        energy_meter_set_ac_voltage(cJSON_GetObjectItem(root, "acVoltage")->valuedouble);
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "pulseAmount"))) {
+        energy_meter_set_pulse_amount(cJSON_GetObjectItem(root, "pulseAmount")->valuedouble);
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "aux1"))) {
@@ -193,24 +237,6 @@ void json_set_tcp_logger_config(cJSON* root)
     tcp_logger_set_config(enabled, port);
 }
 
-cJSON* json_get_energy_meter_config(void)
-{
-    cJSON* root = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(root, "extPulseAmount", energy_meter_get_ext_pulse_amount());
-    cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
-
-    return root;
-}
-
-void json_set_energy_meter_config(cJSON* root)
-{
-    uint16_t ext_pulse_amount = cJSON_GetObjectItem(root, "extPulseAmount")->valuedouble;
-    uint16_t ac_voltage = cJSON_GetObjectItem(root, "acVoltage")->valuedouble;
-
-    energy_meter_set_config(ext_pulse_amount, ac_voltage);
-}
-
 cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -237,7 +263,7 @@ cJSON* json_get_info(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(root, "uptime", clock() / CLOCKS_PER_SEC);
+    cJSON_AddNumberToObject(root, "uptime", esp_timer_get_time() / 1000000);
     const esp_app_desc_t* app_desc = esp_ota_get_app_description();
     cJSON_AddStringToObject(root, "appVersion", app_desc->version);
     cJSON_AddStringToObject(root, "appDate", app_desc->date);
@@ -273,9 +299,6 @@ cJSON* json_get_board_config(void)
         break;
     case BOARD_CONFIG_ENERGY_METER_CUR_VLT:
         cJSON_AddStringToObject(root, "energyMeter", "cur_vlt");
-        break;
-    case BOARD_CONFIG_ENERGY_METER_EXT_PULSE:
-        cJSON_AddStringToObject(root, "energyMeter", "ext_pulse");
         break;
     default:
         cJSON_AddStringToObject(root, "energyMeter", "none");

@@ -7,8 +7,7 @@
 typedef enum {
     BOARD_CONFIG_ENERGY_METER_NONE,
     BOARD_CONFIG_ENERGY_METER_CUR,
-    BOARD_CONFIG_ENERGY_METER_CUR_VLT,
-    BOARD_CONFIG_ENERGY_METER_EXT_PULSE //TODO remove
+    BOARD_CONFIG_ENERGY_METER_CUR_VLT
 } board_config_energy_meter_t;
 
 typedef struct
@@ -29,6 +28,11 @@ typedef struct
     uint16_t pilot_sens_down_treshold_6;
     uint16_t pilot_sens_down_treshold_3;
     uint16_t pilot_sens_down_treshold_n12;
+
+    adc_channel_t proximity_sens_adc_channel;
+    uint16_t proximity_sens_down_treshold_13;
+    uint16_t proximity_sens_down_treshold_20;
+    uint16_t proximity_sens_down_treshold_32;
 
     uint8_t max_charging_current;
 

@@ -24,9 +24,6 @@ board_config_energy_meter_t atoem(const char* value)
     if (!strcmp(value, "cur_vlt")) {
         return BOARD_CONFIG_ENERGY_METER_CUR_VLT;
     }
-    if (!strcmp(value, "ext_pulse")) {
-        return BOARD_CONFIG_ENERGY_METER_EXT_PULSE;
-    }
     return BOARD_CONFIG_ENERGY_METER_NONE;
 }
 
@@ -81,6 +78,10 @@ void board_config_load()
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_6", pilot_sens_down_treshold_6, atoi);
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_3", pilot_sens_down_treshold_3, atoi);
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_N12", pilot_sens_down_treshold_n12, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_SENS_ADC_CHANNEL", proximity_sens_adc_channel, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_13", proximity_sens_down_treshold_13, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_20", proximity_sens_down_treshold_20, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_32", proximity_sens_down_treshold_32, atoi);
                     SET_CONFIG_VALUE("MAX_CHARGING_CURRENT", max_charging_current, atoi);
                     SET_CONFIG_VALUE("AC_RELAY_GPIO", ac_relay_gpio, atoi);
                     SET_CONFIG_VALUE("CABLE_LOCK", cable_lock, atob);

@@ -1,7 +1,6 @@
 #include <memory.h>
 #include <math.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "driver/ledc.h"
@@ -14,15 +13,13 @@
 #include "energy_meter.h"
 #include "evse.h"
 #include "board_config.h"
+#include "aux.h"
 
 #define NVS_NAMESPACE           "evse_emeter"
+#define NVS_MODE                "mode"
 #define NVS_AC_VOLTAGE          "ac_voltage"
-#define NVS_EXT_PULSE_AMOUNT    "ext_pluse_amt"
+#define NVS_PULSE_AMOUNT        "pluse_amount"
 
-#define PILOT_PWM_TIMER         LEDC_TIMER_0
-#define PILOT_PWM_CHANNEL       LEDC_CHANNEL_0
-#define PILOT_PWM_SPEED_MODE    LEDC_HIGH_SPEED_MODE
-#define PILOT_PWM_MAX_DUTY      1023
 #define ZERO_FIX                5000
 #define MEASURE_US              40000   //2 periods at 50Hz
 
@@ -31,15 +28,21 @@ static const char* TAG = "energy_meter";
 
 static nvs_handle nvs;
 
+static energy_meter_mode_t mode = ENERGY_METER_MODE_NONE;
+
+static uint16_t ac_voltage = 250;
+
+static uint16_t pulse_amount = 1000;
+
 static esp_adc_cal_characteristics_t sens_adc_char;
 
 static uint16_t power = 0;
 
 static bool has_session = false;
 
-static TickType_t session_start_tick = 0;
+static int64_t session_start_time = 0;
 
-static TickType_t session_end_tick = 0;
+static int64_t session_end_time = 0;
 
 static uint32_t session_consumption = 0;
 
@@ -52,12 +55,6 @@ static float cur_sens_zero[3] = { 1650, 1650, 1650 }; //Default zero, midpoint 3
 static float vlt_sens_zero[3] = { 1650, 1650, 1650 }; //Default zero, midpoint 3.3V
 
 static int64_t prev_time = 0;
-
-static uint16_t ac_voltage;
-
-static uint16_t ext_pulse_amount;
-
-static SemaphoreHandle_t ext_pulse_semhr;
 
 static uint32_t get_detla_ms()
 {
@@ -109,6 +106,7 @@ static void measure_single_phase_cur(void)
         cur_sum += filtered_cur * filtered_cur;
     }
 
+    vlt[0] = ac_voltage;
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
     ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
 
@@ -176,6 +174,7 @@ static void measure_three_phase_cur(void)
         cur_sum[2] += filtered_cur * filtered_cur;
     }
 
+    vlt[0] = vlt[1] = vlt[2] = ac_voltage;
     cur[0] = sqrt(cur_sum[0] / samples) * board_config.energy_meter_cur_scale;
     cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
     cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
@@ -234,35 +233,24 @@ static void measure_three_phase_cur_vlt(void)
     cur[0] = sqrt(cur_sum[0] / samples) * board_config.energy_meter_cur_scale;
     cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
     cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGD(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
+    ESP_LOGD(TAG, "Currents %fA %fA %fA (samples %d)", cur[0], cur[1], cur[2], samples);
 
     vlt[0] = sqrt(vlt_sum[0] / samples) * board_config.energy_meter_vlt_scale;
     vlt[1] = sqrt(vlt_sum[1] / samples) * board_config.energy_meter_vlt_scale;
     vlt[2] = sqrt(vlt_sum[2] / samples) * board_config.energy_meter_vlt_scale;
-    ESP_LOGD(TAG, "Voltages %f %f %f (samples %d)", vlt[0], vlt[1], vlt[2], samples);
+    ESP_LOGD(TAG, "Voltages %fV %fV %fV (samples %d)", vlt[0], vlt[1], vlt[2], samples);
 
     set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
 }
 
-static void IRAM_ATTR ext_pulse_isr_handler(void* arg)
-{
-    BaseType_t higher_task_woken = pdFALSE;
-
-    xSemaphoreGiveFromISR(ext_pulse_semhr, &higher_task_woken);
-
-    if (higher_task_woken) {
-        portYIELD_FROM_ISR();
-    }
-}
-
-static void measure_ext_pulse(void)
+static void measure_pulse(void)
 {
     uint8_t count = 0;
-    while (xSemaphoreTake(ext_pulse_semhr, 0)) {
+    while (xSemaphoreTake(aux_pulse_energy_meter_semhr, 0)) {
         count++;
     }
 
-    uint16_t delta_consumtion = count * ext_pulse_amount;
+    uint16_t delta_consumtion = count * pulse_amount;
     session_consumption += delta_consumtion;
 
     if (delta_consumtion > 0) {
@@ -270,16 +258,31 @@ static void measure_ext_pulse(void)
     }
 }
 
+static void* get_measure_fn(energy_meter_mode_t mode)
+{
+    switch (mode) {
+    case ENERGY_METER_MODE_CUR:
+        return board_config.energy_meter_three_phases ? measure_three_phase_cur : measure_single_phase_cur;
+    case ENERGY_METER_MODE_CUR_VLT:
+        return board_config.energy_meter_three_phases ? measure_three_phase_cur_vlt : measure_single_phase_cur_vlt;
+    case ENERGY_METER_MODE_PULSE:
+        return measure_pulse;
+    default:
+        return measure_none;
+    }
+}
+
 void energy_meter_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    ac_voltage = energy_meter_get_ac_voltage();
-    ext_pulse_amount = energy_meter_get_ext_pulse_amount();
+    uint8_t u8 = ENERGY_METER_MODE_NONE;
+    nvs_get_u8(nvs, NVS_MODE, &u8);
+    mode = u8;
+    measure_fn = get_measure_fn(mode);
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_NONE) {
-        measure_fn = &measure_none;
-    }
+    nvs_get_u16(nvs, NVS_AC_VOLTAGE, &ac_voltage);
+    nvs_get_u16(nvs, NVS_PULSE_AMOUNT, &pulse_amount);
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
@@ -289,11 +292,6 @@ void energy_meter_init(void)
         if (board_config.energy_meter_three_phases) {
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_cur_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
-            vlt[1] = ac_voltage;
-            vlt[2] = ac_voltage;
-            measure_fn = &measure_three_phase_cur;
-        } else {
-            measure_fn = &measure_single_phase_cur;
         }
     }
 
@@ -308,48 +306,59 @@ void energy_meter_init(void)
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_vlt_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_vlt_adc_channel, ADC_ATTEN_DB_11));
-            measure_fn = &measure_three_phase_cur_vlt;
-        } else {
-            measure_fn = &measure_single_phase_cur_vlt;
+        }
+    }
+}
+
+energy_meter_mode_t energy_meter_get_mode(void)
+{
+    return mode;
+}
+
+void energy_meter_set_mode(energy_meter_mode_t _mode)
+{
+    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_NONE) {
+        if (_mode == ENERGY_METER_MODE_CUR || _mode == ENERGY_METER_MODE_CUR_VLT) {
+            ESP_LOGE(TAG, "Try set unsupported mode");
+            return;
         }
     }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_EXT_PULSE) {
-        ext_pulse_semhr = xSemaphoreCreateCounting(10, 0);
-
-        gpio_pad_select_gpio(board_config.energy_meter_ext_pulse_gpio);
-        gpio_set_direction(board_config.energy_meter_ext_pulse_gpio, GPIO_MODE_INPUT);
-        gpio_set_pull_mode(board_config.energy_meter_ext_pulse_gpio, GPIO_PULLDOWN_ONLY);
-        gpio_set_intr_type(board_config.energy_meter_ext_pulse_gpio, GPIO_INTR_POSEDGE);
-        gpio_isr_handler_add(board_config.energy_meter_ext_pulse_gpio, ext_pulse_isr_handler, NULL);
-
-        measure_fn = &measure_ext_pulse;
+    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
+        if (_mode == ENERGY_METER_MODE_CUR_VLT) {
+            ESP_LOGE(TAG, "Try set unsupported mode");
+            return;
+        }
     }
-}
 
-void energy_meter_set_config(uint16_t _ext_pulse_amount, uint16_t _ac_voltage)
-{
-    nvs_set_u16(nvs, NVS_EXT_PULSE_AMOUNT, _ext_pulse_amount);
-    nvs_set_u16(nvs, NVS_AC_VOLTAGE, _ac_voltage);
-
+    mode = _mode;
+    measure_fn = get_measure_fn(mode);
+    nvs_set_u8(nvs, NVS_MODE, mode);
     nvs_commit(nvs);
-
-    ac_voltage = _ac_voltage;
-    ext_pulse_amount = _ext_pulse_amount;
 }
 
-uint16_t energy_meter_get_ext_pulse_amount(void)
+uint16_t energy_meter_get_pulse_amount(void)
 {
-    uint16_t value = 1000;
-    nvs_get_u16(nvs, NVS_EXT_PULSE_AMOUNT, &value);
-    return value;
+    return pulse_amount;
+}
+
+void energy_meter_set_pulse_amount(uint16_t _pulse_amount)
+{
+    pulse_amount = _pulse_amount;
+    nvs_set_u16(nvs, NVS_PULSE_AMOUNT, pulse_amount);
+    nvs_commit(nvs);
 }
 
 uint16_t energy_meter_get_ac_voltage(void)
 {
-    uint16_t value = 250;
-    nvs_get_u16(nvs, NVS_AC_VOLTAGE, &value);
-    return value;
+    return ac_voltage;
+}
+
+void energy_meter_set_ac_voltage(uint16_t _ac_voltage)
+{
+    ac_voltage = _ac_voltage;
+    nvs_set_u16(nvs, NVS_AC_VOLTAGE, ac_voltage);
+    nvs_commit(nvs);
 }
 
 void energy_meter_process(void)
@@ -358,14 +367,14 @@ void energy_meter_process(void)
 
     if (!has_session && evse_state_is_session(state)) {
         ESP_LOGI(TAG, "Start session");
-        session_start_tick = xTaskGetTickCount();
-        session_end_tick = 0;
+        session_start_time = esp_timer_get_time();
+        session_end_time = 0;
         session_consumption = 0;
-        prev_time = esp_timer_get_time();
+        prev_time = session_start_time;
         has_session = true;
     } else if (!evse_state_is_session(state) && has_session) {
         ESP_LOGI(TAG, "End session");
-        session_end_tick = xTaskGetTickCount();
+        session_end_time = esp_timer_get_time();
         has_session = false;
     }
 
@@ -385,15 +394,15 @@ uint16_t energy_meter_get_power(void)
 
 uint32_t energy_meter_get_session_elapsed(void)
 {
-    TickType_t elapsed = 0;
+    int64_t elapsed = 0;
 
     if (has_session) {
-        elapsed = xTaskGetTickCount() - session_start_tick;
+        elapsed = esp_timer_get_time() - session_start_time;
     } else {
-        elapsed = session_end_tick - session_start_tick;
+        elapsed = session_end_time - session_start_time;
     }
 
-    return pdTICKS_TO_MS(elapsed) / 1000;
+    return elapsed / 1000000;
 }
 
 uint32_t energy_meter_get_session_consumption(void)

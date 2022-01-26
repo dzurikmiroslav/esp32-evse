@@ -21,6 +21,7 @@
 #include "evse.h"
 #include "led.h"
 #include "pilot.h"
+#include "proximity.h"
 #include "ac_relay.h"
 #include "cable_lock.h"
 #include "energy_meter.h"
@@ -136,10 +137,10 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 static void button_init(void)
 {
     gpio_pad_select_gpio(board_config.button_wifi_gpio);
-    gpio_set_direction(board_config.button_wifi_gpio, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(board_config.button_wifi_gpio, GPIO_PULLUP_ONLY);
-    gpio_set_intr_type(board_config.button_wifi_gpio, GPIO_INTR_ANYEDGE);
-    gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL);
+    ESP_ERROR_CHECK(gpio_set_direction(board_config.button_wifi_gpio, GPIO_MODE_INPUT));
+    ESP_ERROR_CHECK(gpio_set_pull_mode(board_config.button_wifi_gpio, GPIO_PULLUP_ONLY));
+    ESP_ERROR_CHECK(gpio_set_intr_type(board_config.button_wifi_gpio, GPIO_INTR_ANYEDGE));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
 }
 
 static esp_err_t init_spiffs()
@@ -239,8 +240,6 @@ void app_main()
 
     ESP_ERROR_CHECK(init_spiffs());
 
-    board_config_load();
-
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -248,7 +247,10 @@ void app_main()
 
     ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_12));
 
+    board_config_load();
+
     pilot_init();
+    proximity_init();
     ac_relay_init();
     cable_lock_init();
     energy_meter_init();
@@ -269,6 +271,7 @@ void app_main()
         energy_meter_process();
         mqtt_process();
         update_leds();
+        aux_process();
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }

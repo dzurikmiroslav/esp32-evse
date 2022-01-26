@@ -4,9 +4,12 @@
 
 #include "aux.h"
 #include "board_config.h"
+#include "evse.h"
 
 #define NVS_NAMESPACE           "aux"
 #define NVS_TYPE                "type_%x"
+
+#define BUTTON_DEBOUNCE_TIME    200
 
 static const char* TAG = "aux";
 
@@ -19,8 +22,39 @@ SemaphoreHandle_t aux_pulse_energy_meter_semhr;
 static struct aux_s
 {
     gpio_num_t gpio;
-    aux_mode_t mode;
+    aux_mode_t mode : 8;
+    TickType_t tick;
+    bool pressed : 1;
 } auxs[3];
+
+static void IRAM_ATTR aux_isr_handler(void* arg)
+{
+    struct aux_s* aux = (struct aux_s*)arg;
+
+    BaseType_t higher_task_woken = pdFALSE;
+    TickType_t tick;
+
+    switch (aux->mode) {
+    case AUX_MODE_PAUSE_BUTTON:
+    case AUX_MODE_AUTHORIZE_BUTTON:
+        tick = xTaskGetTickCountFromISR();
+        if (tick > aux->tick + pdMS_TO_TICKS(BUTTON_DEBOUNCE_TIME)) {
+            aux->tick = tick;
+            aux->pressed = true;
+        }
+        break;
+    case AUX_MODE_PULSE_ENERGY_METER:
+        xSemaphoreGiveFromISR(aux_pulse_energy_meter_semhr, &higher_task_woken);
+        break;
+    default:
+        break;
+    }
+
+    if (higher_task_woken) {
+        portYIELD_FROM_ISR();
+    }
+}
+
 
 void aux_init(void)
 {
@@ -30,13 +64,15 @@ void aux_init(void)
     for (int i = 0; i < AUX_ID_MAX; i++) {
         auxs[i].gpio = GPIO_NUM_NC;
         auxs[i].mode = AUX_MODE_NONE;
+        auxs[i].tick = 0;
+        auxs[i].pressed = false;
     }
 
-    gpio_config_t io_conf =  {
-        .mode = GPIO_MODE_OUTPUT,
-        .intr_type = GPIO_INTR_DISABLE,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
+    gpio_config_t io_conf = {
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE,
         .pin_bit_mask = 0
     };
 
@@ -68,6 +104,8 @@ void aux_init(void)
             sprintf(key, NVS_TYPE, i);
             nvs_get_u8(nvs, key, &u8);
             auxs[i].mode = u8;
+
+            ESP_ERROR_CHECK(gpio_isr_handler_add(auxs[i].gpio, aux_isr_handler, &auxs[i]));
         }
     }
 }
@@ -75,6 +113,47 @@ void aux_init(void)
 void aux_process(void)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
+
+    for (int i = 0; i < AUX_ID_MAX; i++) {
+        if (auxs[i].gpio != GPIO_NUM_NC) {
+            switch (auxs[i].mode) {
+            case AUX_MODE_PAUSE_BUTTON:
+                if (auxs[i].pressed) {
+                    auxs[i].pressed = false;
+                    if (evse_is_paused()) {
+                        evse_unpause();
+                    } else {
+                        evse_pause();
+                    }
+                }
+                break;
+            case AUX_MODE_AUTHORIZE_BUTTON:
+                if (auxs[i].pressed) {
+                    auxs[i].pressed = false;
+                    evse_authorize();
+                }
+                break;
+            case AUX_MODE_PAUSE_SWITCH:
+                if (!gpio_get_level(auxs[i].gpio) && !evse_is_paused()) {
+                    evse_pause();
+                }
+                if (gpio_get_level(auxs[i].gpio) && evse_is_paused()) {
+                    evse_unpause();
+                }
+                break;
+            case AUX_MODE_UNPAUSE_SWITCH:
+                if (gpio_get_level(auxs[i].gpio) && !evse_is_paused()) {
+                    evse_pause();
+                }
+                if (!gpio_get_level(auxs[i].gpio) && evse_is_paused()) {
+                    evse_unpause();
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
 
     xSemaphoreGive(mutex);
 }

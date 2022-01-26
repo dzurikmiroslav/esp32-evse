@@ -3,10 +3,17 @@
 
 #include <stdbool.h>
 
-//TODO relay enum
-
+/**
+ * @brief Initialize ac relay
+ * 
+ */
 void ac_relay_init(void);
 
+/**
+ * @brief Set state of ac relay
+ * 
+ * @param state 
+ */
 void ac_relay_set_state(bool state);
 
 #endif /* AC_RELAY_H_ */

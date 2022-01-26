@@ -275,16 +275,12 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         if (strcmp(req->uri, "/api/v1/config") == 0) {
             root = cJSON_CreateObject();
             cJSON_AddItemToObject(root, "evse", json_get_evse_config());
-            cJSON_AddItemToObject(root, "energyMeter", json_get_energy_meter_config());
             cJSON_AddItemToObject(root, "wifi", json_get_wifi_config());
             cJSON_AddItemToObject(root, "mqtt", json_get_mqtt_config());
             cJSON_AddItemToObject(root, "tcpLogger", json_get_tcp_logger_config());
         }
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             root = json_get_evse_config();
-        }
-        if (strcmp(req->uri, "/api/v1/config/energyMeter") == 0) {
-            root = json_get_energy_meter_config();
         }
         if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {
             root = json_get_wifi_config();
@@ -333,10 +329,6 @@ static esp_err_t json_post_handler(httpd_req_t* req)
 
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             json_set_evse_config(root);
-            res_msg = "Config updated";
-        }
-        if (strcmp(req->uri, "/api/v1/config/energyMeter") == 0) {
-            json_set_energy_meter_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {

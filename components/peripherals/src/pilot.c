@@ -1,5 +1,3 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/ledc.h"
 #include "driver/adc.h"
@@ -16,13 +14,11 @@
 
 static const char* TAG = "pilot";
 
-static esp_adc_cal_characteristics_t pilot_sens_adc_char;
+static esp_adc_cal_characteristics_t adc_char;
 
 pilot_voltage_t up_voltage;
 
 bool down_voltage_n12;
-
-bool pwm = false;
 
 void pilot_init(void)
 {
@@ -48,43 +44,35 @@ void pilot_init(void)
 
     ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.pilot_sens_adc_channel, ADC_ATTEN_DB_11));
 
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &pilot_sens_adc_char);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_char);
 }
 
-void pilot_pwm_set_level(bool level)
+void pilot_set_level(bool level)
 {
     ESP_LOGI(TAG, "Set level %d", level);
-
-    pwm = false;
 
     ledc_stop(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, level);
 }
 
-void pilot_pwm_set_amps(uint8_t amps)
+void pilot_set_amps(uint16_t amps)
 {
-    pwm = true;
-
     uint32_t duty = 0;
-    if ((amps >= 6) && (amps <= 51)) {
+
+    if ((amps >= 60) && (amps <= 510)) {
         // amps = (duty cycle %) X 0.6
-        duty = amps * (PILOT_PWM_MAX_DUTY / 60);
-    } else if ((amps > 51) && (amps <= 80)) {
+        duty = (amps / 10) * (PILOT_PWM_MAX_DUTY / 60);
+    } else if ((amps > 510) && (amps <= 800)) {
         // amps = (duty cycle % - 64) X 2.5
-        duty = (amps * (PILOT_PWM_MAX_DUTY / 250)) + (64 * (PILOT_PWM_MAX_DUTY / 100));
+        duty = ((amps / 10) * (PILOT_PWM_MAX_DUTY / 250)) + (64 * (PILOT_PWM_MAX_DUTY / 100));
     } else {
-        ESP_LOGE(TAG, "Try set invalid ampere value");
+        ESP_LOGE(TAG, "Try set invalid ampere value %d A*10", amps);
         return;
     }
 
-    ESP_LOGI(TAG, "Set amp %d duty %d", amps, duty);
+    ESP_LOGI(TAG, "Set amp %dA*10 duty %d/%d", amps, duty, PILOT_PWM_MAX_DUTY);
 
     ledc_set_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, duty);
     ledc_update_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL);
-}
-
-bool pilot_is_pwm(void)
-{
-    return pwm;
 }
 
 void pilot_measure(void)
@@ -94,7 +82,7 @@ void pilot_measure(void)
 
     for (int i = 0; i < 100; i++) {
         int adc_reading = adc1_get_raw(board_config.pilot_sens_adc_channel);
-        uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &pilot_sens_adc_char);
+        uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &adc_char);
         if (voltage > high) {
             high = voltage;
         } else if (voltage < low) {
@@ -123,12 +111,12 @@ void pilot_measure(void)
     ESP_LOGD(TAG, "Down volate belov 12V %d", down_voltage_n12);
 }
 
-pilot_voltage_t pilot_get_voltage(void)
+pilot_voltage_t pilot_get_up_voltage(void)
 {
     return up_voltage;
 }
 
-bool pilot_test_diode(void)
+bool pilot_is_down_voltage_n12(void)
 {
-    return !pwm || down_voltage_n12;
+    return down_voltage_n12;
 }

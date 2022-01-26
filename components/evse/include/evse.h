@@ -7,16 +7,24 @@
 #define evse_state_is_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
 #define evse_state_is_charging(state)       (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
 
+/**
+ * @brief States of evse controller
+ *
+ */
 typedef enum
 {
     EVSE_STATE_A,
     EVSE_STATE_B,
     EVSE_STATE_C,
     EVSE_STATE_D,
-    EVSE_STATE_ERROR,  
-    EVSE_STATE_DISABLED   
+    EVSE_STATE_ERROR,
+    EVSE_STATE_DISABLED
 } evse_state_t;
 
+/**
+ * @brief Error codes when state is EVSE_STATE_ERROR
+ *
+ */
 typedef enum
 {
     EVSE_ERR_NONE,
@@ -24,68 +32,119 @@ typedef enum
     EVSE_ERR_DIODE_SHORT
 } evse_err_t;
 
+/**
+ * @brief Initialize evse
+ *
+ */
 void evse_init(void);
 
 /**
- * Enable evse controller
+ * @brief Enable evse controller
+ *
  */
 void evse_enable(void);
 
 /**
- * Disable evse controller, for system update, restart, etc..
+ * @brief Disable evse controller, for system update, restart, etc..
+ *
  */
 void evse_disable(void);
 
+/**
+ * @brief Main loop of evse
+ *
+ */
 void evse_process(void);
 
+/**
+ * @brief Return current evse state
+ *
+ * @return evse_state_t
+ */
 evse_state_t evse_get_state(void);
 
-uint16_t evse_get_error(void);
-
 /**
- * Get charging current
+ * @brief Return detailed error code when state is EVSE_STATE_ERROR
+ *
+ * @return evse_err_t
  */
-float evse_get_chaging_current(void);
+evse_err_t evse_get_error(void);
 
 /**
- * Set charging current
+ * @brief Get charging current
+ *
+ * @return current in A*10
  */
-void evse_set_chaging_current(float charging_current);
+uint16_t evse_get_chaging_current(void);
 
 /**
- * Get default charging current, stored in NVS
+ * @brief Set charging current
+ *
+ * @param charging_current current in A*10
  */
-float evse_get_default_chaging_current(void);
+void evse_set_chaging_current(uint16_t charging_current);
 
 /**
- * Set default charging current, stored in NVS
+ * @brief Get default charging current, stored in NVS
+ *
+ * @return current in A*10
  */
-void evse_set_default_chaging_current(float charging_current);
+uint16_t evse_get_default_chaging_current(void);
 
 /**
- * Is required authorization to start charging
+ * @brief Set default charging current, stored in NVS
+ *
+ * @param charging_current current in A*10
+ */
+void evse_set_default_chaging_current(uint16_t charging_current);
+
+/**
+ * @brief Is required authorization to start charging, stored in NVS
+ *
+ * @return true
+ * @return false
  */
 bool evse_is_require_auth(void);
 
 /**
- * Set authorization required to start charging
+ * @brief Set authorization required to start charging, stored in NVS
+ *
+ * @param require_auth
  */
 void evse_set_require_auth(bool require_auth);
 
 /**
- * Authorize to start charging when authorization is required
+ * @brief Authorize to start charging when authorization is required
+ *
  */
 void evse_authorize(void);
 
 /**
- * Pending authorize to start charging
+ * @brief Check when is pending authorize to start charging
+ *
+ * @return true
+ * @return false
  */
 bool evse_is_pending_auth(void);
 
+/**
+ * @brief Return evse is paused
+ *
+ * @return true
+ * @return false
+ */
 bool evse_is_paused(void);
 
+/**
+ * @brief Pause evse
+ *
+ */
 void evse_pause(void);
 
+/**
+ * @brief Unpause evse
+ *
+ */
 void evse_unpause(void);
 
 #endif /* EVSE_H_ */
