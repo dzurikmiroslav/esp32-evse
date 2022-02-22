@@ -27,6 +27,17 @@ board_config_energy_meter_t atoem(const char* value)
     return BOARD_CONFIG_ENERGY_METER_NONE;
 }
 
+board_config_serial_t atoser(const char* value)
+{
+    if (!strcmp(value, "uart")) {
+        return BOARD_CONFIG_SERIAL_UART;
+    }
+    if (!strcmp(value, "rs485")) {
+        return BOARD_CONFIG_SERIAL_RS485;
+    }
+    return BOARD_CONFIG_SERIAL_NONE;
+}
+
 #define SET_CONFIG_VALUE(name, prop, convert_fn)    \
     if (!strcmp(key, name)) {                       \
         board_config.prop = convert_fn(value);      \
@@ -51,9 +62,9 @@ void board_config_load()
             buf_start++;
         }
         int buf_end = buf_length;
-        do {
+        while (buf_end > 0 && !isgraph(buffer[buf_end - 1])) {
             buf_end--;
-        } while (buf_end > 0 && !isspace(buffer[buf_end]));
+        }
 
         buffer[buf_end] = '\0';
         char* line = &buffer[buf_start];
@@ -78,6 +89,7 @@ void board_config_load()
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_6", pilot_sens_down_treshold_6, atoi);
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_3", pilot_sens_down_treshold_3, atoi);
                     SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_N12", pilot_sens_down_treshold_n12, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_SENS", proximity_sens, atob);
                     SET_CONFIG_VALUE("PROXIMITY_SENS_ADC_CHANNEL", proximity_sens_adc_channel, atoi);
                     SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_13", proximity_sens_down_treshold_13, atoi);
                     SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_20", proximity_sens_down_treshold_20, atoi);
@@ -105,6 +117,20 @@ void board_config_load()
                     SET_CONFIG_VALUE("AUX_2_GPIO", aux_2_gpio, atoi);
                     SET_CONFIG_VALUE("AUX_3", aux_3, atob);
                     SET_CONFIG_VALUE("AUX_3_GPIO", aux_3_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_1", serial_1, atoser);
+                    SET_CONFIG_VALUE("SERIAL_1_RXD_GPIO", serial_1_rxd_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_1_TXD_GPIO", serial_1_txd_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_1_RTS_GPIO", serial_1_rts_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_2", serial_2, atoser);
+                    SET_CONFIG_VALUE("SERIAL_2_RXD_GPIO", serial_2_rxd_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_2_TXD_GPIO", serial_2_txd_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_2_RTS_GPIO", serial_2_rts_gpio, atoi);
+#if SOC_UART_NUM > 2
+                    SET_CONFIG_VALUE("SERIAL_3", serial_3, atoser);
+                    SET_CONFIG_VALUE("SERIAL_3_RXD_GPIO", serial_3_rxd_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_3_TXD_GPIO", serial_3_txd_gpio, atoi);
+                    SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);
+#endif
 
                     ESP_LOGE(TAG, "Unknown config value %s", value);
                 }

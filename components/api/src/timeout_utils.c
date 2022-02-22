@@ -40,8 +40,18 @@ static void wifi_set_config_func(void* arg)
     vTaskDelete(NULL);
 }
 
-void timeout_set_wifi_config(bool enabled, const char* ssid, const char* password)
+esp_err_t timeout_set_wifi_config(bool enabled, const char* ssid, const char* password)
 {
+    if (enabled) {
+        if (ssid == NULL || strlen(ssid) == 0) {
+            char old_ssid[32];
+            wifi_get_ssid(old_ssid);
+            if (strlen(old_ssid) == 0) {
+                return ESP_ERR_INVALID_ARG;
+            }
+        }
+    }
+
     wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)malloc(sizeof(wifi_set_config_arg_t));
     config->enabled = enabled;
     if (ssid == NULL || ssid[0] == '\0') {
@@ -58,4 +68,6 @@ void timeout_set_wifi_config(bool enabled, const char* ssid, const char* passwor
     }
 
     xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*)config, 10, NULL);
+
+    return ESP_OK;
 }

@@ -6,36 +6,41 @@
 #include "pilot.h"
 #include "board_config.h"
 
-#define PILOT_PWM_TIMER LEDC_TIMER_0
-#define PILOT_PWM_CHANNEL LEDC_CHANNEL_0
-#define PILOT_PWM_SPEED_MODE LEDC_HIGH_SPEED_MODE
-#define PILOT_PWM_MAX_DUTY 1023
-#define PILOT_SENS_SAMPLES 64
+#define PILOT_PWM_TIMER         LEDC_TIMER_0
+#define PILOT_PWM_CHANNEL       LEDC_CHANNEL_0
+#define PILOT_PWM_SPEED_MODE    LEDC_LOW_SPEED_MODE
+#define PILOT_PWM_DUTY_RES      LEDC_TIMER_10_BIT
+#define PILOT_PWM_MAX_DUTY      1023
+
+#define PILOT_SENS_SAMPLES      64
 
 static const char* TAG = "pilot";
 
 static esp_adc_cal_characteristics_t adc_char;
 
-pilot_voltage_t up_voltage;
+static pilot_voltage_t up_voltage;
 
-bool down_voltage_n12;
+static bool down_voltage_n12;
 
 void pilot_init(void)
 {
     ledc_timer_config_t ledc_timer = {
-        .duty_resolution = LEDC_TIMER_10_BIT, //1023
-        .freq_hz = 1000,
         .speed_mode = PILOT_PWM_SPEED_MODE,
-        .timer_num = PILOT_PWM_TIMER
+        .timer_num = PILOT_PWM_TIMER,
+        .duty_resolution = PILOT_PWM_DUTY_RES,
+        .freq_hz = 1000,
+        .clk_cfg = LEDC_AUTO_CLK
     };
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
     ledc_channel_config_t ledc_channel = {
-        .gpio_num = board_config.pilot_pwm_gpio,
-        .channel = PILOT_PWM_CHANNEL,
         .speed_mode = PILOT_PWM_SPEED_MODE,
+        .channel = PILOT_PWM_CHANNEL,
+        .timer_sel = PILOT_PWM_TIMER,
         .intr_type = LEDC_INTR_DISABLE,
-        .timer_sel = PILOT_PWM_TIMER
+        .gpio_num = board_config.pilot_pwm_gpio,
+        .duty = 0,
+        .hpoint = 0
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
     ESP_ERROR_CHECK(ledc_stop(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, 1));
@@ -44,7 +49,7 @@ void pilot_init(void)
 
     ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.pilot_sens_adc_channel, ADC_ATTEN_DB_11));
 
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_char);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &adc_char);
 }
 
 void pilot_set_level(bool level)

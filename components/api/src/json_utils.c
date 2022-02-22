@@ -16,51 +16,15 @@
 #include "energy_meter.h"
 #include "cable_lock.h"
 #include "aux.h"
+#include "serial.h"
+#include "proximity.h"
 
-
-const char* sw_mode_to_str(aux_mode_t mode) {
-    switch (mode)
-    {
-    case AUX_MODE_PAUSE_BUTTON:
-        return "pause_button";
-    case AUX_MODE_PAUSE_SWITCH:
-        return "pause_switch";
-    case AUX_MODE_UNPAUSE_SWITCH:
-        return "unpause_switch";
-    case AUX_MODE_AUTHORIZE_BUTTON:
-        return "authorize_button";
-    case AUX_MODE_PULSE_ENERGY_METER:
-        return "pulse_energy_meter";
-    default:
-        return "none";
-    }
-}
-
-const char* em_mode_to_str(energy_meter_mode_t mode) {
-    switch (mode)
-    {
-    case ENERGY_METER_MODE_CUR:
-        return "cur";
-    case ENERGY_METER_MODE_CUR_VLT:
-        return "cur_vlt";
-    case ENERGY_METER_MODE_PULSE:
-        return "pulse";
-    default:
-        return "none";
-    }
-}
-
-const char* cl_type_to_str(cable_lock_type_t type) {
-    switch (type)
-    {
-    case CABLE_LOCK_TYPE_MOTOR:
-        return "motor";
-    case CABLE_LOCK_TYPE_SOLENOID:
-        return "solenoid";
-    default:
-        return "none";
-    }
-}
+#define RETURN_ON_ERROR(x) do {                 \
+        esp_err_t err_rc_ = (x);                \
+        if (unlikely(err_rc_ != ESP_OK)) {      \
+            return err_rc_;                     \
+        }                                       \
+    } while(0)
 
 cJSON* json_get_evse_config(void)
 {
@@ -69,99 +33,61 @@ cJSON* json_get_evse_config(void)
     cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current() / 10.0);
     cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_chaging_current() / 10.0);
     cJSON_AddBoolToObject(root, "requireAuth", evse_is_require_auth());
+    cJSON_AddBoolToObject(root, "proximityCheck", proximity_is_enabled());
 
-    cJSON_AddStringToObject(root, "cableLock", cl_type_to_str(cable_lock_get_type()));
+    cJSON_AddStringToObject(root, "cableLock", cable_lock_type_to_str(cable_lock_get_type()));
 
-    cJSON_AddStringToObject(root, "energyMeter", em_mode_to_str(energy_meter_get_mode()));
+    cJSON_AddStringToObject(root, "energyMeter", energy_meter_mode_to_str(energy_meter_get_mode()));
     cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
     cJSON_AddNumberToObject(root, "pulseAmount", energy_meter_get_pulse_amount());
 
-    cJSON_AddStringToObject(root, "aux1", sw_mode_to_str(aux_get_mode(AUX_ID_1)));
-    cJSON_AddStringToObject(root, "aux2", sw_mode_to_str(aux_get_mode(AUX_ID_2)));
-    cJSON_AddStringToObject(root, "aux3", sw_mode_to_str(aux_get_mode(AUX_ID_3)));
+    cJSON_AddStringToObject(root, "aux1", aux_mode_to_str(aux_get_mode(AUX_ID_1)));
+    cJSON_AddStringToObject(root, "aux2", aux_mode_to_str(aux_get_mode(AUX_ID_2)));
+    cJSON_AddStringToObject(root, "aux3", aux_mode_to_str(aux_get_mode(AUX_ID_3)));
 
     return root;
 }
 
-aux_mode_t str_to_sw_mode(const char* string) {
-    if (!strcmp(string, "pause_button")) {
-        return AUX_MODE_PAUSE_BUTTON;
-    }
-    if (!strcmp(string, "pause_switch")) {
-        return AUX_MODE_PAUSE_SWITCH;
-    }
-    if (!strcmp(string, "unpause_switch")) {
-        return AUX_MODE_UNPAUSE_SWITCH;
-    }
-    if (!strcmp(string, "authorize_button")) {
-        return AUX_MODE_AUTHORIZE_BUTTON;
-    }
-    if (!strcmp(string, "pulse_energy_meter")) {
-        return AUX_MODE_PULSE_ENERGY_METER;
-    }
-    return AUX_MODE_NONE;
-}
-
-energy_meter_mode_t str_to_em_mode(const char* string) {
-    if (!strcmp(string, "cur")) {
-        return ENERGY_METER_MODE_CUR;
-    }
-    if (!strcmp(string, "cur_vlt")) {
-        return ENERGY_METER_MODE_CUR_VLT;
-    }
-    if (!strcmp(string, "pulse")) {
-        return ENERGY_METER_MODE_PULSE;
-    }
-    return ENERGY_METER_MODE_NONE;
-}
-
-cable_lock_type_t str_to_cl_type(const char* string) {
-    if (!strcmp(string, "motor")) {
-        return CABLE_LOCK_TYPE_MOTOR;
-    }
-    if (!strcmp(string, "solenoid")) {
-        return CABLE_LOCK_TYPE_SOLENOID;
-    }
-    return CABLE_LOCK_TYPE_NONE;
-}
-
-void json_set_evse_config(cJSON* root)
+esp_err_t json_set_evse_config(cJSON* root)
 {
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
-        evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10);
+        RETURN_ON_ERROR(evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10));
     }
-
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultChargingCurrent"))) {
-        evse_set_default_chaging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble * 10);
+        RETURN_ON_ERROR(evse_set_default_chaging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble * 10));
     }
-
     if (cJSON_IsBool(cJSON_GetObjectItem(root, "requireAuth"))) {
         evse_set_require_auth(cJSON_IsTrue(cJSON_GetObjectItem(root, "requireAuth")));
     }
+    if (cJSON_IsBool(cJSON_GetObjectItem(root, "proximityCheck"))) {
+        RETURN_ON_ERROR(proximity_set_enabled(cJSON_IsTrue(cJSON_GetObjectItem(root, "proximityCheck"))));
+    }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "cableLock"))) {
-        cable_lock_set_type(str_to_cl_type(cJSON_GetObjectItem(root, "cableLock")->valuestring));
+        RETURN_ON_ERROR(cable_lock_set_type(cable_lock_str_to_type(cJSON_GetObjectItem(root, "cableLock")->valuestring)));
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "energyMeter"))) {
-        energy_meter_set_mode(str_to_em_mode(cJSON_GetObjectItem(root, "energyMeter")->valuestring));
+        RETURN_ON_ERROR(energy_meter_set_mode(energy_meter_str_to_mode(cJSON_GetObjectItem(root, "energyMeter")->valuestring)));
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "acVoltage"))) {
-        energy_meter_set_ac_voltage(cJSON_GetObjectItem(root, "acVoltage")->valuedouble);
+        RETURN_ON_ERROR(energy_meter_set_ac_voltage(cJSON_GetObjectItem(root, "acVoltage")->valuedouble));
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "pulseAmount"))) {
-        energy_meter_set_pulse_amount(cJSON_GetObjectItem(root, "pulseAmount")->valuedouble);
+        RETURN_ON_ERROR(energy_meter_set_pulse_amount(cJSON_GetObjectItem(root, "pulseAmount")->valuedouble));
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "aux1"))) {
-        aux_set_mode(AUX_ID_1, str_to_sw_mode(cJSON_GetObjectItem(root, "aux1")->valuestring));
+        RETURN_ON_ERROR(aux_set_mode(AUX_ID_1, aux_str_to_mode(cJSON_GetObjectItem(root, "aux1")->valuestring)));
     }
     if (cJSON_IsString(cJSON_GetObjectItem(root, "aux2"))) {
-        aux_set_mode(AUX_ID_2, str_to_sw_mode(cJSON_GetObjectItem(root, "aux2")->valuestring));
+        RETURN_ON_ERROR(aux_set_mode(AUX_ID_2, aux_str_to_mode(cJSON_GetObjectItem(root, "aux2")->valuestring)));
     }
     if (cJSON_IsString(cJSON_GetObjectItem(root, "aux3"))) {
-        aux_set_mode(AUX_ID_3, str_to_sw_mode(cJSON_GetObjectItem(root, "aux3")->valuestring));
+        RETURN_ON_ERROR(aux_set_mode(AUX_ID_3, aux_str_to_mode(cJSON_GetObjectItem(root, "aux3")->valuestring)));
     }
+
+    return ESP_OK;
 }
 
 cJSON* json_get_wifi_config(void)
@@ -177,13 +103,13 @@ cJSON* json_get_wifi_config(void)
     return root;
 }
 
-void json_set_wifi_config(cJSON* root)
+esp_err_t json_set_wifi_config(cJSON* root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
     char* ssid = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ssid"));
     char* password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
 
-    timeout_set_wifi_config(enabled, ssid, password);
+    return timeout_set_wifi_config(enabled, ssid, password);
 }
 
 cJSON* json_get_mqtt_config(void)
@@ -206,18 +132,79 @@ cJSON* json_get_mqtt_config(void)
     return root;
 }
 
-void json_set_mqtt_config(cJSON* root)
+esp_err_t json_set_mqtt_config(cJSON* root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
     char* server = cJSON_GetStringValue(cJSON_GetObjectItem(root, "server"));
     char* base_topic = cJSON_GetStringValue(cJSON_GetObjectItem(root, "baseTopic"));
     char* user = cJSON_GetStringValue(cJSON_GetObjectItem(root, "user"));
     char* password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
-    uint16_t periodicity = cJSON_GetObjectItem(root, "periodicity")->valuedouble;
+    uint16_t periodicity = cJSON_GetNumberValue(cJSON_GetObjectItem(root, "periodicity"));
 
-    mqtt_set_config(enabled, server, base_topic, user, password, periodicity);
+    return mqtt_set_config(enabled, server, base_topic, user, password, periodicity);
 }
 
+
+cJSON* json_get_serial_config(void)
+{
+    cJSON* root = cJSON_CreateObject();
+
+    char mode_name[16];
+    char baud_rate_name[16];
+    char data_bits_name[16];
+    char stop_bits_name[16];
+    char parity_name[16];
+
+    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
+        if (serial_is_available(id)) {
+            sprintf(mode_name, "serial%dMode", id + 1);
+            sprintf(baud_rate_name, "serial%dBaudRate", id + 1);
+            sprintf(data_bits_name, "serial%dDataBits", id + 1);
+            sprintf(stop_bits_name, "serial%dStopBits", id + 1);
+            sprintf(parity_name, "serial%dParity", id + 1);
+
+            cJSON_AddStringToObject(root, mode_name, serial_mode_to_str(serial_get_mode(id)));
+            cJSON_AddNumberToObject(root, baud_rate_name, serial_get_baud_rate(id));
+            cJSON_AddStringToObject(root, data_bits_name, serial_data_bits_to_str(serial_get_data_bits(id)));
+            cJSON_AddStringToObject(root, stop_bits_name, serial_stop_bits_to_str(serial_get_stop_bits(id)));
+            cJSON_AddStringToObject(root, parity_name, serial_parity_to_str(serial_get_parity(id)));
+        }
+    }
+
+    return root;
+}
+
+esp_err_t json_set_serial_config(cJSON* root)
+{
+    char mode_name[16];
+    char baud_rate_name[16];
+    char data_bits_name[16];
+    char stop_bits_name[16];
+    char parity_name[16];
+
+    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
+        if (serial_is_available(id)) {
+            sprintf(mode_name, "serial%dMode", id + 1);
+            sprintf(baud_rate_name, "serial%dBaudRate", id + 1);
+            sprintf(data_bits_name, "serial%dDataBits", id + 1);
+            sprintf(stop_bits_name, "serial%dStopBits", id + 1);
+            sprintf(parity_name, "serial%dParity", id + 1);
+
+            if (cJSON_IsString(cJSON_GetObjectItem(root, mode_name))) {
+                serial_mode_t mode = serial_str_to_mode(cJSON_GetObjectItem(root, mode_name)->valuestring);
+                int baud_rate = cJSON_GetNumberValue(cJSON_GetObjectItem(root, baud_rate_name));
+                uart_word_length_t data_bits = serial_str_to_data_bits(cJSON_GetStringValue(cJSON_GetObjectItem(root, data_bits_name)));
+                uart_word_length_t stop_bits = serial_str_to_stop_bits(cJSON_GetStringValue(cJSON_GetObjectItem(root, stop_bits_name)));
+                uart_parity_t parity = serial_str_to_parity(cJSON_GetStringValue(cJSON_GetObjectItem(root, parity_name)));
+
+                RETURN_ON_ERROR(serial_set_config(id, baud_rate, data_bits, stop_bits, parity));
+                RETURN_ON_ERROR(serial_set_mode(id, mode));
+            }
+        }
+    }
+
+    return ESP_OK;
+}
 
 cJSON* json_get_tcp_logger_config(void)
 {
@@ -229,12 +216,12 @@ cJSON* json_get_tcp_logger_config(void)
     return root;
 }
 
-void json_set_tcp_logger_config(cJSON* root)
+esp_err_t json_set_tcp_logger_config(cJSON* root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
     uint16_t port = cJSON_GetObjectItem(root, "port")->valuedouble;
 
-    tcp_logger_set_config(enabled, port);
+    return tcp_logger_set_config(enabled, port);
 }
 
 cJSON* json_get_state(void)
@@ -287,6 +274,19 @@ cJSON* json_get_info(void)
     return root;
 }
 
+static const char* serial_to_str(board_config_serial_t serial)
+{
+    switch (serial)
+    {
+    case BOARD_CONFIG_SERIAL_UART:
+        return "uart";
+    case BOARD_CONFIG_SERIAL_RS485:
+        return "rs485";
+    default:
+        return "none";
+    }
+}
+
 cJSON* json_get_board_config(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -309,5 +309,12 @@ cJSON* json_get_board_config(void)
     cJSON_AddBoolToObject(root, "aux2", board_config.aux_2);
     cJSON_AddBoolToObject(root, "aux3", board_config.aux_3);
 
+    cJSON_AddStringToObject(root, "serial1", serial_to_str(board_config.serial_1));
+    cJSON_AddStringToObject(root, "serial2", serial_to_str(board_config.serial_2));
+#if SOC_UART_NUM > 2
+    cJSON_AddStringToObject(root, "serial3", serial_to_str(board_config.serial_3));
+#else
+    cJSON_AddStringToObject(root, "serial3", serial_to_str(BOARD_CONFIG_SERIAL_NONE));
+#endif
     return root;
 }

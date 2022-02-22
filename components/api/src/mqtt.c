@@ -180,8 +180,48 @@ void mqtt_init(void)
     try_start();
 }
 
-void mqtt_set_config(bool enabled, const char* server, const char* base_topic, const char* user, const char* password, uint16_t periodicity)
+esp_err_t mqtt_set_config(bool enabled, const char* server, const char* base_topic, const char* user, const char* password, uint16_t periodicity)
 {
+    if (enabled) {
+        if (server == NULL || strlen(server) == 0) {
+            size_t len = 0;
+            nvs_get_str(nvs, NVS_SERVER, NULL, &len);
+            if (len <= 1) {
+                ESP_LOGE(TAG, "Required server");
+                return ESP_ERR_INVALID_ARG;
+            }
+        }
+
+        if (base_topic == NULL || strlen(base_topic) == 0) {
+            size_t len = 0;
+            nvs_get_str(nvs, NVS_BASE_TOPIC, NULL, &len);
+            if (len <= 1) {
+                ESP_LOGE(TAG, "Required base topic");
+                return ESP_ERR_INVALID_ARG;
+            }
+        }
+    }
+
+    if (server != NULL && strlen(server) > 63) {
+        ESP_LOGE(TAG, "Server out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (base_topic != NULL && strlen(base_topic) > 31) {
+        ESP_LOGE(TAG, "Base topic out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (user != NULL && strlen(user) > 31) {
+        ESP_LOGE(TAG, "User out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (password != NULL && strlen(password) > 63) {
+        ESP_LOGE(TAG, "Password out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     nvs_set_u8(nvs, NVS_ENABLED, enabled);
@@ -197,7 +237,9 @@ void mqtt_set_config(bool enabled, const char* server, const char* base_topic, c
     if (password != NULL) {
         nvs_set_str(nvs, NVS_PASSWORD, password);
     }
-    nvs_set_u16(nvs, NVS_PERIODICITY, periodicity);
+    if (periodicity > 0) {
+        nvs_set_u16(nvs, NVS_PERIODICITY, periodicity);
+    }
 
     nvs_commit(nvs);
 
@@ -207,6 +249,8 @@ void mqtt_set_config(bool enabled, const char* server, const char* base_topic, c
     try_start();
 
     xSemaphoreGive(mutex);
+
+    return ESP_OK;
 }
 
 bool mqtt_get_enabled(void)

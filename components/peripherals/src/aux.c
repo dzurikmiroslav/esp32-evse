@@ -1,3 +1,4 @@
+#include <string.h>
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "nvs.h"
@@ -7,7 +8,7 @@
 #include "evse.h"
 
 #define NVS_NAMESPACE           "aux"
-#define NVS_TYPE                "type_%x"
+#define NVS_MODE                "mode_%x"
 
 #define BUTTON_DEBOUNCE_TIME    200
 
@@ -101,7 +102,7 @@ void aux_init(void)
         if (auxs[i].gpio != GPIO_NUM_NC) {
             uint8_t u8 = 0;
             char key[12];
-            sprintf(key, NVS_TYPE, i);
+            sprintf(key, NVS_MODE, i);
             nvs_get_u8(nvs, key, &u8);
             auxs[i].mode = u8;
 
@@ -163,22 +164,67 @@ aux_mode_t aux_get_mode(aux_id_t id)
     return auxs[id].mode;
 }
 
-void aux_set_mode(aux_id_t id, aux_mode_t mode)
+esp_err_t aux_set_mode(aux_id_t id, aux_mode_t mode)
 {
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    if (auxs[id].gpio == GPIO_NUM_NC) {
-        if (mode != AUX_MODE_NONE) {
-            ESP_LOGW(TAG, "Try configure not available input %d", id);
-        }
-    } else {
-        auxs[id].mode = mode;
-
-        char key[12];
-        sprintf(key, NVS_TYPE, id);
-        nvs_set_u8(nvs, key, mode);
-        nvs_commit(nvs);
+    if (mode < 0 || mode >= AUX_MODE_MAX) {
+        ESP_LOGE(TAG, "Mode out of range");
+        return ESP_ERR_INVALID_ARG;
     }
 
+    if (auxs[id].gpio == GPIO_NUM_NC && mode != AUX_MODE_NONE) {
+        ESP_LOGE(TAG, "Not available input %d", id + 1);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    xSemaphoreTake(mutex, portMAX_DELAY);
+
+    auxs[id].mode = mode;
+
+    char key[12];
+    sprintf(key, NVS_MODE, id);
+    nvs_set_u8(nvs, key, mode);
+    nvs_commit(nvs);
+
     xSemaphoreGive(mutex);
+
+    return ESP_OK;
+}
+
+const char* aux_mode_to_str(aux_mode_t mode)
+{
+    switch (mode)
+    {
+    case AUX_MODE_PAUSE_BUTTON:
+        return "pause_button";
+    case AUX_MODE_PAUSE_SWITCH:
+        return "pause_switch";
+    case AUX_MODE_UNPAUSE_SWITCH:
+        return "unpause_switch";
+    case AUX_MODE_AUTHORIZE_BUTTON:
+        return "authorize_button";
+    case AUX_MODE_PULSE_ENERGY_METER:
+        return "pulse_energy_meter";
+    default:
+        return "none";
+    }
+}
+
+aux_mode_t aux_str_to_mode(const char* str)
+{
+    if (!strcmp(str, "pause_button")) {
+        return AUX_MODE_PAUSE_BUTTON;
+    }
+    if (!strcmp(str, "pause_switch")) {
+        return AUX_MODE_PAUSE_SWITCH;
+    }
+    if (!strcmp(str, "unpause_switch")) {
+        return AUX_MODE_UNPAUSE_SWITCH;
+    }
+    if (!strcmp(str, "authorize_button")) {
+        return AUX_MODE_AUTHORIZE_BUTTON;
+    }
+    if (!strcmp(str, "pulse_energy_meter")) {
+        return AUX_MODE_PULSE_ENERGY_METER;
+    }
+    return AUX_MODE_NONE;
 }

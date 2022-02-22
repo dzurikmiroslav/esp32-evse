@@ -1,3 +1,4 @@
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
@@ -9,7 +10,7 @@
 #include "board_config.h"
 
 #define NVS_NAMESPACE           "cable_lock"
-#define NVS_TYPE                "type"
+#define NVS_TYPE                "type_%x"
 
 static const char* TAG = "cable_lock";
 
@@ -45,14 +46,24 @@ cable_lock_type_t cable_lock_get_type(void)
     return type;
 }
 
-void cable_lock_set_type(cable_lock_type_t value)
+esp_err_t cable_lock_set_type(cable_lock_type_t _type)
 {
-    if (board_config.cable_lock) {
-        type = value;
-        nvs_set_u8(nvs, NVS_TYPE, type);
-
-        nvs_commit(nvs);
+    if (_type < 0 || _type >= CABLE_LOCK_TYPE_MAX) {
+        ESP_LOGE(TAG, "Type out of range");
+        return ESP_ERR_INVALID_ARG;
     }
+
+    if (!board_config.cable_lock && _type != CABLE_LOCK_TYPE_NONE) {
+        ESP_LOGE(TAG, "Cabler lock not available");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    type = _type;
+    nvs_set_u8(nvs, NVS_TYPE, type);
+
+    nvs_commit(nvs);
+
+    return ESP_OK;
 }
 
 static void lock_task_func(void* param)
@@ -109,4 +120,28 @@ void cable_lock_unlock(void)
         lock = false;
         xTaskCreate(unlock_task_func, "unlock_task", 2 * 1024, NULL, 10, NULL);
     }
+}
+
+const char* cable_lock_type_to_str(cable_lock_type_t type)
+{
+    switch (type)
+    {
+    case CABLE_LOCK_TYPE_MOTOR:
+        return "motor";
+    case CABLE_LOCK_TYPE_SOLENOID:
+        return "solenoid";
+    default:
+        return "none";
+    }
+}
+
+cable_lock_type_t cable_lock_str_to_type(const char* str)
+{
+    if (!strcmp(str, "motor")) {
+        return CABLE_LOCK_TYPE_MOTOR;
+    }
+    if (!strcmp(str, "solenoid")) {
+        return CABLE_LOCK_TYPE_SOLENOID;
+    }
+    return CABLE_LOCK_TYPE_NONE;
 }

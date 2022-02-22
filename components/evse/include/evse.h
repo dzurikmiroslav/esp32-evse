@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "esp_err.h"
 
 #define evse_state_is_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
 #define evse_state_is_charging(state)       (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
@@ -81,8 +82,9 @@ uint16_t evse_get_chaging_current(void);
  * @brief Set charging current
  *
  * @param charging_current current in A*10
+ * @return esp_err_t 
  */
-void evse_set_chaging_current(uint16_t charging_current);
+esp_err_t evse_set_chaging_current(uint16_t charging_current);
 
 /**
  * @brief Get default charging current, stored in NVS
@@ -95,8 +97,9 @@ uint16_t evse_get_default_chaging_current(void);
  * @brief Set default charging current, stored in NVS
  *
  * @param charging_current current in A*10
+ * @return esp_err_t 
  */
-void evse_set_default_chaging_current(uint16_t charging_current);
+esp_err_t evse_set_default_chaging_current(uint16_t charging_current);
 
 /**
  * @brief Is required authorization to start charging, stored in NVS

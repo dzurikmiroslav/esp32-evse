@@ -25,12 +25,14 @@
 #include "ac_relay.h"
 #include "cable_lock.h"
 #include "energy_meter.h"
+#include "serial.h"
 #include "board_config.h"
 #include "mqtt.h"
 #include "webserver.h"
 #include "wifi.h"
 #include "tcp_logger.h"
 #include "aux.h"
+#include "at.h"
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
 #define RESET_HOLD_TIME         10000 // 10sec
@@ -58,29 +60,26 @@ static void reset_and_reboot(void)
 static void wifi_event_task_func(void* param)
 {
     EventBits_t mode_bits;
-    EventBits_t connect_bits;
 
     for (;;) {
         led_set_off(LED_ID_WIFI);
-        mode_bits = xEventGroupWaitBits(wifi_mode_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+        mode_bits = xEventGroupWaitBits(wifi_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
         if (mode_bits & WIFI_AP_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 150, 150);
 
-            connect_bits = xEventGroupWaitBits(wifi_ap_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT));
-            if (connect_bits & WIFI_CONNECTED_BIT) {
+            if (xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
                 do {
-                } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_ap_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
+                } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
             } else {
-                if (xEventGroupGetBits(wifi_mode_event_group) & WIFI_AP_MODE_BIT) {
+                if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
                 }
             }
         } else if (mode_bits & WIFI_STA_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 500, 500);
 
-            connect_bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
-            if (connect_bits & WIFI_CONNECTED_BIT) {
+            if (xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_CONNECTED_BIT) {
                 led_set_on(LED_ID_WIFI);
                 do {
                 } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
@@ -108,7 +107,7 @@ static void user_input_task_func(void* param)
                         evse_disable();
                         reset_and_reboot();
                     } else {
-                        if (!(xEventGroupGetBits(wifi_mode_event_group) & WIFI_AP_MODE_BIT)) {
+                        if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {
                             wifi_ap_start();
                         }
                     }
@@ -211,6 +210,16 @@ static void update_leds()
     }
 }
 
+static int log_vprintf(const char* str, va_list l)
+{
+    char buf[256];
+    int len = vsprintf(buf, str, l);
+    serial_log_process(buf, len);
+    tcp_logger_log_process(buf, len);
+
+    return vprintf(str, l);
+}
+
 void app_main()
 {
     const esp_partition_t* running = esp_ota_get_running_partition();
@@ -245,7 +254,7 @@ void app_main()
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_12));
+    ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
 
     board_config_load();
 
@@ -255,13 +264,17 @@ void app_main()
     cable_lock_init();
     energy_meter_init();
     led_init();
+    aux_init();
     button_init();
+    serial_init();
     webserver_init();
     wifi_init();
     mqtt_init();
     evse_init();
     tcp_logger_init();
-    aux_init();
+    at_init();
+
+    esp_log_set_vprintf(log_vprintf);
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 10, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 10, &user_input_task);
@@ -269,9 +282,10 @@ void app_main()
     for (;;) {
         evse_process();
         energy_meter_process();
-        mqtt_process();
         update_leds();
         aux_process();
+        serial_process();
+        mqtt_process();
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }

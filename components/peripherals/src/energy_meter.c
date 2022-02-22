@@ -285,7 +285,7 @@ void energy_meter_init(void)
     nvs_get_u16(nvs, NVS_PULSE_AMOUNT, &pulse_amount);
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &sens_adc_char);
         vlt[0] = ac_voltage;
 
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
@@ -296,7 +296,7 @@ void energy_meter_init(void)
     }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &sens_adc_char);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &sens_adc_char);
 
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
         ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_vlt_adc_channel, ADC_ATTEN_DB_11));
@@ -315,19 +315,24 @@ energy_meter_mode_t energy_meter_get_mode(void)
     return mode;
 }
 
-void energy_meter_set_mode(energy_meter_mode_t _mode)
+esp_err_t energy_meter_set_mode(energy_meter_mode_t _mode)
 {
+    if (_mode < 0 || _mode >= ENERGY_METER_MODE_MAX) {
+        ESP_LOGE(TAG, "Mode out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_NONE) {
         if (_mode == ENERGY_METER_MODE_CUR || _mode == ENERGY_METER_MODE_CUR_VLT) {
-            ESP_LOGE(TAG, "Try set unsupported mode");
-            return;
+            ESP_LOGE(TAG, "Unsupported mode");
+            return ESP_ERR_NOT_SUPPORTED;
         }
     }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
         if (_mode == ENERGY_METER_MODE_CUR_VLT) {
-            ESP_LOGE(TAG, "Try set unsupported mode");
-            return;
+            ESP_LOGE(TAG, "Unsupported mode");
+            return ESP_ERR_NOT_SUPPORTED;
         }
     }
 
@@ -335,6 +340,8 @@ void energy_meter_set_mode(energy_meter_mode_t _mode)
     measure_fn = get_measure_fn(mode);
     nvs_set_u8(nvs, NVS_MODE, mode);
     nvs_commit(nvs);
+
+    return ESP_OK;
 }
 
 uint16_t energy_meter_get_pulse_amount(void)
@@ -342,11 +349,18 @@ uint16_t energy_meter_get_pulse_amount(void)
     return pulse_amount;
 }
 
-void energy_meter_set_pulse_amount(uint16_t _pulse_amount)
+esp_err_t energy_meter_set_pulse_amount(uint16_t _pulse_amount)
 {
+    if (_pulse_amount == 0) {
+        ESP_LOGI(TAG, "Pulse amount cant be zero");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     pulse_amount = _pulse_amount;
     nvs_set_u16(nvs, NVS_PULSE_AMOUNT, pulse_amount);
     nvs_commit(nvs);
+
+    return ESP_OK;
 }
 
 uint16_t energy_meter_get_ac_voltage(void)
@@ -354,11 +368,18 @@ uint16_t energy_meter_get_ac_voltage(void)
     return ac_voltage;
 }
 
-void energy_meter_set_ac_voltage(uint16_t _ac_voltage)
+esp_err_t energy_meter_set_ac_voltage(uint16_t _ac_voltage)
 {
+    if (_ac_voltage < 100 || _ac_voltage > 300) {
+        ESP_LOGI(TAG, "AC voltage out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     ac_voltage = _ac_voltage;
     nvs_set_u16(nvs, NVS_AC_VOLTAGE, ac_voltage);
     nvs_commit(nvs);
+
+    return ESP_OK;
 }
 
 void energy_meter_process(void)
@@ -418,4 +439,33 @@ void energy_meter_get_voltage(float* voltage)
 void energy_meter_get_current(float* current)
 {
     memcpy(current, cur, sizeof(cur));
+}
+
+const char* energy_meter_mode_to_str(energy_meter_mode_t mode)
+{
+    switch (mode)
+    {
+    case ENERGY_METER_MODE_CUR:
+        return "cur";
+    case ENERGY_METER_MODE_CUR_VLT:
+        return "cur_vlt";
+    case ENERGY_METER_MODE_PULSE:
+        return "pulse";
+    default:
+        return "none";
+    }
+}
+
+energy_meter_mode_t energy_meter_str_to_mode(const char* str)
+{
+    if (!strcmp(str, "cur")) {
+        return ENERGY_METER_MODE_CUR;
+    }
+    if (!strcmp(str, "cur_vlt")) {
+        return ENERGY_METER_MODE_CUR_VLT;
+    }
+    if (!strcmp(str, "pulse")) {
+        return ENERGY_METER_MODE_PULSE;
+    }
+    return ENERGY_METER_MODE_NONE;
 }

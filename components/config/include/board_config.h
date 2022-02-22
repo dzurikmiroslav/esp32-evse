@@ -1,6 +1,7 @@
 #ifndef BOARD_CONFIG_H_
 #define BOARD_CONFIG_H_
 
+#include "soc/soc_caps.h"
 #include "driver/gpio.h"
 #include "driver/adc.h"
 
@@ -9,6 +10,12 @@ typedef enum {
     BOARD_CONFIG_ENERGY_METER_CUR,
     BOARD_CONFIG_ENERGY_METER_CUR_VLT
 } board_config_energy_meter_t;
+
+typedef enum {
+    BOARD_CONFIG_SERIAL_NONE,
+    BOARD_CONFIG_SERIAL_UART,
+    BOARD_CONFIG_SERIAL_RS485
+} board_config_serial_t;
 
 typedef struct
 {
@@ -29,6 +36,7 @@ typedef struct
     uint16_t pilot_sens_down_treshold_3;
     uint16_t pilot_sens_down_treshold_n12;
 
+    bool proximity_sens : 1;
     adc_channel_t proximity_sens_adc_channel;
     uint16_t proximity_sens_down_treshold_13;
     uint16_t proximity_sens_down_treshold_20;
@@ -63,6 +71,21 @@ typedef struct
     gpio_num_t aux_2_gpio;
     bool aux_3 : 1;
     gpio_num_t aux_3_gpio;
+
+    board_config_serial_t serial_1;
+    gpio_num_t serial_1_rxd_gpio;
+    gpio_num_t serial_1_txd_gpio;
+    gpio_num_t serial_1_rts_gpio;
+    board_config_serial_t serial_2;
+    gpio_num_t serial_2_rxd_gpio;
+    gpio_num_t serial_2_txd_gpio;
+    gpio_num_t serial_2_rts_gpio;
+#if SOC_UART_NUM > 2
+    board_config_serial_t serial_3;
+    gpio_num_t serial_3_rxd_gpio;
+    gpio_num_t serial_3_txd_gpio;
+    gpio_num_t serial_3_rts_gpio;
+#endif
 } board_config_t;
 
 extern board_config_t board_config;

@@ -278,6 +278,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "wifi", json_get_wifi_config());
             cJSON_AddItemToObject(root, "mqtt", json_get_mqtt_config());
             cJSON_AddItemToObject(root, "tcpLogger", json_get_tcp_logger_config());
+            cJSON_AddItemToObject(root, "serial", json_get_serial_config());
         }
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             root = json_get_evse_config();
@@ -290,6 +291,9 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/tcpLogger") == 0) {
             root = json_get_tcp_logger_config();
+        }
+        if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
+            root = json_get_serial_config();
         }
         if (strcmp(req->uri, "/api/v1/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
@@ -323,24 +327,30 @@ static esp_err_t json_post_handler(httpd_req_t* req)
     if (autorize_req(req)) {
         cJSON* root = read_request_json(req);
         const char* res_msg;
+        esp_err_t ret = ESP_OK;
+
         if (root == NULL) {
             return ESP_FAIL;
         }
 
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
-            json_set_evse_config(root);
+            ret = json_set_evse_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {
-            json_set_wifi_config(root);
+            ret = json_set_wifi_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/mqtt") == 0) {
-            json_set_mqtt_config(root);
+            ret = json_set_mqtt_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/tcpLogger") == 0) {
-            json_set_tcp_logger_config(root);
+            ret = json_set_tcp_logger_config(root);
+            res_msg = "Config updated";
+        }
+        if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
+            ret = json_set_serial_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/credentials") == 0) {
@@ -351,9 +361,16 @@ static esp_err_t json_post_handler(httpd_req_t* req)
         cJSON_Delete(root);
 
         httpd_resp_set_type(req, "text/plain");
-        httpd_resp_sendstr(req, res_msg);
 
-        return ESP_OK;
+        if (ret == ESP_OK) {
+            httpd_resp_sendstr(req, res_msg);
+
+            return ESP_OK;
+        } else {
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, NULL);
+
+            return ESP_FAIL;
+        }
     } else {
         return ESP_FAIL;
     }

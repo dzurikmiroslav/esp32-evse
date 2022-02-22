@@ -280,13 +280,17 @@ uint16_t evse_get_chaging_current(void)
     return charging_current;
 }
 
-void evse_set_chaging_current(uint16_t value)
+esp_err_t evse_set_chaging_current(uint16_t value)
 {
     ESP_LOGI(TAG, "Set charging current %dA*10", value);
+
+    if (value < CHARGING_CURRENT_MIN || value > board_config.max_charging_current * 10) {
+        ESP_LOGE(TAG, "Charging current out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    value = MAX(value, CHARGING_CURRENT_MIN);
-    value = MIN(value, board_config.max_charging_current * 10);
     charging_current = value;
 
     if (pilot_state == PILOT_STATE_PWM) {
@@ -294,6 +298,8 @@ void evse_set_chaging_current(uint16_t value)
     }
 
     xSemaphoreGive(mutex);
+
+    return ESP_OK;
 }
 
 uint16_t evse_get_default_chaging_current(void)
@@ -303,12 +309,19 @@ uint16_t evse_get_default_chaging_current(void)
     return value;
 }
 
-void evse_set_default_chaging_current(uint16_t value)
+esp_err_t evse_set_default_chaging_current(uint16_t value)
 {
     ESP_LOGI(TAG, "Set default charging current %dA*10", value);
 
+    if (value < CHARGING_CURRENT_MIN || value > board_config.max_charging_current * 10) {
+        ESP_LOGE(TAG, "Default charging current out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     nvs_set_u16(nvs, NVS_DEFAULT_CHARGING_CURRENT, value);
     nvs_commit(nvs);
+
+    return ESP_OK;
 }
 
 bool evse_is_require_auth(void)

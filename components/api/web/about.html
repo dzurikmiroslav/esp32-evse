@@ -159,6 +159,9 @@
                         document.getElementById('aux1').innerText = YES_NO[data.aux1];
                         document.getElementById('aux2').innerText = YES_NO[data.aux2];
                         document.getElementById('aux3').innerText = YES_NO[data.aux3];
+                        document.getElementById('serial1').innerText = data.serial1;
+                        document.getElementById('serial2').innerText = data.serial2;
+                        document.getElementById('serial3').innerText = data.serial3;
                     }),
                 fetch('/api/v1/info')
                     .then(jsonResponse)
@@ -297,6 +300,18 @@
                     <tr>
                         <th scope="row">AUX 3</th>
                         <td id="aux3"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Serial 1</th>
+                        <td id="serial1"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Serial 2</th>
+                        <td id="serial2"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Serial 3</th>
+                        <td id="serial3"></td>
                     </tr>
                 </tbody>
             </table>

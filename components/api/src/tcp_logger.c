@@ -16,6 +16,7 @@
 #define KEEPALIVE_INTERVAL  5
 #define KEEPALIVE_COUNT     3
 #define DEFAULT_PORT        3000
+#define PORT_MIN            1000
 
 #define NVS_NAMESPACE       "tcp_logger"
 #define NVS_ENABLED         "enabled"
@@ -28,21 +29,6 @@ static nvs_handle nvs;
 static int sock = -1;
 
 static int listen_sock = -1;
-
-static int tcp_logging_vprintf(const char* str, va_list l)
-{
-    if (sock >= 0) {
-        char buf[256];
-        int len = vsprintf((char*)buf, str, l);
-
-        int written = send(sock, buf, len, 0);
-        if (written < 0) {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-        }
-    }
-
-    return vprintf(str, l);
-}
 
 static void do_retransmit(const int sock)
 {
@@ -168,24 +154,30 @@ void tcp_logger_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    esp_log_set_vprintf(tcp_logging_vprintf);
-
     esp_register_shutdown_handler(&tcp_server_stop);
 
     try_start();
 }
 
-void tcp_logger_set_config(bool enabled, uint16_t port)
+esp_err_t tcp_logger_set_config(bool enabled, uint16_t port)
 {
     nvs_set_u8(nvs, NVS_ENABLED, enabled);
-    port = MAX(1000, port);
-    nvs_set_u16(nvs, NVS_PORT, port);
+
+    if (enabled && port != 0 && port < PORT_MIN) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (port != 0) {
+        nvs_set_u16(nvs, NVS_PORT, port);
+    }
 
     nvs_commit(nvs);
 
     tcp_server_stop();
 
     try_start();
+
+    return ESP_OK;
 }
 
 bool tcp_logger_get_enabled(void)
@@ -200,4 +192,14 @@ uint16_t tcp_logger_get_port(void)
     uint16_t value = DEFAULT_PORT;
     nvs_get_u16(nvs, NVS_PORT, &value);
     return value;
+}
+
+void tcp_logger_log_process(const char* str, int len)
+{
+    if (sock >= 0) {
+        int written = send(sock, str, len, 0);
+        if (written < 0) {
+            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+        }
+    }
 }
