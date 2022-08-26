@@ -153,7 +153,8 @@
                     .then(jsonResponse)
                     .then(data => {
                         document.getElementById('maxChargingCurrent').innerText = data.maxChargingCurrent;
-                        document.getElementById('cableLock').innerText = YES_NO[data.cableLock];
+                        document.getElementById('socketOutlet').innerText = YES_NO[data.socketOutlet];
+                        document.getElementById('rcm').innerText = YES_NO[data.rcm];
                         document.getElementById('energyMeter').innerText = data.energyMeter;
                         document.getElementById('energyMeterThreePhases').innerText = YES_NO[data.energyMeterThreePhases];
                         document.getElementById('aux1').innerText = YES_NO[data.aux1];
@@ -278,8 +279,12 @@
                         <td id="maxChargingCurrent"></td>
                     </tr>
                     <tr>
-                        <th scope="row">Cable lock</th>
-                        <td id="cableLock"></td>
+                        <th scope="row">Socket outlet</th>
+                        <td id="socketOutlet"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Residual current monitor</th>
+                        <td id="rcm"></td>
                     </tr>
                     <tr>
                         <th scope="row">Energy meter</th>

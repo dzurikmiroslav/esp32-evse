@@ -80,21 +80,21 @@ esp_err_t energy_meter_set_ac_voltage(uint16_t ac_voltage);
 void energy_meter_process(void);
 
 /**
- * @brief Get charging actual power
+ * @brief Get session actual power
  *
  * @return Power in W
  */
 uint16_t energy_meter_get_power(void);
 
 /**
- * @brief Get charging elapsed time
+ * @brief Get session elapsed time
  *
  * @return Time in S
  */
 uint32_t energy_meter_get_session_elapsed(void);
 
 /**
- * @brief Get charging consumption
+ * @brief Get session consumption
  *
  * @return consumption in 1Ws
  */

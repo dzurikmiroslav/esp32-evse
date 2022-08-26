@@ -120,17 +120,19 @@
         </div>
         <div class="container">
             <div id="alert"></div>
-            <p class="lead">Change web user and password</p>
+            <h5>Admin user and password</h5>
             <form id="form">
-                <div class="row g-3">
-                    <div class="col-md-6">
+                <div class="row">
+                    <div class="col-12 col-md-6 col-xl-4 mb-3">
                         <label for="user" class="form-label">User</label>
                         <input id="user" type="text" class="form-control">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6 col-xl-4 mb-3">
                         <label for="password" class="form-label">Password</label>
                         <input id="password" type="password" class="form-control">
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-12">
                         <button type="button" class="btn btn-primary" onclick="submitCredentials()">Submit</button>
                     </div>

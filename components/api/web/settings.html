@@ -65,6 +65,14 @@
             }
         }
 
+        function converWsToKWh(value) {
+            return Math.round(value / 3600) / 1000;
+        }
+
+        function converKWhToWs(value) {
+            return value * 3600 * 1000;
+        }
+
         function loadSettings() {
             document.getElementById('loading').classList.add('show');
 
@@ -74,8 +82,18 @@
                     document.getElementById('evseChargingCurrent').value = data.evse.chargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').value = data.evse.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.evse.requireAuth;
-                    document.getElementById('evseProximityCheck').checked = data.evse.proximityCheck;
-                    document.getElementById('evseCableLock').value = data.evse.cableLock;
+                    document.getElementById('evseSocketOutlet').checked = data.evse.socketOutlet;
+                    document.getElementById('evseRcm').checked = data.evse.rcm;
+                    document.getElementById('evseConsumptionLimit').value = converWsToKWh(data.evse.consumptionLimit);
+                    document.getElementById('evseDefaultConsumptionLimit').value = converWsToKWh(data.evse.defaultConsumptionLimit);
+                    document.getElementById('evseElapsedLimit').value = data.evse.elapsedLimit;
+                    document.getElementById('evseDefaultElapsedLimit').value = data.evse.defaultElapsedLimit;
+                    document.getElementById('evseUnderPowerLimit').value = data.evse.underPowerLimit / 1000;
+                    document.getElementById('evseDefaultUnderPowerLimit').value = data.evse.defaultUnderPowerLimit / 1000;
+                    document.getElementById('evseSocketLockOperatingTime').value = data.evse.socketLockOperatingTime;
+                    document.getElementById('evseSocketLockBreakTime').value = data.evse.socketLockBreakTime;
+                    document.getElementById('evseSocketLockRetryCount').value = data.evse.socketLockRetryCount;
+                    document.getElementById('evseSocketLockDetectionHigh').value = data.evse.socketLockDetectionHigh;
                     document.getElementById('evseEnergyMeter').value = data.evse.energyMeter;
                     document.getElementById('evseAcVoltage').value = data.evse.acVoltage;
                     document.getElementById('evsePulseAmount').value = data.evse.pulseAmount;
@@ -111,6 +129,7 @@
                     document.getElementById('serial3DataBits').value = data.serial.serial3DataBits;
                     document.getElementById('serial3StopBits').value = data.serial.serial3StopBits;
                     document.getElementById('serial3Parity').value = data.serial.serial3Parity;
+                    document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !data.evse.socketOutlet);
                 })
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
@@ -125,14 +144,25 @@
                     document.getElementById('evseChargingCurrent').value = data.chargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').value = data.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.requireAuth;
-                    document.getElementById('evseProximityCheck').checked = data.proximityCheck;
-                    document.getElementById('evseCableLock').value = data.cableLock;
+                    document.getElementById('evseSocketOutlet').checked = data.socketOutlet;
+                    document.getElementById('evseRcm').checked = data.rcm;
+                    document.getElementById('evseConsumptionLimit').value = converWsToKWh(data.consumptionLimit);
+                    document.getElementById('evseDefaultConsumptionLimit').value = converWsToKWh(data.defaultConsumptionLimit);
+                    document.getElementById('evseElapsedLimit').value = data.elapsedLimit;
+                    document.getElementById('evseDefaultElapsedLimit').value = data.defaultElapsedLimit;
+                    document.getElementById('evseUnderPowerLimit').value = data.underPowerLimit / 1000;
+                    document.getElementById('evseDefaultUnderPowerLimit').value = data.defaultUnderPowerLimit / 1000;
+                    document.getElementById('evseSocketLockOperatingTime').value = data.socketLockOperatingTime;
+                    document.getElementById('evseSocketLockBreakTime').value = data.socketLockBreakTime;
+                    document.getElementById('evseSocketLockRetryCount').value = data.socketLockRetryCount;
+                    document.getElementById('evseSocketLockDetectionHigh').value = data.socketLockDetectionHigh;
                     document.getElementById('evseEnergyMeter').value = data.energyMeter;
                     document.getElementById('evseAcVoltage').value = data.acVoltage;
                     document.getElementById('evsePulseAmount').value = data.pulseAmount;
                     document.getElementById('evseAux1').value = data.aux1;
                     document.getElementById('evseAux2').value = data.aux2;
                     document.getElementById('evseAux3').value = data.aux3;
+                    document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !data.socketOutlet);
                 })
                 .finally(() => {
                     document.getElementById('evseForm').classList.remove('was-validated');
@@ -155,6 +185,36 @@
                 .finally(() => {
                     document.getElementById('wifiForm').classList.remove('was-validated');
                     document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
+        function loadWifiScan() {
+            const list = document.getElementById('wifiScanList');
+            list.innerHTML = '<li><a class="dropdown-item disabled">Loading...</a></li>';
+
+            fetch('/api/v1/config/wifi/scan')
+                .then(jsonResponse)
+                .then(data => {
+                    list.innerHTML = '';
+                    data.forEach(item => {
+                        let color = 'bg-danger';
+                        if (item.rssi <= -70) {
+                            color = 'bg-warning'
+                        } else if (item.rssi <= -60) {
+                            color = 'bg-primary'
+                        } else if (item.rssi <= -50) {
+                            color = 'bg-success'
+                        }
+
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `
+                            <button type="button" onclick="wifiSsid.value = '${item.ssid}';" class="dropdown-item">
+                                ${item.ssid} ${item.auth ? '&#128273;' : ''}
+                                <span class="badge ${color} float-end ms-2 rounded-pill">${item.rssi}dB</span>
+                            </a>`;
+                        list.appendChild(listItem);
+                    });
                 })
                 .catch(showError);
         }
@@ -236,8 +296,18 @@
                     chargingCurrent: parseFloat(document.getElementById('evseChargingCurrent').value),
                     defaultChargingCurrent: parseFloat(document.getElementById('evseDefaultChargingCurrent').value),
                     requireAuth: document.getElementById('evseRequireAuth').checked,
-                    proximityCheck: document.getElementById('evseProximityCheck').checked,
-                    cableLock: document.getElementById('evseCableLock').value,
+                    socketOutlet: document.getElementById('evseSocketOutlet').checked,
+                    rcm: document.getElementById('evseRcm').checked,
+                    consumptionLimit: converKWhToWs(parseFloat(document.getElementById('evseConsumptionLimit').value)),
+                    defaultConsumptionLimit: converKWhToWs(parseFloat(document.getElementById('evseDefaultConsumptionLimit').value)),
+                    elapsedLimit: parseFloat(document.getElementById('evseElapsedLimit').value),
+                    defaultElapsedLimit: parseFloat(document.getElementById('evseDefaultElapsedLimit').value),
+                    underPowerLimit: parseFloat(document.getElementById('evseUnderPowerLimit').value) * 1000,
+                    defaultUnderPowerLimit: parseFloat(document.getElementById('evseDefaultUnderPowerLimit').value) * 1000,
+                    socketLockOperatingTime: parseInt(document.getElementById('evseSocketLockOperatingTime').value),
+                    socketLockBreakTime: parseInt(document.getElementById('evseSocketLockBreakTime').value),
+                    socketLockRetryCount: parseInt(document.getElementById('evseSocketLockRetryCount').value),
+                    socketLockDetectionHigh: document.getElementById('evseSocketLockDetectionHigh').value === 'true',
                     energyMeter: document.getElementById('evseEnergyMeter').value,
                     acVoltage: parseFloat(document.getElementById('evseAcVoltage').value),
                     pulseAmount: parseFloat(document.getElementById('evsePulseAmount').value),
@@ -413,7 +483,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('wifiEnabled').addEventListener('change', event => {
-                document.querySelectorAll('#wifiForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
+                document.getElementById('wifiFields').querySelectorAll('input, button').forEach(input => input.disabled = !event.target.checked);
             });
 
             document.getElementById('mqttEnabled').addEventListener('change', event => {
@@ -424,15 +494,21 @@
                 document.querySelectorAll('#tcpLoggerForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
             });
 
+            document.getElementById('evseSocketOutlet').addEventListener('change', event => {
+                document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !event.target.checked);
+            });
+
             fetch('/api/v1/boardConfig')
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('evseChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
-                    if (data.cableLock) {
-                        document.getElementById('evseCableLockField').classList.remove('d-none');
-                        document.getElementById('evseCableLock').disabled = false;
+                    document.getElementById('evseSocketLockBreakTime').min = data.socketLockMinBreakTime;
+                    document.getElementById('evseSocketOutlet').disabled = !data.socketOutlet;
+                    if (data.socketOutlet) {
+                        document.getElementById('evseSocketLockFields').classList.remove('d-none');
                     }
+                    document.getElementById('evseRcm').disabled = !data.rcm;
                     if (data.aux1) {
                         document.getElementById('evseAux1Field').classList.remove('d-none');
                         document.getElementById('evseAux1').disabled = false;
@@ -472,6 +548,27 @@
                 event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
             });
             document.getElementById('evseDefaultChargingCurrent').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseConsumptionLimit').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseDefaultConsumptionLimit').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseElapsedLimit').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseDefaultElapsedLimit').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseSocketLockOperatingTime').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseSocketLockBreakTime').addEventListener('input', event => {
+                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            });
+            document.getElementById('evseSocketLockRetryCount').addEventListener('input', event => {
                 event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
             });
 
@@ -544,40 +641,100 @@
             <div class="tab-content" id="myTabContent">
                 <div class="tab-pane fade show active" id="evse" role="tabpanel" aria-labelledby="home-tab">
                     <form id="evseForm" novalidate>
-                        <div class="row g-3">
-                            <div class="col-12 col-md-6">
+                        <div class="row">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="evseChargingCurrent">Charging current</label>
                                 <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
                                     step="0.1" required>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="evseDefaultChargingCurrent">Default charging
                                     current</label>
                                 <input type="number" class="form-control" id="evseDefaultChargingCurrent" min="6"
                                     max="80" step="0.1" required>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="evseProximityCheck">
-                                    <label class="form-check-label" for="evseProximityCheck">Proximity check</label>
-                                </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <label class="form-label" for="evseConsumptionLimit">Consumption limit (kWh)</label>
+                                <input type="number" class="form-control" id="evseConsumptionLimit" min="0"
+                                    step="0.001">
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <label class="form-label" for="evseElapsedLimit">Elapsed limit (s)</label>
+                                <input type="number" class="form-control" id="evseElapsedLimit" min="0" step="1">
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <label class="form-label" for="evseUnderPowerLimit">Under power limit (kW)</label>
+                                <input type="number" class="form-control" id="evseUnderPowerLimit" min="0" step="0.001">
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <label class="form-label" for="evseDefaultConsumptionLimit">Default consumption limit
+                                    (kWh)</label>
+                                <input type="number" class="form-control" id="evseDefaultConsumptionLimit" min="0"
+                                    step="0.001">
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <label class="form-label" for="evseDefaultElapsedLimit">Default elapsed limit
+                                    (s)</label>
+                                <input type="number" class="form-control" id="evseDefaultElapsedLimit" min="0" step="1">
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <label class="form-label" for="evseDefaultUnderPowerLimit">Default under power limit
+                                    (kW)</label>
+                                <input type="number" class="form-control" id="evseDefaultUnderPowerLimit" min="0"
+                                    step="0.001">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="evseRequireAuth">
                                     <label class="form-check-label" for="evseRequireAuth">Require authorization</label>
                                 </div>
                             </div>
-                            <div class="col-12 d-none" id="evseCableLockField">
-                                <label class="form-label" for="evseCableLock">Cable lock</label>
-                                <select class="form-select" id="evseCableLock" disabled>
-                                    <option value="none">None</option>
-                                    <option value="motor">Motor</option>
-                                    <option value="solenoid">Solenoid</option>
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="evseRcm">
+                                    <label class="form-check-label" for="evseRcm">Residual current monitor</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="evseSocketOutlet">
+                                    <label class="form-check-label" for="evseSocketOutlet">Socket outlet</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row d-none" id="evseSocketLockFields">
+                            <h5>Socket lock</h5>
+                            <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                <label class="form-label" for="evseSocketLockOperatingTime">Operating time</label>
+                                <input type="number" class="form-control" id="evseSocketLockOperatingTime" min="100"
+                                    max="1000" step="1" required disabled>
+                            </div>
+                            <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                <label class="form-label" for="evseSocketLockBreakTime">Break time</label>
+                                <input type="number" class="form-control" id="evseSocketLockBreakTime" step="1" required
+                                    disabled>
+                            </div>
+                            <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                <label class="form-label" for="evseSocketLockRetryCount">Retry count</label>
+                                <input type="number" class="form-control" id="evseSocketLockRetryCount" step="1"
+                                    required min="0" disabled>
+                            </div>
+                            <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                <label class="form-label" for="evseSocketLockDetectionHigh">Detection</label>
+                                <select class="form-select" id="evseSocketLockDetectionHigh" disabled>
+                                    <option value="false">Unlocked high</option>
+                                    <option value="true">Locked high</option>
                                 </select>
                             </div>
-                            <div class="col-12">
-                                <label class="form-label" for="evseEnergyMeter">Energy meter</label>
+                        </div>
+                        <div class="row">
+                            <h5>Energy meter</h5>
+                            <div class="col-12 col-md-6 col-xl-3 mb-3">
+                                <label class="form-label" for="evseEnergyMeter">Type</label>
                                 <select class="form-select" id="evseEnergyMeter">
                                     <option value="none">None</option>
                                     <option id="evseEnergyMeterCur" value="cur" disabled>Current sensing</option>
@@ -586,46 +743,45 @@
                                     <option value="pulse">Pulse energy meter</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="evseAcVoltage">AC voltage</label>
                                 <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
                                     step="1" required>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label" for="evsePulseAmount">External pulse meter impulse amount
-                                    Wh</label>
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                <label class="form-label" for="evsePulseAmount">Impulse amount Wh</label>
                                 <input type="number" class="form-control" id="evsePulseAmount" min="0" max="65535"
                                     step="1" required>
                             </div>
-                            <div class="col-12 col-md-6 d-none" id="evseAux1Field">
+                        </div>
+                        <div class="row">
+                            <h5>IO</h5>
+                            <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux1Field">
                                 <label class="form-label" for="evseAux1">AUX 1</label>
                                 <select class="form-select" id="evseAux1" disabled>
                                     <option value="none">None</option>
-                                    <option value="pause_button">Pause button</option>
-                                    <option value="pause_switch">Pause switch</option>
-                                    <option value="unpause_switch">Unpause switch</option>
+                                    <option value="enable_button">Enable button</option>
+                                    <option value="enable_switch">Enable switch</option>
                                     <option value="authorize_button">Authorize button</option>
                                     <option value="pulse_energy_meter">Pulse energy meter</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6 d-none" id="evseAux2Field">
+                            <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux2Field">
                                 <label class="form-label" for="evseAux2">AUX 2</label>
                                 <select class="form-select" id="evseAux2" disabled>
                                     <option value="none">None</option>
-                                    <option value="pause_button">Pause button</option>
-                                    <option value="pause_switch">Pause switch</option>
-                                    <option value="unpause_switch">Unpause switch</option>
+                                    <option value="enable_button">Enable button</option>
+                                    <option value="enable_switch">Enable switch</option>
                                     <option value="authorize_button">Authorize button</option>
                                     <option value="pulse_energy_meter">Pulse energy meter</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6 d-none" id="evseAux3Field">
+                            <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux3Field">
                                 <label class="form-label" for="evseAux3">AUX 3</label>
                                 <select class="form-select" id="evseAux3" disabled>
                                     <option value="none">None</option>
-                                    <option value="pause_button">Pause button</option>
-                                    <option value="pause_switch">Pause switch</option>
-                                    <option value="unpause_switch">Unpause switch</option>
+                                    <option value="enable_button">Enable button</option>
+                                    <option value="enable_switch">Enable switch</option>
                                     <option value="authorize_button">Authorize button</option>
                                     <option value="pulse_energy_meter">Pulse energy meter</option>
                                 </select>
@@ -642,21 +798,34 @@
                 </div>
                 <div class="tab-pane fade" id="wifi" role="tabpanel" aria-labelledby="profile-tab">
                     <form id="wifiForm" novalidate>
-                        <div class="row g-3">
+                        <div class="row">
                             <div class="col-12">
-                                <div class="form-check form-switch">
+                                <div class="form-check form-switch mb-3">
                                     <input class="form-check-input" type="checkbox" role="switch" id="wifiEnabled">
                                     <label class="form-check-label" for="wifiEnabled">Enabled</label>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
+                        </div>
+                        <div id="wifiFields" class="row">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="wifiSsid">SSID</label>
-                                <input type="text" disabled class="form-control" id="wifiSsid" required>
+                                <div class="input-group">
+                                    <input type="text" disabled class="form-control" id="wifiSsid" required>
+                                    <button type="button" onclick="loadWifiScan()"
+                                        class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        Search
+                                        <span class="visually-hidden">Toggle Dropdown</span>
+                                    </button>
+                                    <ul id="wifiScanList" class="dropdown-menu"></ul>
+                                </div>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="wifiPassword">Password</label>
                                 <input type="password" disabled class="form-control" id="wifiPassword">
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-12">
                                 <button type="button" class="btn btn-primary"
                                     onclick="submitWifiSettings()">Submit</button>
@@ -668,30 +837,34 @@
                 </div>
                 <div class="tab-pane fade" id="mqtt" role="tabpanel" aria-labelledby="contact-tab">
                     <form id="mqttForm" novalidate>
-                        <div class="row g-3">
-                            <div class="col-12">
+                        <div class="row">
+                            <div class="col-12 md-3">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" role="switch" id="mqttEnabled">
                                     <label class="form-check-label" for="mqttEnabled">Enabled</label>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="mqttServer">Server</label>
                                 <input type="text" disabled class="form-control" id="mqttServer" required>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="mqttBaseTopic">Base topic</label>
                                 <input type="text" disabled class="form-control" id="mqttBaseTopic" required>
                             </div>
-                            <div class="col-12 col-md-6">
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="mqttUser">User</label>
                                 <input type="text" disabled class="form-control" id="mqttUser">
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="mqttPassword">Password</label>
                                 <input type="password" disabled class="form-control" id="mqttPassword">
                             </div>
-                            <div class="col-12 col-md-6">
+                        </div>
+                        <div class="row">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="mqttPeriodicity">Periodicity</label>
                                 <input type="number" disabled class="form-control" id="mqttPeriodicity" step="1" min="1"
                                     required>
@@ -707,14 +880,14 @@
                 </div>
                 <div class="tab-pane fade" id="tcpLogger" role="tabpanel" aria-labelledby="contact-tab">
                     <form id="tcpLoggerForm" novalidate>
-                        <div class="row g-3">
-                            <div class="col-12">
+                        <div class="row">
+                            <div class="col-12 mb-3">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" role="switch" id="tcpLoggerEnabled">
                                     <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="tcpLoggerPort">Port</label>
                                 <input type="number" disabled class="form-control" id="tcpLoggerPort" step="1"
                                     min="1000" max="65535" required>
@@ -730,9 +903,9 @@
                 </div>
                 <div class="tab-pane fade" id="serial" role="tabpanel" aria-labelledby="contact-tab">
                     <form id="serialForm" novalidate>
-                        <div id="serial1Field" class="row g-3 mb-3 d-none">
-                            <strong class="col-12">Serial 1</strong>
-                            <div class="col-12 col-md-6">
+                        <div id="serial1Field" class="row d-none">
+                            <h5>Serial 1</h5>
+                            <div class="col-12 col-md-6 col-lg-4 mb-3">
                                 <label class="form-label" for="serial1Mode">Mode</label>
                                 <select class="form-select" id="serial1Mode" disabled>
                                     <option value="none">None</option>
@@ -740,12 +913,12 @@
                                     <option value="log">System logs</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial1BaudRate">Baud rate</label>
                                 <input type="number" class="form-control" id="serial1BaudRate" min="2400" max="230400"
                                     step="1" required disabled>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial1DataBits">Data bits</label>
                                 <select class="form-select" id="serial1DataBits" disabled>
                                     <option value="5">5</option>
@@ -754,7 +927,7 @@
                                     <option value="8">8</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial1StopBits">Stop bits</label>
                                 <select class="form-select" id="serial1StopBits" disabled>
                                     <option value="1">1</option>
@@ -762,7 +935,7 @@
                                     <option value="2">2</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial1Parity">Parity</label>
                                 <select class="form-select" id="serial1Parity" disabled>
                                     <option value="disable">disable</option>
@@ -771,9 +944,9 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="serial2Field" class="row g-3 mb-3 d-none">
-                            <strong class="col-12">Serial 2</strong>
-                            <div class="col-12 col-md-6">
+                        <div id="serial2Field" class="row d-none">
+                            <h5>Serial 2</h5>
+                            <div class="col-12 col-md-6 col-lg-4 mb-3">
                                 <label class="form-label" for="serial2Mode">Mode</label>
                                 <select class="form-select" id="serial2Mode" disabled>
                                     <option value="none">None</option>
@@ -781,12 +954,12 @@
                                     <option value="log">System logs</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial2BaudRate">Baud rate</label>
                                 <input type="number" disabled class="form-control" id="serial2BaudRate" min="2400"
                                     max="230400" step="1" required disabled>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial2DataBits">Data bits</label>
                                 <select class="form-select" id="serial2DataBits" disabled>
                                     <option value="5">5</option>
@@ -795,7 +968,7 @@
                                     <option value="8">8</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial2StopBits">Stop bits</label>
                                 <select class="form-select" id="serial2StopBits" disabled>
                                     <option value="1">1</option>
@@ -803,7 +976,7 @@
                                     <option value="2">2</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial2Parity">Parity</label>
                                 <select class="form-select" id="serial2Parity" disabled>
                                     <option value="disable">disable</option>
@@ -813,8 +986,8 @@
                             </div>
                         </div>
                         <div id="serial3Field" class="row g-3 mb-3 d-none">
-                            <strong class="col-12">Serial 3</strong>
-                            <div class="col-12 col-md-6">
+                            <h5>Serial 3</h5>
+                            <div class="col-12 col-md-6 col-lg-4 mb-3">
                                 <label class="form-label" for="serial3Mode">Mode</label>
                                 <select class="form-select" id="serial3Mode" disabled>
                                     <option value="none">None</option>
@@ -822,12 +995,12 @@
                                     <option value="log">System logs</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial3BaudRate">Baud rate</label>
                                 <input type="number" disabled class="form-control" id="serial3BaudRate" min="2400"
                                     max="230400" step="1" required disabled>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial3DataBits">Data bits</label>
                                 <select class="form-select" id="serial3DataBits" disabled>
                                     <option value="5">5</option>
@@ -836,7 +1009,7 @@
                                     <option value="8">8</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial3StopBits">Stop bits</label>
                                 <select class="form-select" id="serial3StopBits" disabled>
                                     <option value="1">1</option>
@@ -844,7 +1017,7 @@
                                     <option value="2">2</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
                                 <label class="form-label" for="serial3Parity">Parity</label>
                                 <select class="form-select" id="serial3Parity" disabled>
                                     <option value="disable">disable</option>
@@ -854,11 +1027,13 @@
                             </div>
                         </div>
 
-                        <div class="col-12">
-                            <button type="button" class="btn btn-primary"
-                                onclick="submitSerialSettings()">Submit</button>
-                            <button type="button" class="btn btn-secondary"
-                                onclick="loadSerialSettings()">Reset</button>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitSerialSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadSerialSettings()">Reset</button>
+                            </div>
                         </div>
                     </form>
                 </div>

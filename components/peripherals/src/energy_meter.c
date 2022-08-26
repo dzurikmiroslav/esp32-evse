@@ -50,9 +50,9 @@ static float cur[3] = { 0, 0, 0 };
 
 static float vlt[3] = { 0, 0, 0 };
 
-static float cur_sens_zero[3] = { 1650, 1650, 1650 }; //Default zero, midpoint 3.3V
+static float cur_sens_zero[3] = { 0, 0, 0 };
 
-static float vlt_sens_zero[3] = { 1650, 1650, 1650 }; //Default zero, midpoint 3.3V
+static float vlt_sens_zero[3] = { 0, 0, 0 };
 
 static int64_t prev_time = 0;
 
@@ -75,7 +75,7 @@ static void set_calc_power(float p)
 static void measure_none(void)
 {
     vlt[0] = ac_voltage;
-    cur[0] = evse_get_chaging_current();
+    cur[0] = evse_get_chaging_current() / 10.0f;
     float va = vlt[0] * cur[0];
     if (board_config.energy_meter_three_phases) {
         vlt[1] = vlt[2] = vlt[0];
@@ -90,6 +90,18 @@ static uint32_t read_adc(adc_channel_t channel)
 {
     int adc_reading = adc1_get_raw(channel);
     return esp_adc_cal_raw_to_voltage(adc_reading, &sens_adc_char);
+}
+
+static float get_zero(adc_channel_t channel)
+{
+    float sum = 0;
+    uint16_t samples = 0;
+
+    for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
+        sum += read_adc(channel);
+    }
+
+    return sum / samples;
 }
 
 static void measure_single_phase_cur(void)
@@ -195,7 +207,7 @@ static void measure_three_phase_cur_vlt(void)
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
         //L1
         sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
-        sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
+        sample_vlt = read_adc(board_config.energy_meter_l1_vlt_adc_channel);
 
         cur_sens_zero[0] += (sample_cur - cur_sens_zero[0]) / ZERO_FIX;
         filtered_cur = sample_cur - cur_sens_zero[0];
@@ -204,7 +216,7 @@ static void measure_three_phase_cur_vlt(void)
         vlt_sens_zero[0] += (sample_vlt - vlt_sens_zero[0]) / ZERO_FIX;
         filtered_vlt = sample_vlt - vlt_sens_zero[0];
         vlt_sum[0] += filtered_vlt * filtered_vlt;
-
+        
         //L2
         sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
         sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
@@ -226,7 +238,7 @@ static void measure_three_phase_cur_vlt(void)
         cur_sum[2] += filtered_cur * filtered_cur;
 
         vlt_sens_zero[2] += (sample_vlt - vlt_sens_zero[2]) / ZERO_FIX;
-        filtered_vlt = sample_vlt - vlt_sens_zero[1];
+        filtered_vlt = sample_vlt - vlt_sens_zero[2];
         vlt_sum[2] += filtered_vlt * filtered_vlt;
     }
 
@@ -306,6 +318,24 @@ void energy_meter_init(void)
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_vlt_adc_channel, ADC_ATTEN_DB_11));
             ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_vlt_adc_channel, ADC_ATTEN_DB_11));
+        }
+    }
+
+    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR || board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
+        cur_sens_zero[0] = get_zero(board_config.energy_meter_l1_cur_adc_channel);
+        if (board_config.energy_meter_three_phases) {
+            cur_sens_zero[1] = get_zero(board_config.energy_meter_l2_cur_adc_channel);
+            cur_sens_zero[2] = get_zero(board_config.energy_meter_l3_cur_adc_channel);
+        }
+        ESP_LOGI(TAG, "Current zero %f %f %f", cur_sens_zero[0], cur_sens_zero[1], cur_sens_zero[2]);
+
+        if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
+            vlt_sens_zero[0] = get_zero(board_config.energy_meter_l1_vlt_adc_channel);
+            if (board_config.energy_meter_three_phases) {
+                vlt_sens_zero[1] = get_zero(board_config.energy_meter_l2_vlt_adc_channel);
+                vlt_sens_zero[2] = get_zero(board_config.energy_meter_l3_vlt_adc_channel);
+            }
+            ESP_LOGI(TAG, "Voltage zero %f %f %f", vlt_sens_zero[0], vlt_sens_zero[1], vlt_sens_zero[2]);
         }
     }
 }

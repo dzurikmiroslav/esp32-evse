@@ -28,25 +28,26 @@ EventGroupHandle_t wifi_event_group;
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
+     ESP_LOGW(TAG, "event_id %d", event_id);
     if (event_base == WIFI_EVENT) {
         if (event_id == WIFI_EVENT_AP_STACONNECTED) {
             ESP_LOGI(TAG, "STA connected");
             wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*)event_data;
             ESP_LOGI(TAG, "WiFi AP " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
-            xEventGroupClearBits(wifi_event_group, WIFI_DISCONNECTED_BIT);
-            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+            xEventGroupClearBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT);
+            xEventGroupSetBits(wifi_event_group, WIFI_AP_CONNECTED_BIT);
         }
         if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
             ESP_LOGI(TAG, "AP STA disconnected");
             wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*)event_data;
             ESP_LOGI(TAG, "WiFi AP " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
-            xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
-            xEventGroupSetBits(wifi_event_group, WIFI_DISCONNECTED_BIT);
+            xEventGroupClearBits(wifi_event_group, WIFI_AP_CONNECTED_BIT);
+            xEventGroupSetBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT);
         }
         if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
             ESP_LOGI(TAG, "STA disconnected");
-            xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
-            xEventGroupSetBits(wifi_event_group, WIFI_DISCONNECTED_BIT);
+            xEventGroupClearBits(wifi_event_group, WIFI_STA_CONNECTED_BIT);
+            xEventGroupSetBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT);
             esp_wifi_connect();
         }
         if (event_id == WIFI_EVENT_STA_START) {
@@ -54,14 +55,16 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             esp_wifi_connect();
         }
     } else if (event_base == IP_EVENT) {
-        if (event_id == IP_EVENT_STA_GOT_IP) {
-            ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-            ESP_LOGI(TAG, "WiFi STA got ip: " IPSTR, IP2STR(&event->ip_info.ip));
-            xEventGroupClearBits(wifi_event_group, WIFI_DISCONNECTED_BIT);
-            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
-        } else if (event_id == IP_EVENT_GOT_IP6) {
-            ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
-            ESP_LOGI(TAG, "WiFi STA got ip6: " IPV6STR, IPV62STR(event->ip6_info.ip));
+        if (event_id == IP_EVENT_STA_GOT_IP || event_id == IP_EVENT_GOT_IP6) {
+            if (event_id == IP_EVENT_STA_GOT_IP) {
+                ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+                ESP_LOGI(TAG, "WiFi STA got ip: " IPSTR, IP2STR(&event->ip_info.ip));
+            } else {
+                ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
+                ESP_LOGI(TAG, "WiFi STA got ip6: " IPV6STR, IPV62STR(event->ip6_info.ip));
+            }
+            xEventGroupClearBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT);
+            xEventGroupSetBits(wifi_event_group, WIFI_STA_CONNECTED_BIT);
         }
     }
 }
@@ -97,7 +100,7 @@ static void ap_set_config(void)
     esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
     sprintf((char*)wifi_config.ap.ssid, AP_SSID, mac[3], mac[4], mac[5]);
 
-    esp_wifi_set_mode(WIFI_MODE_AP);
+    esp_wifi_set_mode(WIFI_MODE_APSTA);
     esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config);
 }
 
@@ -175,6 +178,26 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
     return ESP_OK;
 }
 
+uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
+{
+    uint16_t number = WIFI_SCAN_SCAN_LIST_SIZE;
+    wifi_ap_record_t ap_info[WIFI_SCAN_SCAN_LIST_SIZE];
+    uint16_t ap_count = 0;
+    memset(ap_info, 0, sizeof(ap_info));
+
+    esp_err_t e = esp_wifi_scan_start(NULL, true);
+    esp_wifi_scan_get_ap_records(&number, ap_info);
+    esp_wifi_scan_get_ap_num(&ap_count);
+
+    for (int i = 0; (i < WIFI_SCAN_SCAN_LIST_SIZE) && (i < ap_count); i++) {
+        strcpy(scan_aps[i].ssid, (const char*)ap_info[i].ssid);
+        scan_aps[i].rssi = ap_info[i].rssi;
+        scan_aps[i].auth = ap_info[i].authmode != WIFI_AUTH_OPEN;
+    }
+
+    return ap_count;
+}
+
 bool wifi_get_enabled(void)
 {
     uint8_t value = false;
@@ -222,5 +245,5 @@ bool wifi_is_ap(void)
 {
     wifi_mode_t mode;
     esp_wifi_get_mode(&mode);
-    return mode == WIFI_MODE_AP;
+    return mode == WIFI_MODE_APSTA;
 }

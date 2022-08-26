@@ -36,7 +36,7 @@ static void IRAM_ATTR aux_isr_handler(void* arg)
     TickType_t tick;
 
     switch (aux->mode) {
-    case AUX_MODE_PAUSE_BUTTON:
+    case AUX_MODE_ENABLE_BUTTON:
     case AUX_MODE_AUTHORIZE_BUTTON:
         tick = xTaskGetTickCountFromISR();
         if (tick > aux->tick + pdMS_TO_TICKS(BUTTON_DEBOUNCE_TIME)) {
@@ -71,9 +71,9 @@ void aux_init(void)
 
     gpio_config_t io_conf = {
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_up_en = GPIO_PULLDOWN_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_NEGEDGE,
+        .intr_type = GPIO_INTR_POSEDGE,
         .pin_bit_mask = 0
     };
 
@@ -118,14 +118,10 @@ void aux_process(void)
     for (int i = 0; i < AUX_ID_MAX; i++) {
         if (auxs[i].gpio != GPIO_NUM_NC) {
             switch (auxs[i].mode) {
-            case AUX_MODE_PAUSE_BUTTON:
+            case AUX_MODE_ENABLE_BUTTON:
                 if (auxs[i].pressed) {
                     auxs[i].pressed = false;
-                    if (evse_is_paused()) {
-                        evse_unpause();
-                    } else {
-                        evse_pause();
-                    }
+                    evse_set_enabled(!evse_is_enabled());
                 }
                 break;
             case AUX_MODE_AUTHORIZE_BUTTON:
@@ -134,20 +130,12 @@ void aux_process(void)
                     evse_authorize();
                 }
                 break;
-            case AUX_MODE_PAUSE_SWITCH:
-                if (!gpio_get_level(auxs[i].gpio) && !evse_is_paused()) {
-                    evse_pause();
+            case AUX_MODE_ENABLE_SWITCH:
+                if (gpio_get_level(auxs[i].gpio) && !evse_is_enabled()) {
+                    evse_set_enabled(true);
                 }
-                if (gpio_get_level(auxs[i].gpio) && evse_is_paused()) {
-                    evse_unpause();
-                }
-                break;
-            case AUX_MODE_UNPAUSE_SWITCH:
-                if (gpio_get_level(auxs[i].gpio) && !evse_is_paused()) {
-                    evse_pause();
-                }
-                if (!gpio_get_level(auxs[i].gpio) && evse_is_paused()) {
-                    evse_unpause();
+                if (!gpio_get_level(auxs[i].gpio) && evse_is_enabled()) {
+                    evse_set_enabled(false);
                 }
                 break;
             default:
@@ -194,12 +182,10 @@ const char* aux_mode_to_str(aux_mode_t mode)
 {
     switch (mode)
     {
-    case AUX_MODE_PAUSE_BUTTON:
-        return "pause_button";
-    case AUX_MODE_PAUSE_SWITCH:
-        return "pause_switch";
-    case AUX_MODE_UNPAUSE_SWITCH:
-        return "unpause_switch";
+    case AUX_MODE_ENABLE_BUTTON:
+        return "enable_button";
+    case AUX_MODE_ENABLE_SWITCH:
+        return "enable_switch";
     case AUX_MODE_AUTHORIZE_BUTTON:
         return "authorize_button";
     case AUX_MODE_PULSE_ENERGY_METER:
@@ -211,14 +197,11 @@ const char* aux_mode_to_str(aux_mode_t mode)
 
 aux_mode_t aux_str_to_mode(const char* str)
 {
-    if (!strcmp(str, "pause_button")) {
-        return AUX_MODE_PAUSE_BUTTON;
+    if (!strcmp(str, "enable_button")) {
+        return AUX_MODE_ENABLE_BUTTON;
     }
-    if (!strcmp(str, "pause_switch")) {
-        return AUX_MODE_PAUSE_SWITCH;
-    }
-    if (!strcmp(str, "unpause_switch")) {
-        return AUX_MODE_UNPAUSE_SWITCH;
+    if (!strcmp(str, "enable_switch")) {
+        return AUX_MODE_ENABLE_SWITCH;
     }
     if (!strcmp(str, "authorize_button")) {
         return AUX_MODE_AUTHORIZE_BUTTON;

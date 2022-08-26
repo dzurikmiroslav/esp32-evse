@@ -12,6 +12,8 @@ cJSON* json_get_wifi_config(void);
 
 esp_err_t json_set_wifi_config(cJSON* root);
 
+cJSON* json_get_wifi_scan(void);
+
 cJSON* json_get_mqtt_config(void);
 
 esp_err_t json_set_mqtt_config(cJSON* root);

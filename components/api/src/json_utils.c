@@ -14,7 +14,7 @@
 #include "evse.h"
 #include "board_config.h"
 #include "energy_meter.h"
-#include "cable_lock.h"
+#include "socket_lock.h"
 #include "aux.h"
 #include "serial.h"
 #include "proximity.h"
@@ -33,9 +33,19 @@ cJSON* json_get_evse_config(void)
     cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current() / 10.0);
     cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_chaging_current() / 10.0);
     cJSON_AddBoolToObject(root, "requireAuth", evse_is_require_auth());
-    cJSON_AddBoolToObject(root, "proximityCheck", proximity_is_enabled());
+    cJSON_AddBoolToObject(root, "socketOutlet", evse_get_socket_outlet());
+    cJSON_AddBoolToObject(root, "rcm", evse_is_rcm());
+    cJSON_AddNumberToObject(root, "consumptionLimit", evse_get_consumption_limit());
+    cJSON_AddNumberToObject(root, "defaultConsumptionLimit", evse_get_default_consumption_limit());
+    cJSON_AddNumberToObject(root, "elapsedLimit", evse_get_elapsed_limit());
+    cJSON_AddNumberToObject(root, "defaultElapsedLimit", evse_get_default_elapsed_limit());
+    cJSON_AddNumberToObject(root, "underPowerLimit", evse_get_under_power_limit());
+    cJSON_AddNumberToObject(root, "defaultUnderPowerLimit", evse_get_default_under_power_limit());
 
-    cJSON_AddStringToObject(root, "cableLock", cable_lock_type_to_str(cable_lock_get_type()));
+    cJSON_AddNumberToObject(root, "socketLockOperatingTime", socket_lock_get_operating_time());
+    cJSON_AddNumberToObject(root, "socketLockBreakTime", socket_lock_get_break_time());
+    cJSON_AddBoolToObject(root, "socketLockDetectionHigh", socket_lock_get_detection_high());
+    cJSON_AddNumberToObject(root, "socketLockRetryCount", socket_lock_get_retry_count());
 
     cJSON_AddStringToObject(root, "energyMeter", energy_meter_mode_to_str(energy_meter_get_mode()));
     cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
@@ -59,12 +69,42 @@ esp_err_t json_set_evse_config(cJSON* root)
     if (cJSON_IsBool(cJSON_GetObjectItem(root, "requireAuth"))) {
         evse_set_require_auth(cJSON_IsTrue(cJSON_GetObjectItem(root, "requireAuth")));
     }
-    if (cJSON_IsBool(cJSON_GetObjectItem(root, "proximityCheck"))) {
-        RETURN_ON_ERROR(proximity_set_enabled(cJSON_IsTrue(cJSON_GetObjectItem(root, "proximityCheck"))));
+    if (cJSON_IsBool(cJSON_GetObjectItem(root, "socketOutlet"))) {
+        RETURN_ON_ERROR(evse_set_socket_outlet(cJSON_IsTrue(cJSON_GetObjectItem(root, "socketOutlet"))));
+    }
+    if (cJSON_IsBool(cJSON_GetObjectItem(root, "rcm"))) {
+        RETURN_ON_ERROR(evse_set_rcm(cJSON_IsTrue(cJSON_GetObjectItem(root, "rcm"))));
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "consumptionLimit"))) {
+        evse_set_consumption_limit(cJSON_GetObjectItem(root, "consumptionLimit")->valuedouble);
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultConsumptionLimit"))) {
+        evse_set_default_consumption_limit(cJSON_GetObjectItem(root, "defaultConsumptionLimit")->valuedouble);
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "elapsedLimit"))) {
+        evse_set_elapsed_limit(cJSON_GetObjectItem(root, "elapsedLimit")->valuedouble);
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultElapsedLimit"))) {
+        evse_set_default_elapsed_limit(cJSON_GetObjectItem(root, "defaultElapsedLimit")->valuedouble);
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "underPowerLimit"))) {
+        evse_set_under_power_limit(cJSON_GetObjectItem(root, "underPowerLimit")->valuedouble);
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultUnderPowerLimit"))) {
+        evse_set_default_under_power_limit(cJSON_GetObjectItem(root, "defaultUnderPowerLimit")->valuedouble);
     }
 
-    if (cJSON_IsString(cJSON_GetObjectItem(root, "cableLock"))) {
-        RETURN_ON_ERROR(cable_lock_set_type(cable_lock_str_to_type(cJSON_GetObjectItem(root, "cableLock")->valuestring)));
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "socketLockOperatingTime"))) {
+        RETURN_ON_ERROR(socket_lock_set_operating_time(cJSON_GetObjectItem(root, "socketLockOperatingTime")->valuedouble));
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "socketLockBreakTime"))) {
+        RETURN_ON_ERROR(socket_lock_set_break_time(cJSON_GetObjectItem(root, "socketLockBreakTime")->valuedouble));
+    }
+    if (cJSON_IsBool(cJSON_GetObjectItem(root, "socketLockDetectionHigh"))) {
+        socket_lock_set_detection_high(cJSON_IsTrue(cJSON_GetObjectItem(root, "socketLockDetectionHigh")));
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "socketLockRetryCount"))) {
+        socket_lock_set_retry_count(cJSON_GetObjectItem(root, "socketLockRetryCount")->valuedouble);
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "energyMeter"))) {
@@ -110,6 +150,23 @@ esp_err_t json_set_wifi_config(cJSON* root)
     char* password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
 
     return timeout_set_wifi_config(enabled, ssid, password);
+}
+
+cJSON* json_get_wifi_scan(void)
+{
+    cJSON* root = cJSON_CreateArray();
+
+    wifi_scan_ap_t scan_aps[WIFI_SCAN_SCAN_LIST_SIZE];
+    uint16_t number = wifi_scan(scan_aps);
+    for (int i = 0; i < number; i++) {
+        cJSON* item = cJSON_CreateObject();
+        cJSON_AddStringToObject(item, "ssid", scan_aps[i].ssid);
+        cJSON_AddNumberToObject(item, "rssi", scan_aps[i].rssi);
+        cJSON_AddBoolToObject(item, "auth", scan_aps[i].auth);
+        cJSON_AddItemToArray(root, item);
+    }
+
+    return root;
 }
 
 cJSON* json_get_mqtt_config(void)
@@ -228,12 +285,13 @@ cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    cJSON_AddBoolToObject(root, "enabled", evse_get_state() != EVSE_STATE_DISABLED);
-    cJSON_AddBoolToObject(root, "error", evse_get_state() == EVSE_STATE_ERROR);
+    cJSON_AddBoolToObject(root, "notAvailable", evse_get_state() == EVSE_STATE_F);
+    cJSON_AddBoolToObject(root, "error", evse_get_state() == EVSE_STATE_E);
     cJSON_AddBoolToObject(root, "session", evse_state_is_session(evse_get_state()));
     cJSON_AddBoolToObject(root, "charging", evse_state_is_charging(evse_get_state()));
-    cJSON_AddBoolToObject(root, "paused", evse_is_paused());
+    cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
+    cJSON_AddBoolToObject(root, "limitReached", evse_is_limit_reached());
     cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
     cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
     cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());
@@ -270,7 +328,12 @@ cJSON* json_get_info(void)
     esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
     esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
     cJSON_AddStringToObject(root, "ip", str);
-
+    esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
+    sprintf(str, MACSTR, MAC2STR(mac));
+    cJSON_AddStringToObject(root, "macAp", str);
+    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
+    esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
+    cJSON_AddStringToObject(root, "ipAp", str);
     return root;
 }
 
@@ -292,7 +355,9 @@ cJSON* json_get_board_config(void)
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(root, "maxChargingCurrent", board_config.max_charging_current);
-    cJSON_AddBoolToObject(root, "cableLock", board_config.cable_lock);
+    cJSON_AddBoolToObject(root, "socketOutlet", board_config.socket_lock && board_config.proximity_sens);
+    cJSON_AddNumberToObject(root, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
+    cJSON_AddBoolToObject(root, "rcm", board_config.socket_lock && board_config.rcm);
     switch (board_config.energy_meter) {
     case BOARD_CONFIG_ENERGY_METER_CUR:
         cJSON_AddStringToObject(root, "energyMeter", "cur");

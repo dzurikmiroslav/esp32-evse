@@ -11,15 +11,27 @@
 #include "pilot.h"
 #include "proximity.h"
 #include "ac_relay.h"
-#include "cable_lock.h"
+#include "socket_lock.h"
+#include "energy_meter.h"
+#include "rcm.h"
 
 #define CHARGING_CURRENT_MIN            60
-#define AUTHORIZED_TIME                 60000 // 60sec
-#define ERROR_WAIT_TIME                 10000 // 10sec TODO move up
+#define AUTHORIZED_TIME                 60000  // 60sec
+#define ERROR_WAIT_TIME                 10000  // 10sec TODO move up
+#define UNDER_POWER_TIME                60000  // 60sec
 
 #define NVS_NAMESPACE                   "evse"
 #define NVS_DEFAULT_CHARGING_CURRENT    "def_chrg_curr"
+#define NVS_SOCKED_OUTLET               "socket_outlet"
+#define NVS_RCM                         "rcm"
 #define NVS_REQUIRE_AUTH                "require_auth"
+#define NVS_DEFAULT_CONSUMTION_LIMIT    "def_cons_lim"
+#define NVS_DEFAULT_ELAPSED_LIMIT       "def_elap_lim"
+#define NVS_DEFAULT_UNDER_POWER_LIMIT   "def_un_pwr_lim"
+
+#define LIMIT_CONSUMPTION_BIT           (1 << 0)
+#define LIMIT_ELAPSED_BIT               (1 << 1)
+#define LIMIT_UNDER_POWER_BIT           (1 << 2)
 
 static const char* TAG = "evse";
 
@@ -33,7 +45,19 @@ static evse_err_t error = EVSE_ERR_NONE;
 
 static uint16_t charging_current;
 
-static bool pause = false;
+static uint32_t consumption_limit = 0;
+
+static uint32_t elapsed_limit = 0;
+
+static uint16_t under_power_limit = 0;
+
+static uint8_t reached_limit = 0;
+
+static bool socket_outlet = false;
+
+static bool rcm = false;
+
+static bool enabled = true;
 
 static bool require_auth = false;
 
@@ -43,7 +67,9 @@ static TickType_t auth_grant_to = 0;
 
 static TickType_t error_wait_to = 0;
 
-static uint8_t cable_max_current = 0;
+static TickType_t under_power_start_time = 0;
+
+static uint8_t cable_max_current = 63;
 
 enum pilot_state_e {
     PILOT_STATE_12V,
@@ -53,11 +79,16 @@ enum pilot_state_e {
 
 static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 
+static bool socket_lock_locked = false;
 
-void set_pilot(enum pilot_state_e state) {
+static bool socket_lock_can_unlock = false;
+
+static void set_pilot(enum pilot_state_e state)
+{
     if (state != pilot_state) {
         pilot_state = state;
-        switch (pilot_state) {
+        switch (pilot_state)
+        {
         case PILOT_STATE_12V:
             pilot_set_level(true);
             break;
@@ -71,53 +102,75 @@ void set_pilot(enum pilot_state_e state) {
     }
 }
 
-void set_state(evse_state_t next_state)
+static void set_socket_lock(bool locked)
 {
-    switch (next_state) {
+    if (socket_lock_locked != locked || error == EVSE_ERR_LOCK_FAULT || error == EVSE_ERR_UNLOCK_FAULT) {
+        socket_lock_locked = locked;
+        socket_lock_set_locked(socket_lock_locked);
+    }
+}
+
+static void set_state(evse_state_t next_state)
+{
+    switch (next_state)
+    {
     case EVSE_STATE_A:
+        if (socket_outlet) {
+            set_socket_lock(false);
+        }
         set_pilot(PILOT_STATE_12V);
         ac_relay_set_state(false);
-        cable_lock_unlock();
         break;
     case EVSE_STATE_B:
-        cable_max_current = proximity_get_max_current();
+        if (socket_outlet) {
+            cable_max_current = proximity_get_max_current();
+            set_socket_lock(true);
+        }
         ac_relay_set_state(false);
-        cable_lock_lock();
         break;
     case EVSE_STATE_C:
     case EVSE_STATE_D:
         ac_relay_set_state(true);
         break;
-    case EVSE_STATE_ERROR:
-    case EVSE_STATE_DISABLED:
-        if (next_state == EVSE_STATE_ERROR) {
-            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+    case EVSE_STATE_E:
+    case EVSE_STATE_F:
+        if (socket_outlet) {
+            set_socket_lock(false);
+        }
+        if (next_state == EVSE_STATE_E) {
+            if (error == EVSE_ERR_RCM_SELFTEST_FAULT) {
+                error_wait_to = 0;
+            } else {
+                error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+            }
         }
         pilot_set_level(false);
         set_pilot(PILOT_STATE_N12V);
-        cable_lock_unlock();
         break;
     }
 
     ESP_LOGI(TAG, "Enter %c state", 'A' + next_state);
-    if (error != EVSE_ERR_NONE) {
-        ESP_LOGI(TAG, "Error number %d", error);
+    if (next_state == EVSE_STATE_E) {
+        ESP_LOGE(TAG, "Error number %d", error);
     }
     state = next_state;
 }
 
-void state_update(void)
+static void state_update(void)
 {
-    switch (state) {
+    switch (state)
+    {
     case EVSE_STATE_A:
         authorized = false;
+        reached_limit = 0;
+        under_power_start_time = 0;
         break;
     case EVSE_STATE_B:
         if (!authorized && require_auth) {
             authorized = auth_grant_to >= xTaskGetTickCount();
             auth_grant_to = 0;
         }
-        if (pause || (require_auth && !authorized)) {
+        if (!enabled || (require_auth && !authorized) || reached_limit > 0) {
             set_pilot(PILOT_STATE_12V);
         } else {
             set_pilot(PILOT_STATE_PWM);
@@ -126,11 +179,33 @@ void state_update(void)
     case EVSE_STATE_C:
     case EVSE_STATE_D:
         break;
-    case EVSE_STATE_ERROR:
-    case EVSE_STATE_DISABLED:
+    case EVSE_STATE_E:
+    case EVSE_STATE_F:
         authorized = false;
+        reached_limit = 0;
         break;
     }
+}
+
+static bool can_goto_state_c(void)
+{
+    if (!enabled) {
+        return false;
+    }
+
+    if (require_auth && !authorized) {
+        return false;
+    }
+
+    if (reached_limit != 0) {
+        return false;
+    }
+
+    if (socket_outlet && socket_lock_get_status() != SOCKED_LOCK_STATUS_IDLE) {
+        return false;
+    }
+
+    return true;
 }
 
 void evse_process(void)
@@ -140,13 +215,27 @@ void evse_process(void)
     pilot_measure();
     evse_state_t next_state = state;
 
-    if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
-        next_state = EVSE_STATE_ERROR;
+    if (state == EVSE_STATE_E && xTaskGetTickCount() > error_wait_to) {
+        next_state = EVSE_STATE_A;
+        error = EVSE_ERR_NONE;
+    } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
+        next_state = EVSE_STATE_E;
         error = EVSE_ERR_DIODE_SHORT;
+    } else if (socket_outlet && socket_lock_get_status() == SOCKED_LOCK_STATUS_LOCKING_FAIL && error != EVSE_ERR_LOCK_FAULT) {
+        next_state = EVSE_STATE_E;
+        error = EVSE_ERR_LOCK_FAULT;
+    } else if (socket_outlet && socket_lock_get_status() == SOCKED_LOCK_STATUS_UNLOCKING_FAIL && error != EVSE_ERR_UNLOCK_FAULT) {
+        next_state = EVSE_STATE_E;
+        error = EVSE_ERR_UNLOCK_FAULT;
+    } else if (rcm && rcm_was_triggered()) {
+        next_state = EVSE_STATE_E;
+        error = EVSE_ERR_RCM_TRIGGERED;
     } else {
-        switch (state) {
+        switch (state)
+        {
         case EVSE_STATE_A:
-            switch (pilot_get_up_voltage()) {
+            switch (pilot_get_up_voltage())
+            {
             case PILOT_VOLTAGE_12:
                 // stay in current state
                 break;
@@ -154,12 +243,13 @@ void evse_process(void)
                 next_state = EVSE_STATE_B;
                 break;
             default:
-                next_state = EVSE_STATE_ERROR;
+                next_state = EVSE_STATE_E;
                 error = EVSE_ERR_PILOT_FAULT;
             }
             break;
         case EVSE_STATE_B:
-            switch (pilot_get_up_voltage()) {
+            switch (pilot_get_up_voltage())
+            {
             case PILOT_VOLTAGE_12:
                 next_state = EVSE_STATE_A;
                 break;
@@ -167,17 +257,18 @@ void evse_process(void)
                 // stay in current state
                 break;
             case PILOT_VOLTAGE_6:
-                if (!pause && (authorized || !require_auth)) {
+                if (can_goto_state_c()) {
                     next_state = EVSE_STATE_C;
                 }
                 break;
             default:
-                next_state = EVSE_STATE_ERROR;
+                next_state = EVSE_STATE_E;
                 error = EVSE_ERR_PILOT_FAULT;
             }
             break;
         case EVSE_STATE_C:
-            switch (pilot_get_up_voltage()) {
+            switch (pilot_get_up_voltage())
+            {
             case PILOT_VOLTAGE_12:
                 next_state = EVSE_STATE_A;
                 break;
@@ -191,12 +282,13 @@ void evse_process(void)
                 next_state = EVSE_STATE_D;
                 break;
             default:
-                next_state = EVSE_STATE_ERROR;
+                next_state = EVSE_STATE_E;
                 error = EVSE_ERR_PILOT_FAULT;
             }
             break;
         case EVSE_STATE_D:
-            switch (pilot_get_up_voltage()) {
+            switch (pilot_get_up_voltage())
+            {
             case PILOT_VOLTAGE_6:
                 next_state = EVSE_STATE_C;
                 break;
@@ -204,19 +296,50 @@ void evse_process(void)
                 // stay in current state
                 break;
             default:
-                next_state = EVSE_STATE_ERROR;
+                next_state = EVSE_STATE_E;
                 error = EVSE_ERR_PILOT_FAULT;
             }
             break;
-        case EVSE_STATE_ERROR:
-            if (xTaskGetTickCount() > error_wait_to) {
-                next_state = EVSE_STATE_A;
-                error = EVSE_ERR_NONE;
-            }
-            break;
-        case EVSE_STATE_DISABLED:
+        case EVSE_STATE_E:
+        case EVSE_STATE_F:
             break;
         }
+    }
+
+    // check consumption limit
+    if (consumption_limit > 0 && energy_meter_get_session_consumption() > consumption_limit) {
+        reached_limit |= LIMIT_CONSUMPTION_BIT;
+    } else {
+        reached_limit &= ~LIMIT_CONSUMPTION_BIT;
+    }
+
+    // check elapsed limit
+    if (elapsed_limit > 0 && energy_meter_get_session_elapsed() > elapsed_limit) {
+        reached_limit |= LIMIT_ELAPSED_BIT;
+    } else {
+        reached_limit &= ~LIMIT_ELAPSED_BIT;
+    }
+
+    // check under power limit
+    if (evse_state_is_charging(state)) {
+        if (under_power_limit > 0 && energy_meter_get_power() < under_power_limit) {
+            if (under_power_start_time == 0) {
+                under_power_start_time = xTaskGetTickCount();
+            }
+        } else {
+            under_power_start_time = 0;
+        }
+
+        if (under_power_start_time > 0 && under_power_start_time + pdMS_TO_TICKS(UNDER_POWER_TIME) < xTaskGetTickCount()) {
+            reached_limit |= LIMIT_UNDER_POWER_BIT;
+        } else {
+            reached_limit &= ~LIMIT_UNDER_POWER_BIT;
+        }
+    }
+
+    if (reached_limit > 0 && evse_state_is_charging(state)) {
+        ESP_LOGI(TAG, "Reached linit %d", reached_limit);
+        next_state = EVSE_STATE_B;
     }
 
     if (next_state != state) {
@@ -228,22 +351,16 @@ void evse_process(void)
     xSemaphoreGive(mutex);
 }
 
-void evse_enable(void)
+void evse_set_avalable(bool avalable)
 {
-    ESP_LOGI(TAG, "Enable");
+    ESP_LOGI(TAG, "Set avalable %d", avalable);
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    set_state(EVSE_STATE_A);
-
-    xSemaphoreGive(mutex);
-}
-
-void evse_disable(void)
-{
-    ESP_LOGI(TAG, "Disable");
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    set_state(EVSE_STATE_DISABLED);
+    if (avalable) {
+        set_state(error != EVSE_ERR_NONE ? EVSE_STATE_A : EVSE_STATE_E);
+    } else {
+        set_state(EVSE_STATE_F);
+    }
 
     xSemaphoreGive(mutex);
 }
@@ -261,6 +378,20 @@ void evse_init()
     if (nvs_get_u8(nvs, NVS_REQUIRE_AUTH, &u8) == ESP_OK) {
         require_auth = u8;
     }
+
+    if (nvs_get_u8(nvs, NVS_SOCKED_OUTLET, &u8) == ESP_OK) {
+        socket_outlet = u8;
+    }
+
+    if (nvs_get_u8(nvs, NVS_RCM, &u8) == ESP_OK) {
+        rcm = u8;
+    }
+
+    nvs_get_u32(nvs, NVS_DEFAULT_CONSUMTION_LIMIT, &consumption_limit);
+
+    nvs_get_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, &elapsed_limit);
+
+    nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &under_power_limit);
 
     pilot_set_level(true);
 }
@@ -324,16 +455,65 @@ esp_err_t evse_set_default_chaging_current(uint16_t value)
     return ESP_OK;
 }
 
+bool evse_get_socket_outlet(void)
+{
+    return socket_outlet;
+}
+
+esp_err_t evse_set_socket_outlet(bool _socket_outlet)
+{
+    ESP_LOGI(TAG, "Set socket outlet %d", _socket_outlet);
+
+    if (_socket_outlet && !(board_config.proximity_sens && board_config.socket_lock)) {
+        ESP_LOGE(TAG, "Cant work in socket outlet mode, proxmity pilot & socket lock not available");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    socket_outlet = _socket_outlet;
+
+    nvs_set_u8(nvs, NVS_SOCKED_OUTLET, socket_outlet);
+    nvs_commit(nvs);
+
+    return ESP_OK;
+}
+
+esp_err_t evse_set_rcm(bool _rcm)
+{
+    ESP_LOGI(TAG, "Set rcm %d", _rcm);
+
+    if (_rcm && !board_config.rcm) {
+        ESP_LOGE(TAG, "Cant residual current minitor not available");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    rcm = _rcm;
+
+    nvs_set_u8(nvs, NVS_RCM, rcm);
+    nvs_commit(nvs);
+
+    if (rcm && rcm_test() == false) {
+        set_state(EVSE_STATE_E);
+        error = EVSE_ERR_RCM_SELFTEST_FAULT;
+    }
+
+    return ESP_OK;
+}
+
+bool evse_is_rcm(void)
+{
+    return rcm;
+}
+
 bool evse_is_require_auth(void)
 {
     return require_auth;
 }
 
-void evse_set_require_auth(bool value)
+void evse_set_require_auth(bool _require_auth)
 {
-    ESP_LOGI(TAG, "Set require auth %d", value);
+    ESP_LOGI(TAG, "Set require auth %d", _require_auth);
 
-    require_auth = value;
+    require_auth = _require_auth;
 
     nvs_set_u8(nvs, NVS_REQUIRE_AUTH, require_auth);
     nvs_commit(nvs);
@@ -343,6 +523,7 @@ void evse_authorize(void)
 {
     ESP_LOGI(TAG, "Authorize");
     auth_grant_to = xTaskGetTickCount() + pdMS_TO_TICKS(AUTHORIZED_TIME);
+    under_power_start_time = 0;
 }
 
 bool evse_is_pending_auth(void)
@@ -350,32 +531,103 @@ bool evse_is_pending_auth(void)
     return evse_state_is_session(state) && require_auth && !authorized;
 }
 
-bool evse_is_paused(void)
+bool evse_is_enabled(void)
 {
-    return pause;
+    return enabled;
 }
 
-void evse_pause(void)
+void evse_set_enabled(bool _enabled)
 {
-    ESP_LOGI(TAG, "Pause");
+    ESP_LOGI(TAG, "Set enabled %d", _enabled);
+
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    pause = true;
-    if (evse_state_is_charging(state)) {
-        set_state(EVSE_STATE_B);
+    if (enabled != _enabled) {
+        enabled = _enabled;
+        if (enabled) {
+            under_power_start_time = 0;
+        } else {
+            if (evse_state_is_charging(state)) {
+                set_state(EVSE_STATE_B);
+            }
+        }
+
+        state_update();
     }
-    state_update();
 
     xSemaphoreGive(mutex);
 }
 
-void evse_unpause(void)
+bool evse_is_limit_reached(void)
 {
-    ESP_LOGI(TAG, "Unpause");
-    xSemaphoreTake(mutex, portMAX_DELAY);
+    return reached_limit != 0;
+}
 
-    pause = false;
-    state_update();
+uint32_t evse_get_consumption_limit(void)
+{
+    return consumption_limit;
+}
 
-    xSemaphoreGive(mutex);
+void evse_set_consumption_limit(uint32_t value)
+{
+    consumption_limit = value;
+}
+
+uint32_t evse_get_elapsed_limit(void)
+{
+    return elapsed_limit;
+}
+
+void evse_set_elapsed_limit(uint32_t value)
+{
+    elapsed_limit = value;
+}
+
+uint16_t evse_get_under_power_limit(void)
+{
+    return under_power_limit;
+}
+
+void evse_set_under_power_limit(uint16_t value)
+{
+    under_power_limit = value;
+}
+
+uint32_t evse_get_default_consumption_limit(void)
+{
+    uint32_t value = 0;
+    nvs_get_u32(nvs, NVS_DEFAULT_CONSUMTION_LIMIT, &value);
+    return value;
+}
+
+void evse_set_default_consumption_limit(uint32_t value)
+{
+    nvs_set_u32(nvs, NVS_DEFAULT_CONSUMTION_LIMIT, value);
+    nvs_commit(nvs);
+}
+
+uint32_t evse_get_default_elapsed_limit(void)
+{
+    uint32_t value = 0;
+    nvs_get_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, &value);
+    return value;
+}
+
+void evse_set_default_elapsed_limit(uint32_t value)
+{
+    nvs_set_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, value);
+    nvs_commit(nvs);
+}
+
+uint16_t evse_get_default_under_power_limit(void)
+{
+    uint16_t value = 0;
+    nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &value);
+    return value;
+}
+
+void evse_set_default_under_power_limit(uint16_t value)
+{
+    nvs_set_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, value);
+    nvs_commit(nvs);
 }

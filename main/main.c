@@ -23,7 +23,8 @@
 #include "pilot.h"
 #include "proximity.h"
 #include "ac_relay.h"
-#include "cable_lock.h"
+#include "socket_lock.h"
+#include "rcm.h"
 #include "energy_meter.h"
 #include "serial.h"
 #include "board_config.h"
@@ -67,10 +68,10 @@ static void wifi_event_task_func(void* param)
         if (mode_bits & WIFI_AP_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 150, 150);
 
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_CONNECTED_BIT) {
+            if (xEventGroupWaitBits(wifi_event_group, WIFI_AP_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_AP_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
                 do {
-                } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
+                } while (WIFI_AP_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
             } else {
                 if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
@@ -79,10 +80,10 @@ static void wifi_event_task_func(void* param)
         } else if (mode_bits & WIFI_STA_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 500, 500);
 
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_CONNECTED_BIT) {
+            if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_CONNECTED_BIT) {
                 led_set_on(LED_ID_WIFI);
                 do {
-                } while (WIFI_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
+                } while (WIFI_STA_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
             }
         }
     }
@@ -104,7 +105,7 @@ static void user_input_task_func(void* param)
             if (notification & RELEASED_BIT) {
                 if (pressed) { // sometimes after connect debug UART emit RELEASED_BIT without preceding PRESS_BIT
                     if (xTaskGetTickCount() - press_tick >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
-                        evse_disable();
+                        evse_set_avalable(false);
                         reset_and_reboot();
                     } else {
                         if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {
@@ -142,7 +143,7 @@ static void button_init(void)
     ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
 }
 
-static esp_err_t init_spiffs()
+static esp_err_t init_spiffs(void)
 {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/cfg",
@@ -179,7 +180,7 @@ static bool ota_diagnostic(void)
     return true;
 }
 
-static void update_leds()
+static void update_leds(void)
 {
     if (led_state != evse_get_state()) {
         led_state = evse_get_state();
@@ -198,11 +199,11 @@ static void update_leds()
             led_set_on(LED_ID_CHARGING);
             led_set_off(LED_ID_ERROR);
             break;
-        case EVSE_STATE_ERROR:
+        case EVSE_STATE_E:
             led_set_off(LED_ID_CHARGING);
             led_set_on(LED_ID_ERROR);
             break;
-        case EVSE_STATE_DISABLED:
+        case EVSE_STATE_F:
             led_set_off(LED_ID_CHARGING);
             led_set_off(LED_ID_ERROR);
             break;
@@ -220,7 +221,7 @@ static int log_vprintf(const char* str, va_list l)
     return vprintf(str, l);
 }
 
-void app_main()
+void app_main(void)
 {
     const esp_partition_t* running = esp_ota_get_running_partition();
     ESP_LOGI(TAG, "Running partition: %s", running->label);
@@ -261,7 +262,8 @@ void app_main()
     pilot_init();
     proximity_init();
     ac_relay_init();
-    cable_lock_init();
+    socket_lock_init();
+    rcm_init();
     energy_meter_init();
     led_init();
     aux_init();

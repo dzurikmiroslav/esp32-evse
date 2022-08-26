@@ -1,7 +1,6 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "driver/uart.h"
-#include "esp_log.h"
 #include "cat.h"
 
 #include "at.h"
@@ -13,8 +12,6 @@
 #include "proximity.h"
 
 #define BUF_SIZE (256)
-
-static const char* TAG = "at";
 
 static int uart_num = 0;
 
@@ -109,7 +106,7 @@ static struct cat_variable vars_wifi_config[] = {
 
 static int var_wifi_connection_read(const struct cat_variable* var)
 {
-    var_u8_1 = xEventGroupGetBits(wifi_event_group) & WIFI_CONNECTED_BIT;
+    var_u8_1 = xEventGroupGetBits(wifi_event_group) & WIFI_STA_CONNECTED_BIT;
 
     return 0;
 }
@@ -339,29 +336,27 @@ static struct cat_variable vars_default_charging_current[] = {
     }
 };
 
-static int var_proximity_enabled_read(const struct cat_variable* var, const struct cat_command* cmd)
+static int var_socket_outlet_read(const struct cat_variable* var, const struct cat_command* cmd)
 {
-    var_u8_1 = proximity_is_enabled();
+    var_u8_1 = evse_get_socket_outlet();
 
     return 0;
 }
 
-static int var_proximity_enabled_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
+static int var_socket_outlet_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
 {
-    proximity_set_enabled(var_u8_1);
-
-    return 0;
+  return  evse_set_socket_outlet(var_u8_1) != ESP_OK;;
 }
 
-static struct cat_variable vars_proximity_enabled[] = {
+static struct cat_variable vars_socket_outlet[] = {
     {
         .type = CAT_VAR_UINT_DEC,
         .data = &var_u8_1,
         .data_size = sizeof(var_u8_1),
-        .name = "proximity_enabled",
+        .name = "socket_outlet",
         .access = CAT_VAR_ACCESS_READ_WRITE,
-        .read_ex = var_proximity_enabled_read,
-        .write_ex = var_proximity_enabled_write
+        .read_ex = var_socket_outlet_read,
+        .write_ex = var_socket_outlet_write
     }
 };
 
@@ -470,33 +465,29 @@ static cat_return_state cmd_authorize_run(const struct cat_command* cmd)
     return CAT_RETURN_STATE_OK;
 }
 
-static int var_paused_read(const struct cat_variable* var, const struct cat_command* cmd)
+static int var_enabled_read(const struct cat_variable* var, const struct cat_command* cmd)
 {
-    var_u8_1 = evse_is_paused();
+    var_u8_1 = evse_is_enabled();
 
     return 0;
 }
 
-static int var_paused_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
+static int var_enabled_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
 {
-    if (var_u8_1) {
-        evse_pause();
-    } else {
-        evse_unpause();
-    }
+    evse_set_enabled(var_u8_1);
 
     return 0;
 }
 
-static struct cat_variable vars_paused[] = {
+static struct cat_variable vars_enabled[] = {
     {
         .type = CAT_VAR_UINT_DEC,
         .data = &var_u8_1,
         .data_size = sizeof(var_u8_1),
-        .name = "paused",
+        .name = "enabled",
         .access = CAT_VAR_ACCESS_READ_WRITE,
-        .read_ex = var_paused_read,
-        .write_ex = var_paused_write
+        .read_ex = var_enabled_read,
+        .write_ex = var_enabled_write
     }
 };
 
@@ -585,14 +576,14 @@ static struct cat_command cmds[] = {
     },
     {
         .name = "+DCHCUR",
-        .var = vars_charging_current,
-        .var_num = sizeof(vars_charging_current) / sizeof(vars_charging_current[0]),
+        .var = vars_default_charging_current,
+        .var_num = sizeof(vars_default_charging_current) / sizeof(vars_default_charging_current[0]),
         .need_all_vars = true
     },
     {
-        .name = "+PXEN",
-        .var = vars_proximity_enabled,
-        .var_num = sizeof(vars_proximity_enabled) / sizeof(vars_proximity_enabled[0]),
+        .name = "+SCOU",
+        .var = vars_socket_outlet,
+        .var_num = sizeof(vars_socket_outlet) / sizeof(vars_socket_outlet[0]),
         .need_all_vars = true
     },
     {
@@ -624,9 +615,9 @@ static struct cat_command cmds[] = {
         .run = cmd_authorize_run
     },
     {
-        .name = "+PAUSE",
-        .var = vars_paused,
-        .var_num = sizeof(vars_paused) / sizeof(vars_paused[0]),
+        .name = "+EN",
+        .var = vars_enabled,
+        .var_num = sizeof(vars_enabled) / sizeof(vars_enabled[0]),
         .need_all_vars = true
     },
 };

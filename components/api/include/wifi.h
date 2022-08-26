@@ -6,13 +6,24 @@
 #include "freertos/event_groups.h"
 #include "esp_err.h"
 
-#define WIFI_CONNECTED_BIT          BIT0
-#define WIFI_DISCONNECTED_BIT       BIT1
-#define WIFI_AP_MODE_BIT            BIT2
-#define WIFI_STA_MODE_BIT           BIT3
+#define WIFI_SCAN_SCAN_LIST_SIZE    10
+
+#define WIFI_AP_CONNECTED_BIT       BIT0
+#define WIFI_AP_DISCONNECTED_BIT    BIT1
+#define WIFI_STA_CONNECTED_BIT      BIT2
+#define WIFI_STA_DISCONNECTED_BIT   BIT3
+#define WIFI_AP_MODE_BIT            BIT4
+#define WIFI_STA_MODE_BIT           BIT5
+
+typedef struct 
+{
+    char ssid[32];
+    int rssi;
+    bool auth;
+} wifi_scan_ap_t;
 
 /**
- * @brief WiFi event group WIFI_CONNECTED_BIT | WIFI_DISCONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT
+ * @brief WiFi event group WIFI_AP_CONNECTED_BIT | WIFI_AP_DISCONNECTED_BIT | WIFI_STA_CONNECTED_BIT | WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT
  * 
  */
 extern EventGroupHandle_t wifi_event_group;
@@ -41,6 +52,13 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password);
  */
 bool wifi_get_enabled(void);
 
+/**
+ * @brief Scan for AP
+ * 
+ * @param scan_aps array with length WIFI_SCAN_SCAN_LIST_SIZE 
+ * @return uint16_t number of avalable AP
+ */
+uint16_t wifi_scan(wifi_scan_ap_t *scan_aps);
 
 /**
  * @brief Get WiFi STA ssid, string length 32, stored in NVS

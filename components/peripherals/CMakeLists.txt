@@ -4,7 +4,8 @@ set(srcs
     "src/proximity.c"
     "src/ac_relay.c"
     "src/energy_meter.c"
-    "src/cable_lock.c"
+    "src/socket_lock.c"
+    "src/rcm.c"
     "src/aux.c"
     "src/serial.c")
 

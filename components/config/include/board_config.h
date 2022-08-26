@@ -46,10 +46,16 @@ typedef struct
 
     gpio_num_t ac_relay_gpio;
 
-    bool cable_lock : 1;
-    gpio_num_t cable_lock_a_gpio;
-    gpio_num_t cable_lock_b_gpio;
-    gpio_num_t cable_lock_test_gpio;
+    bool socket_lock : 1;
+    gpio_num_t socket_lock_a_gpio;
+    gpio_num_t socket_lock_b_gpio;
+    gpio_num_t socket_lock_detection_gpio;
+    uint16_t socket_lock_detection_delay;
+    uint16_t socket_lock_min_break_time;
+
+    bool rcm : 1;
+    gpio_num_t rcm_gpio;
+    gpio_num_t rcm_test_gpio;
 
     board_config_energy_meter_t energy_meter;
     bool energy_meter_three_phases : 1;
