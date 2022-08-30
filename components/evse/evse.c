@@ -130,7 +130,7 @@ static void set_state(evse_state_t next_state)
         break;
     case EVSE_STATE_C:
     case EVSE_STATE_D:
-        ac_relay_set_state(enabled);
+        ac_relay_set_state(true);
         break;
     case EVSE_STATE_E:
     case EVSE_STATE_F:
@@ -170,11 +170,11 @@ static void state_update(void)
             authorized = auth_grant_to >= xTaskGetTickCount();
             auth_grant_to = 0;
         }
-        //if ((require_auth && !authorized) || reached_limit > 0) {
-        //     set_pilot(PILOT_STATE_12V);
-        // } else {
+        if (!enabled || (require_auth && !authorized) || reached_limit > 0) {
+            set_pilot(PILOT_STATE_12V);
+        } else {
             set_pilot(PILOT_STATE_PWM);
-        // }
+        }
         break;
     case EVSE_STATE_C:
     case EVSE_STATE_D:
