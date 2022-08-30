@@ -130,7 +130,7 @@ static void set_state(evse_state_t next_state)
         break;
     case EVSE_STATE_C:
     case EVSE_STATE_D:
-        ac_relay_set_state(true);
+        ac_relay_set_state(enabled);
         break;
     case EVSE_STATE_E:
     case EVSE_STATE_F:
@@ -170,11 +170,11 @@ static void state_update(void)
             authorized = auth_grant_to >= xTaskGetTickCount();
             auth_grant_to = 0;
         }
-        if (!enabled || (require_auth && !authorized) || reached_limit > 0) {
-            set_pilot(PILOT_STATE_12V);
-        } else {
+        //if ((require_auth && !authorized) || reached_limit > 0) {
+        //     set_pilot(PILOT_STATE_12V);
+        // } else {
             set_pilot(PILOT_STATE_PWM);
-        }
+        // }
         break;
     case EVSE_STATE_C:
     case EVSE_STATE_D:
@@ -218,9 +218,10 @@ void evse_process(void)
     if (state == EVSE_STATE_E && xTaskGetTickCount() > error_wait_to) {
         next_state = EVSE_STATE_A;
         error = EVSE_ERR_NONE;
-    } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
-        next_state = EVSE_STATE_E;
-        error = EVSE_ERR_DIODE_SHORT;
+    // TODO hotfix :)
+    // } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
+    //     next_state = EVSE_STATE_E;
+    //     error = EVSE_ERR_DIODE_SHORT;
     } else if (socket_outlet && socket_lock_get_status() == SOCKED_LOCK_STATUS_LOCKING_FAIL && error != EVSE_ERR_LOCK_FAULT) {
         next_state = EVSE_STATE_E;
         error = EVSE_ERR_LOCK_FAULT;
