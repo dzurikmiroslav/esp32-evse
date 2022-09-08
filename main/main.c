@@ -66,12 +66,12 @@ static void wifi_event_task_func(void* param)
         led_set_off(LED_ID_WIFI);
         mode_bits = xEventGroupWaitBits(wifi_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
         if (mode_bits & WIFI_AP_MODE_BIT) {
-            led_set_state(LED_ID_WIFI, 150, 150);
+            led_set_state(LED_ID_WIFI, 100, 900);
 
             if (xEventGroupWaitBits(wifi_event_group, WIFI_AP_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_AP_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
                 do {
-                } while (WIFI_AP_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
+                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_AP_DISCONNECTED_BIT));
             } else {
                 if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
@@ -83,7 +83,7 @@ static void wifi_event_task_func(void* param)
             if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_CONNECTED_BIT) {
                 led_set_on(LED_ID_WIFI);
                 do {
-                } while (WIFI_STA_DISCONNECTED_BIT != xEventGroupWaitBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY));
+                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_DISCONNECTED_BIT));
             }
         }
     }

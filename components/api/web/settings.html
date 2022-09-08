@@ -65,12 +65,32 @@
             }
         }
 
-        function converWsToKWh(value) {
-            return Math.round(value / 3600) / 1000;
+        function formatElapsed(sec) {
+            const hour = Math.floor(sec / 3600);
+            sec %= 3600;
+            const min = Math.floor(sec / 60);
+            sec %= 60;
+
+            const arr = [];
+            if (hour > 0) {
+                arr.push(`${hour}h`);
+            }
+            if (min > 0 || hour == 0) {
+                arr.push(`${min}m`);
+            }
+            return arr.join(' ');
         }
 
-        function converKWhToWs(value) {
-            return value * 3600 * 1000;
+        function formatLimitWs(value) {
+            return value === 0 ? 'none' : `${Math.round(value / 3600) / 1000} kWh`;
+        }
+
+        function formatLimitSec(value) {
+            return value === 0 ? 'none' : formatElapsed(value);
+        }
+
+        function formatLimitW(value) {
+            return value === 0 ? 'none' : `${value / 1000} kW`;
         }
 
         function loadSettings() {
@@ -79,17 +99,17 @@
             fetch('/api/v1/config')
                 .then(jsonResponse)
                 .then(data => {
-                    document.getElementById('evseChargingCurrent').value = data.evse.chargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').value = data.evse.defaultChargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrentValue').innerText = data.evse.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.evse.requireAuth;
                     document.getElementById('evseSocketOutlet').checked = data.evse.socketOutlet;
                     document.getElementById('evseRcm').checked = data.evse.rcm;
-                    document.getElementById('evseConsumptionLimit').value = converWsToKWh(data.evse.consumptionLimit);
-                    document.getElementById('evseDefaultConsumptionLimit').value = converWsToKWh(data.evse.defaultConsumptionLimit);
-                    document.getElementById('evseElapsedLimit').value = data.evse.elapsedLimit;
+                    document.getElementById('evseDefaultConsumptionLimit').value = data.evse.defaultConsumptionLimit;
+                    document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(data.evse.defaultConsumptionLimit);
                     document.getElementById('evseDefaultElapsedLimit').value = data.evse.defaultElapsedLimit;
-                    document.getElementById('evseUnderPowerLimit').value = data.evse.underPowerLimit / 1000;
-                    document.getElementById('evseDefaultUnderPowerLimit').value = data.evse.defaultUnderPowerLimit / 1000;
+                    document.getElementById('evseDefaultElapsedLimitValue').innerText = formatLimitSec(data.evse.defaultElapsedLimit);
+                    document.getElementById('evseDefaultUnderPowerLimit').value = data.evse.defaultUnderPowerLimit;
+                    document.getElementById('evseDefaultUnderPowerLimitValue').innerText = formatLimitW(data.evse.defaultUnderPowerLimit);
                     document.getElementById('evseSocketLockOperatingTime').value = data.evse.socketLockOperatingTime;
                     document.getElementById('evseSocketLockBreakTime').value = data.evse.socketLockBreakTime;
                     document.getElementById('evseSocketLockRetryCount').value = data.evse.socketLockRetryCount;
@@ -141,17 +161,17 @@
             fetch('/api/v1/config/evse')
                 .then(jsonResponse)
                 .then(data => {
-                    document.getElementById('evseChargingCurrent').value = data.chargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').value = data.defaultChargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrentValue').innerText = data.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.requireAuth;
                     document.getElementById('evseSocketOutlet').checked = data.socketOutlet;
                     document.getElementById('evseRcm').checked = data.rcm;
-                    document.getElementById('evseConsumptionLimit').value = converWsToKWh(data.consumptionLimit);
-                    document.getElementById('evseDefaultConsumptionLimit').value = converWsToKWh(data.defaultConsumptionLimit);
-                    document.getElementById('evseElapsedLimit').value = data.elapsedLimit;
+                    document.getElementById('evseDefaultConsumptionLimit').value = data.defaultConsumptionLimit;
+                    document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(data.defaultConsumptionLimit);
                     document.getElementById('evseDefaultElapsedLimit').value = data.defaultElapsedLimit;
-                    document.getElementById('evseUnderPowerLimit').value = data.underPowerLimit / 1000;
-                    document.getElementById('evseDefaultUnderPowerLimit').value = data.defaultUnderPowerLimit / 1000;
+                    document.getElementById('evseDefaultElapsedLimitValue').innerText = formatLimitSec(data.defaultElapsedLimit);
+                    document.getElementById('evseDefaultUnderPowerLimit').value = data.defaultUnderPowerLimit;
+                    document.getElementById('evseDefaultUnderPowerLimitValue').innerText = formatLimitW(data.defaultUnderPowerLimit);
                     document.getElementById('evseSocketLockOperatingTime').value = data.socketLockOperatingTime;
                     document.getElementById('evseSocketLockBreakTime').value = data.socketLockBreakTime;
                     document.getElementById('evseSocketLockRetryCount').value = data.socketLockRetryCount;
@@ -293,24 +313,20 @@
                 document.getElementById('loading').classList.add('show');
 
                 const config = {
-                    chargingCurrent: parseFloat(document.getElementById('evseChargingCurrent').value),
-                    defaultChargingCurrent: parseFloat(document.getElementById('evseDefaultChargingCurrent').value),
+                    defaultChargingCurrent: document.getElementById('evseDefaultChargingCurrent').valueAsNumber,
                     requireAuth: document.getElementById('evseRequireAuth').checked,
                     socketOutlet: document.getElementById('evseSocketOutlet').checked,
                     rcm: document.getElementById('evseRcm').checked,
-                    consumptionLimit: converKWhToWs(parseFloat(document.getElementById('evseConsumptionLimit').value)),
-                    defaultConsumptionLimit: converKWhToWs(parseFloat(document.getElementById('evseDefaultConsumptionLimit').value)),
-                    elapsedLimit: parseFloat(document.getElementById('evseElapsedLimit').value),
-                    defaultElapsedLimit: parseFloat(document.getElementById('evseDefaultElapsedLimit').value),
-                    underPowerLimit: parseFloat(document.getElementById('evseUnderPowerLimit').value) * 1000,
-                    defaultUnderPowerLimit: parseFloat(document.getElementById('evseDefaultUnderPowerLimit').value) * 1000,
-                    socketLockOperatingTime: parseInt(document.getElementById('evseSocketLockOperatingTime').value),
-                    socketLockBreakTime: parseInt(document.getElementById('evseSocketLockBreakTime').value),
-                    socketLockRetryCount: parseInt(document.getElementById('evseSocketLockRetryCount').value),
+                    defaultConsumptionLimit: document.getElementById('evseDefaultConsumptionLimit').valueAsNumber,
+                    defaultElapsedLimit: document.getElementById('evseDefaultElapsedLimit').valueAsNumber,
+                    defaultUnderPowerLimit: document.getElementById('evseDefaultUnderPowerLimit').valueAsNumber,
+                    socketLockOperatingTime: document.getElementById('evseSocketLockOperatingTime').valueAsNumber,
+                    socketLockBreakTime: document.getElementById('evseSocketLockBreakTime').valueAsNumber,
+                    socketLockRetryCount: document.getElementById('evseSocketLockRetryCount').valueAsNumber,
                     socketLockDetectionHigh: document.getElementById('evseSocketLockDetectionHigh').value === 'true',
                     energyMeter: document.getElementById('evseEnergyMeter').value,
-                    acVoltage: parseFloat(document.getElementById('evseAcVoltage').value),
-                    pulseAmount: parseFloat(document.getElementById('evsePulseAmount').value),
+                    acVoltage: document.getElementById('evseAcVoltage').valueAsNumber,
+                    pulseAmount: document.getElementById('evsePulseAmount').valueAsNumber,
                     aux1: document.getElementById('evseAux1').value,
                     aux2: document.getElementById('evseAux2').value,
                     aux3: document.getElementById('evseAux3').value
@@ -372,7 +388,7 @@
                     baseTopic: document.getElementById('mqttBaseTopic').value,
                     user: document.getElementById('mqttUser').value,
                     password: document.getElementById('mqttPassword').value,
-                    periodicity: parseInt(document.getElementById('mqttPeriodicity').value)
+                    periodicity: document.getElementById('mqttPeriodicity').valueAsNumber
                 };
 
                 fetch('/api/v1/config/mqtt', {
@@ -399,7 +415,7 @@
 
                 const config = {
                     enabled: document.getElementById('tcpLoggerEnabled').checked,
-                    port: parseInt(document.getElementById('tcpLoggerPort').value)
+                    port: document.getElementById('tcpLoggerPort').valueAsNumber
                 };
 
                 fetch('/api/v1/config/tcpLogger', {
@@ -426,17 +442,17 @@
 
                 const config = {
                     serial1Mode: document.getElementById('serial1Mode').value,
-                    serial1BaudRate: parseInt(document.getElementById('serial1BaudRate').value),
+                    serial1BaudRate: document.getElementById('serial1BaudRate').valueAsNumber,
                     serial1DataBits: document.getElementById('serial1DataBits').value,
                     serial1StopBits: document.getElementById('serial1StopBits').value,
                     serial1Parity: document.getElementById('serial1Parity').value,
                     serial2Mode: document.getElementById('serial2Mode').value,
-                    serial2BaudRate: parseInt(document.getElementById('serial2BaudRate').value),
+                    serial2BaudRate: document.getElementById('serial2BaudRate').valueAsNumber,
                     serial2DataBits: document.getElementById('serial2DataBits').value,
                     serial2StopBits: document.getElementById('serial2StopBits').value,
                     serial2Parity: document.getElementById('serial2Parity').value,
                     serial3Mode: document.getElementById('serial3Mode').value,
-                    serial3BaudRate: parseInt(document.getElementById('serial3BaudRate').value),
+                    serial3BaudRate: document.getElementById('serial3BaudRate').valueAsNumber,
                     serial3DataBits: document.getElementById('serial3DataBits').value,
                     serial3StopBits: document.getElementById('serial3StopBits').value,
                     serial3Parity: document.getElementById('serial3Parity').value
@@ -501,7 +517,6 @@
             fetch('/api/v1/boardConfig')
                 .then(jsonResponse)
                 .then(data => {
-                    document.getElementById('evseChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseSocketLockBreakTime').min = data.socketLockMinBreakTime;
                     document.getElementById('evseSocketOutlet').disabled = !data.socketOutlet;
@@ -543,25 +558,20 @@
                 })
                 .catch(showError);
 
-            // FF and IE workaround
-            document.getElementById('evseChargingCurrent').addEventListener('input', event => {
-                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-            });
             document.getElementById('evseDefaultChargingCurrent').addEventListener('input', event => {
-                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-            });
-            document.getElementById('evseConsumptionLimit').addEventListener('input', event => {
-                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                document.getElementById('evseDefaultChargingCurrentValue').innerText = event.target.value;
             });
             document.getElementById('evseDefaultConsumptionLimit').addEventListener('input', event => {
-                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-            });
-            document.getElementById('evseElapsedLimit').addEventListener('input', event => {
-                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(event.target.valueAsNumber);
             });
             document.getElementById('evseDefaultElapsedLimit').addEventListener('input', event => {
-                event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                document.getElementById('evseDefaultElapsedLimitValue').innerText = formatLimitSec(event.target.valueAsNumber);
             });
+            document.getElementById('evseDefaultUnderPowerLimit').addEventListener('input', event => {
+                document.getElementById('evseDefaultUnderPowerLimitValue').innerText = formatLimitW(event.target.valueAsNumber);
+            });
+
+            // FF and IE workaround
             document.getElementById('evseSocketLockOperatingTime').addEventListener('input', event => {
                 event.target.value = event.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
             });
@@ -642,48 +652,39 @@
                 <div class="tab-pane fade show active" id="evse" role="tabpanel" aria-labelledby="home-tab">
                     <form id="evseForm" novalidate>
                         <div class="row">
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseChargingCurrent">Charging current</label>
-                                <input type="number" class="form-control" id="evseChargingCurrent" min="6" max="80"
-                                    step="0.1" required>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseDefaultChargingCurrent">Default charging
-                                    current</label>
-                                <input type="number" class="form-control" id="evseDefaultChargingCurrent" min="6"
-                                    max="80" step="0.1" required>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <label for="evseDefaultChargingCurrent" class="form-label">
+                                    Charging current
+                                    <span class="fw-bolder"><span id="evseDefaultChargingCurrentValue"></span> A</span>
+                                </label>
+                                <input type="range" class="form-range" min="6" max="80" step="0.1"
+                                    id="evseDefaultChargingCurrent">
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseConsumptionLimit">Consumption limit (kWh)</label>
-                                <input type="number" class="form-control" id="evseConsumptionLimit" min="0"
-                                    step="0.001">
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <label for="evseDefaultConsumptionLimit" class="form-label">
+                                    Consumption limit <span id="evseDefaultConsumptionLimitValue"
+                                        class="fw-bolder"></span>
+                                </label>
+                                <input type="range" class="form-range" min="0" max="180000000" step="360000"
+                                    id="evseDefaultConsumptionLimit">
                             </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseElapsedLimit">Elapsed limit (s)</label>
-                                <input type="number" class="form-control" id="evseElapsedLimit" min="0" step="1">
+
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <label for="evseDefaultElapsedLimit" class="form-label">
+                                    Elapsed limit <span id="evseDefaultElapsedLimitValue" class="fw-bolder"></span>
+                                </label>
+                                <input type="range" class="form-range" min="0" max="18000" step="300"
+                                    id="evseDefaultElapsedLimit">
                             </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseUnderPowerLimit">Under power limit (kW)</label>
-                                <input type="number" class="form-control" id="evseUnderPowerLimit" min="0" step="0.001">
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseDefaultConsumptionLimit">Default consumption limit
-                                    (kWh)</label>
-                                <input type="number" class="form-control" id="evseDefaultConsumptionLimit" min="0"
-                                    step="0.001">
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseDefaultElapsedLimit">Default elapsed limit
-                                    (s)</label>
-                                <input type="number" class="form-control" id="evseDefaultElapsedLimit" min="0" step="1">
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="evseDefaultUnderPowerLimit">Default under power limit
-                                    (kW)</label>
-                                <input type="number" class="form-control" id="evseDefaultUnderPowerLimit" min="0"
-                                    step="0.001">
+
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <label for="evseDefaultUnderPowerLimit" class="form-label">
+                                    Under power limit <span id="evseDefaultUnderPowerLimitValue" class="fw-bolder"></span>
+                                </label>
+                                <input type="range" class="form-range" min="0" max="10000" step="10"
+                                    id="evseDefaultUnderPowerLimit">
                             </div>
                         </div>
                         <div class="row">
