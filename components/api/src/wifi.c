@@ -24,11 +24,14 @@ static const char* TAG = "wifi";
 
 static nvs_handle_t nvs;
 
+static esp_netif_t* sta_netif;
+
+static esp_netif_t* ap_netif;
+
 EventGroupHandle_t wifi_event_group;
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-     ESP_LOGW(TAG, "event_id %d", event_id);
     if (event_base == WIFI_EVENT) {
         if (event_id == WIFI_EVENT_AP_STACONNECTED) {
             ESP_LOGI(TAG, "STA connected");
@@ -90,7 +93,7 @@ static void sta_set_config(void)
 
 static void ap_set_config(void)
 {
-    wifi_config_t wifi_config = {
+    wifi_config_t wifi_ap_config = {
         .ap = {
             .max_connection = 1,
             .authmode = WIFI_AUTH_OPEN
@@ -98,10 +101,13 @@ static void ap_set_config(void)
     };
     uint8_t mac[6];
     esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
-    sprintf((char*)wifi_config.ap.ssid, AP_SSID, mac[3], mac[4], mac[5]);
+    sprintf((char*)wifi_ap_config.ap.ssid, AP_SSID, mac[3], mac[4], mac[5]);
+
+    wifi_config_t wifi_sta_config = { 0 };
 
     esp_wifi_set_mode(WIFI_MODE_APSTA);
-    esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config);
+    esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_ap_config);
+    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_sta_config);
 }
 
 static void sta_try_start(void)
@@ -122,8 +128,8 @@ void wifi_init(void)
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
-    assert(esp_netif_create_default_wifi_ap());
-    assert(esp_netif_create_default_wifi_sta());
+    ap_netif = esp_netif_create_default_wifi_ap();
+    sta_netif = esp_netif_create_default_wifi_sta();
 
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
@@ -135,6 +141,16 @@ void wifi_init(void)
     ESP_ERROR_CHECK(mdns_instance_name_set("EVSE controller"));
 
     sta_try_start();
+}
+
+esp_netif_t* wifi_get_sta_netif(void)
+{
+    return sta_netif;
+}
+
+esp_netif_t* wifi_get_ap_netif(void)
+{
+    return ap_netif;
 }
 
 esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)

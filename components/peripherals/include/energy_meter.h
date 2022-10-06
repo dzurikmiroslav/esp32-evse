@@ -108,11 +108,54 @@ uint32_t energy_meter_get_session_consumption(void);
 void energy_meter_get_voltage(float* voltage);
 
 /**
+ * @brief Cet current measured voltage on L1
+ * 
+ * @return voltage in V 
+ */
+float energy_meter_get_l1_voltage(void);
+
+/**
+ * @brief Cet current measured voltage on L2
+ * 
+ * @return voltage in V 
+ */
+float energy_meter_get_l2_voltage(void);
+
+
+/**
+ * @brief Cet current measured voltage on L3
+ * 
+ * @return voltage in V 
+ */
+float energy_meter_get_l3_voltage(void);
+
+/**
  * @brief After energy_meter_process, get current measured current
  *
  * @param voltage output array of 3 items, values in A
  */
 void energy_meter_get_current(float* current);
+
+/**
+ * @brief Cet current measured current on L1
+ * 
+ * @return voltage in V 
+ */
+float energy_meter_get_l1_current(void);
+
+/**
+ * @brief Cet current measured current on L2
+ * 
+ * @return voltage in V 
+ */
+float energy_meter_get_l2_current(void);
+
+/**
+ * @brief Cet current measured current on L3
+ * 
+ * @return voltage in V 
+ */
+float energy_meter_get_l3_current(void);
 
 /**
  * @brief Serialize to string

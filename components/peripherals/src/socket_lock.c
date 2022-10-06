@@ -149,7 +149,7 @@ void socket_lock_init(void)
     }
 }
 
-bool socket_lock_get_detection_high(void)
+bool socket_lock_is_detection_high(void)
 {
     return detection_high;
 }

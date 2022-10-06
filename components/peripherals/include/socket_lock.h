@@ -23,7 +23,7 @@ void socket_lock_init(void);
  * @return true when locked has zero resistance 
  * @return false when unlocked has zero resistance
  */
-bool socket_lock_get_detection_high(void);
+bool socket_lock_is_detection_high(void);
 
 /**
  * @brief Set socket lock detection on high, stored in NVS

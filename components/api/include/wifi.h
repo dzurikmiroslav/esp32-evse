@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_err.h"
+#include "esp_netif.h"
 
 #define WIFI_SCAN_SCAN_LIST_SIZE    10
 
@@ -33,6 +34,20 @@ extern EventGroupHandle_t wifi_event_group;
  * 
  */
 void wifi_init(void);
+
+/**
+ * @brief Return WiFi STA network interface
+ * 
+ * @return esp_netif_t* 
+ */
+esp_netif_t* wifi_get_sta_netif(void);
+
+/**
+ * @brief Return WiFi AP network interface
+ * 
+ * @return esp_netif_t* 
+ */
+esp_netif_t* wifi_get_ap_netif(void);
 
 /**
  * @brief Set WiFi config

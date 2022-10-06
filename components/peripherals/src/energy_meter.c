@@ -466,9 +466,39 @@ void energy_meter_get_voltage(float* voltage)
     memcpy(voltage, vlt, sizeof(vlt));
 }
 
+float energy_meter_get_l1_voltage(void)
+{
+    return vlt[0];
+}
+
+float energy_meter_get_l2_voltage(void)
+{
+    return vlt[1];
+}
+
+float energy_meter_get_l3_voltage(void)
+{
+    return vlt[2];
+}
+
 void energy_meter_get_current(float* current)
 {
     memcpy(current, cur, sizeof(cur));
+}
+
+float energy_meter_get_l1_current(void)
+{
+    return cur[0];
+}
+
+float energy_meter_get_l2_current(void)
+{
+    return cur[2];
+}
+
+float energy_meter_get_l3_current(void)
+{
+    return cur[3];
 }
 
 const char* energy_meter_mode_to_str(energy_meter_mode_t mode)

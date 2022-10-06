@@ -1,6 +1,7 @@
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -12,141 +13,187 @@
 
 #include "tcp_logger.h"
 
-#define KEEPALIVE_IDLE      5
-#define KEEPALIVE_INTERVAL  5
-#define KEEPALIVE_COUNT     3
-#define DEFAULT_PORT        3000
-#define PORT_MIN            1000
+#define TCP_PORT                3000
+#define TCP_MAX_CONN            2
+#define TCP_LISTEN_BACKLOG      5
 
-#define NVS_NAMESPACE       "tcp_logger"
-#define NVS_ENABLED         "enabled"
-#define NVS_PORT            "port"
+#define SHUTDOWN_TIMEOUT        1000
+
+#define KEEPALIVE_IDLE          5
+#define KEEPALIVE_INTERVAL      5
+#define KEEPALIVE_COUNT         3
+
+#define NVS_NAMESPACE           "tcp_logger"
+#define NVS_ENABLED             "enabled"
 
 static const char* TAG = "tcp_logger";
 
 static nvs_handle nvs;
 
-static int sock = -1;
+int socks[TCP_MAX_CONN];
 
 static int listen_sock = -1;
 
-static void do_retransmit(const int sock)
+static TaskHandle_t tcp_server_task = NULL;
+
+static SemaphoreHandle_t shutdown_sem = NULL;
+
+static int port_bind(void)
 {
-    int len;
-    char rx_buffer[32];
-
-    do {
-        len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-        if (len < 0) {
-            ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-        } else if (len == 0) {
-            ESP_LOGI(TAG, "Connection closed");
-        } else {
-            rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
-            // send() can return less bytes than supplied length.
-            // Walk-around for robust implementation.
-            int to_write = len;
-            while (to_write > 0) {
-                int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
-                if (written < 0) {
-                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                }
-                to_write -= written;
-            }
-        }
-    } while (len > 0);
-}
-
-static void tcp_server_task(void* pvParameters)
-{
-    char addr_str[128];
-    int keepAlive = 1;
-    int keepIdle = KEEPALIVE_IDLE;
-    int keepInterval = KEEPALIVE_INTERVAL;
-    int keepCount = KEEPALIVE_COUNT;
-    uint16_t port = DEFAULT_PORT;
-    nvs_get_u16(nvs, NVS_PORT, &port);
-
-    listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+    int listen_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        vTaskDelete(NULL);
-        return;
+        return listen_sock;
     }
+
     int opt = 1;
     setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    ESP_LOGI(TAG, "Socket created");
 
     struct sockaddr_in dest_addr;
     dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(port);
+    dest_addr.sin_port = htons(TCP_PORT);
     int err = bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
     if (err != 0) {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-        goto CLEAN_UP;
+        close(listen_sock);
+        listen_sock = -1;
     }
-    ESP_LOGI(TAG, "Socket bound, port %d", port);
+    ESP_LOGI(TAG, "Socket bound, port %d", TCP_PORT);
 
-    err = listen(listen_sock, 1);
+    err = listen(listen_sock, TCP_LISTEN_BACKLOG);
     if (err != 0) {
         ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
-        goto CLEAN_UP;
+        close(listen_sock);
+        listen_sock = -1;
     }
 
-    for (;;) {
-        ESP_LOGI(TAG, "Socket listening");
+    return listen_sock;
+}
 
-        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
-        socklen_t addr_len = sizeof(source_addr);
-        sock = accept(listen_sock, (struct sockaddr*)&source_addr, &addr_len);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
-            break;
+static int port_accept_conn(int listen_sock)
+{
+    char addr_str[128];
+    struct sockaddr_storage source_addr;
+    socklen_t addr_len = sizeof(source_addr);
+    int keepAlive = 1;
+    int keepIdle = KEEPALIVE_IDLE;
+    int keepInterval = KEEPALIVE_INTERVAL;
+    int keepCount = KEEPALIVE_COUNT;
+
+    int sock = accept(listen_sock, (struct sockaddr*)&source_addr, &addr_len);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Unable to accept connection: errno=%d", errno);
+        close(sock);
+    } else {
+        inet_ntoa_r(((struct sockaddr_in*)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
+        ESP_LOGI(TAG, "Socket (#%d) accepted ip address: %s", sock, addr_str);
+    }
+
+    // Set tcp keepalive option
+    setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int));
+    setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(int));
+    setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(int));
+    setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(int));
+
+    return sock;
+}
+
+static void tcp_server_task_func(void* params)
+{
+    struct pollfd fds[TCP_MAX_CONN + 1];
+
+    for (int i = 0; i < TCP_MAX_CONN; i++) {
+        socks[i] = -1;
+        fds[i + 1].events = POLLIN | POLLHUP;
+    }
+
+    do {
+        listen_sock = port_bind();
+    } while (listen_sock < 0 && !shutdown_sem);
+
+    fds[0].fd = listen_sock;
+    fds[0].events = POLLIN | POLLHUP;
+
+    while (listen_sock != -1) {
+        int conn_cout = 0;
+
+        for (int i = 0; i < TCP_MAX_CONN; i++) {
+            if (socks[i] > 0) {
+                conn_cout++;
+                fds[i + 1].fd = socks[i];
+            }
         }
 
-        // Set tcp keepalive option
-        setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int));
-        setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(int));
-        setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(int));
-        setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(int));
+        if (poll(fds, conn_cout + 1, -1) != -1) {
+            if (fds[0].revents & POLLIN) {
+                int sock = port_accept_conn(listen_sock);
+                if (conn_cout >= TCP_MAX_CONN) {
+                    ESP_LOGE(TAG, "Maximum connection count %d reached", TCP_MAX_CONN);
+                    close(sock);
+                } else {
+                    socks[conn_cout++] = sock;
+                }
+            }
 
-        inet_ntoa_r(((struct sockaddr_in*)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
-        ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
-
-        do_retransmit(sock);
-
-        shutdown(sock, 0);
-        close(sock);
-        sock = -1;
-
-        ESP_LOGI(TAG, "Socket closed");
+            for (int i = 0; i < TCP_MAX_CONN; i++) {
+                if (socks[i] > 0) {
+                    if (fds[i + 1].revents & POLLIN) {
+                        if (recv(socks[i], NULL, 100, MSG_DONTWAIT) < 0) {
+                            if (errno == ENOTCONN) {
+                                ESP_LOGI(TAG, "Socket (#%d), closing", socks[i]);
+                                shutdown(socks[i], SHUT_RDWR);
+                                close(socks[i]);
+                                socks[i] = -1;
+                            } else {
+                                ESP_LOGE(TAG, "Socket (#%d), error during receive: errno %d", socks[i], errno);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-CLEAN_UP:
-    close(listen_sock);
-    listen_sock = -1;
+    for (int i = 0; i < TCP_MAX_CONN; i++) {
+        if (socks[i] > 0) {
+            ESP_LOGI(TAG, "Socket (#%d), closing", socks[i]);
+            shutdown(socks[i], SHUT_RDWR);
+            close(socks[i]);
+        }
+    }
+
+    if (shutdown_sem) {
+        xSemaphoreGive(shutdown_sem);
+    }
     vTaskDelete(NULL);
 }
 
-static void try_start(void)
+static void tcp_server_start(void)
 {
-    if (tcp_logger_get_enabled()) {
-        xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, NULL);
+    if (!tcp_server_task) {
+        ESP_LOGI(TAG, "Starting server");
+        xTaskCreate(tcp_server_task_func, "logger_tcp_server", 4096, NULL, 5, &tcp_server_task);
     }
 }
 
 static void tcp_server_stop(void)
 {
-    if (sock >= 0) {
-        close(sock);
-        sock = -1;
-    }
+    if (tcp_server_task) {
+        ESP_LOGI(TAG, "Stopping server");
+        shutdown_sem = xSemaphoreCreateBinary();
 
-    if (listen_sock >= 0) {
         close(listen_sock);
         listen_sock = -1;
+
+        if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
+            ESP_LOGE(TAG, "Server task stop timeout, will be force stoped");
+            vTaskDelete(tcp_server_task);
+        }
+
+        vSemaphoreDelete(shutdown_sem);
+        shutdown_sem = NULL;
+        tcp_server_task = NULL;
     }
 }
 
@@ -156,50 +203,38 @@ void tcp_logger_init(void)
 
     esp_register_shutdown_handler(&tcp_server_stop);
 
-    try_start();
+    if (tcp_logger_is_enabled()) {
+        tcp_server_start();
+    }
 }
 
-esp_err_t tcp_logger_set_config(bool enabled, uint16_t port)
+void tcp_logger_set_enabled(bool enabled)
 {
     nvs_set_u8(nvs, NVS_ENABLED, enabled);
 
-    if (enabled && port != 0 && port < PORT_MIN) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (port != 0) {
-        nvs_set_u16(nvs, NVS_PORT, port);
-    }
-
     nvs_commit(nvs);
 
-    tcp_server_stop();
-
-    try_start();
-
-    return ESP_OK;
+    if (enabled) {
+        tcp_server_start();
+    } else {
+        tcp_server_stop();
+    }
 }
 
-bool tcp_logger_get_enabled(void)
+bool tcp_logger_is_enabled(void)
 {
     uint8_t value = false;
     nvs_get_u8(nvs, NVS_ENABLED, &value);
     return value;
 }
 
-uint16_t tcp_logger_get_port(void)
-{
-    uint16_t value = DEFAULT_PORT;
-    nvs_get_u16(nvs, NVS_PORT, &value);
-    return value;
-}
-
 void tcp_logger_log_process(const char* str, int len)
 {
-    if (sock >= 0) {
-        int written = send(sock, str, len, 0);
-        if (written < 0) {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+    if (tcp_server_task) {
+        for (int i = 0; i < TCP_MAX_CONN; i++) {
+            if (socks[i] != -1) {
+                send(socks[i], str, len, MSG_DONTWAIT);
+            }
         }
     }
 }

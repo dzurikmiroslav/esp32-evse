@@ -10,6 +10,7 @@
 #include "mqtt.h"
 #include "board_config.h"
 #include "json_utils.h"
+#include "timeout_utils.h"
 #include "wifi.h"
 
 #define NVS_NAMESPACE       "mqtt"
@@ -91,6 +92,8 @@ static void handle_message(const char* topic, const char* data)
             cJSON* root = json_get_info();
             publish_message("/response/info", root);
             cJSON_Delete(root);
+        } if (strcmp(sub_topic, "/request/restart") == 0) {
+            timeout_restart();
         } else if (strcmp(sub_topic, "/set/config/evse") == 0) {
             cJSON* root = cJSON_Parse(data);
             json_set_evse_config(root);

@@ -17,7 +17,7 @@
 
 #define CHARGING_CURRENT_MIN            60
 #define AUTHORIZED_TIME                 60000  // 60sec
-#define ERROR_WAIT_TIME                 10000  // 10sec TODO move up
+#define ERROR_WAIT_TIME                 60000  // 60sec
 #define UNDER_POWER_TIME                60000  // 60sec
 
 #define NVS_NAMESPACE                   "evse"

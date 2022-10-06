@@ -175,6 +175,8 @@
                         document.getElementById('chip').innerText = data.chip;
                         document.getElementById('chipCores').innerText = data.chipCores;
                         document.getElementById('chipRevision').innerText = data.chipRevision;
+                        document.getElementById('heapProgressBar').style.width = `${100 * (data.freeHeapSize / data.heapSize)}%`;
+                        document.getElementById('heapSize').innerText = `${data.freeHeapSize} / ${data.heapSize} bytes`;
                         document.getElementById('appVersion').innerText = data.appVersion;
                         document.getElementById('appDateTime').innerText = data.appDate + ' ' + data.appTime;
                         document.getElementById('idfVersion').innerText = data.idfVersion;
@@ -267,6 +269,17 @@
                     <tr>
                         <th scope="row">Chip revision</th>
                         <td id="chipRevision"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Heap size</th>
+                        <td>
+                            <div class="d-md-flex flex-row">
+                                <div class="progress flex-grow-1 my-1 me-md-1">
+                                    <div id="heapProgressBar" class="progress-bar bg-info" role="progressbar"></div>
+                                </div>
+                                <span id="heapSize"></span>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>

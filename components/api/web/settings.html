@@ -132,8 +132,6 @@
                     document.getElementById('mqttPassword').value = '';
                     document.getElementById('mqttPeriodicity').value = data.mqtt.periodicity;
                     document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;
-                    document.getElementById('tcpLoggerEnabled').dispatchEvent(new Event("change"));
-                    document.getElementById('tcpLoggerPort').value = data.tcpLogger.port;
                     document.getElementById('serial1Mode').value = data.serial.serial1Mode;
                     document.getElementById('serial1BaudRate').value = data.serial.serial1BaudRate;
                     document.getElementById('serial1DataBits').value = data.serial.serial1DataBits;
@@ -149,6 +147,8 @@
                     document.getElementById('serial3DataBits').value = data.serial.serial3DataBits;
                     document.getElementById('serial3StopBits').value = data.serial.serial3StopBits;
                     document.getElementById('serial3Parity').value = data.serial.serial3Parity;
+                    document.getElementById('modbusTcpEnabled').checked = data.modbus.tcpEnabled;
+                    document.getElementById('modbusUnitId').value = data.modbus.unitId;
                     document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !data.evse.socketOutlet);
                 })
                 .finally(() => document.getElementById('loading').classList.remove('show'))
@@ -267,8 +267,6 @@
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('tcpLoggerEnabled').checked = data.enabled;
-                    document.getElementById('tcpLoggerEnabled').dispatchEvent(new Event("change"));
-                    document.getElementById('tcpLoggerPort').value = data.port;
                 })
                 .finally(() => {
                     document.getElementById('tcpLoggerForm').classList.remove('was-validated');
@@ -301,6 +299,22 @@
                 })
                 .finally(() => {
                     document.getElementById('serialForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
+        function loadModbusSettings() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/config/modbus')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('modbusTcpEnabled').checked = data.tcpEnabled;
+                    document.getElementById('modbusUnitId').value = data.unitId;
+                })
+                .finally(() => {
+                    document.getElementById('modbusForm').classList.remove('was-validated');
                     document.getElementById('loading').classList.remove('show');
                 })
                 .catch(showError);
@@ -414,8 +428,7 @@
                 document.getElementById('loading').classList.add('show');
 
                 const config = {
-                    enabled: document.getElementById('tcpLoggerEnabled').checked,
-                    port: document.getElementById('tcpLoggerPort').valueAsNumber
+                    enabled: document.getElementById('tcpLoggerEnabled').checked
                 };
 
                 fetch('/api/v1/config/tcpLogger', {
@@ -474,6 +487,34 @@
             }
         }
 
+
+        function submitModbusSettings() {
+            if (!document.getElementById('modbusForm').checkValidity()) {
+                document.getElementById('modbusForm').classList.add('was-validated');
+            } else {
+                document.getElementById('loading').classList.add('show');
+
+                const config = {
+                    tcpEnabled: document.getElementById('modbusTcpEnabled').checked,
+                    unitId: document.getElementById('modbusUnitId').valueAsNumber
+                };
+
+                fetch('/api/v1/config/modbus', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('modbusForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
+            }
+        }
+
         function restart() {
             document.getElementById('loading').classList.add('show');
 
@@ -504,10 +545,6 @@
 
             document.getElementById('mqttEnabled').addEventListener('change', event => {
                 document.querySelectorAll('#mqttForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
-            });
-
-            document.getElementById('tcpLoggerEnabled').addEventListener('change', event => {
-                document.querySelectorAll('#tcpLoggerForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
             });
 
             document.getElementById('evseSocketOutlet').addEventListener('change', event => {
@@ -644,12 +681,16 @@
                         data-bs-target="#serial" aria-controls="serial" aria-selected="false">Serial</button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="modbus-tab" type="button" role="tab" data-bs-toggle="tab"
+                        data-bs-target="#modbus" aria-controls="modbus" aria-selected="false">Modbus</button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" id="system-tab" type="button" role="tab" data-bs-toggle="tab"
                         data-bs-target="#system" aria-controls="system" aria-selected="false">System</button>
                 </li>
             </ul>
             <div class="tab-content" id="myTabContent">
-                <div class="tab-pane fade show active" id="evse" role="tabpanel" aria-labelledby="home-tab">
+                <div class="tab-pane fade show active" id="evse" role="tabpanel">
                     <form id="evseForm" novalidate>
                         <div class="row">
                             <div class="col-12 col-md-6 col-xl-4">
@@ -681,7 +722,8 @@
 
                             <div class="col-12 col-md-6 col-xl-4">
                                 <label for="evseDefaultUnderPowerLimit" class="form-label">
-                                    Under power limit <span id="evseDefaultUnderPowerLimitValue" class="fw-bolder"></span>
+                                    Under power limit <span id="evseDefaultUnderPowerLimitValue"
+                                        class="fw-bolder"></span>
                                 </label>
                                 <input type="range" class="form-range" min="0" max="10000" step="10"
                                     id="evseDefaultUnderPowerLimit">
@@ -797,7 +839,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="tab-pane fade" id="wifi" role="tabpanel" aria-labelledby="profile-tab">
+                <div class="tab-pane fade" id="wifi" role="tabpanel">
                     <form id="wifiForm" novalidate>
                         <div class="row">
                             <div class="col-12">
@@ -836,7 +878,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="tab-pane fade" id="mqtt" role="tabpanel" aria-labelledby="contact-tab">
+                <div class="tab-pane fade" id="mqtt" role="tabpanel">
                     <form id="mqttForm" novalidate>
                         <div class="row">
                             <div class="col-12 md-3">
@@ -879,7 +921,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="tab-pane fade" id="tcpLogger" role="tabpanel" aria-labelledby="contact-tab">
+                <div class="tab-pane fade" id="tcpLogger" role="tabpanel">
                     <form id="tcpLoggerForm" novalidate>
                         <div class="row">
                             <div class="col-12 mb-3">
@@ -887,11 +929,6 @@
                                     <input class="form-check-input" type="checkbox" role="switch" id="tcpLoggerEnabled">
                                     <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
                                 </div>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="tcpLoggerPort">Port</label>
-                                <input type="number" disabled class="form-control" id="tcpLoggerPort" step="1"
-                                    min="1000" max="65535" required>
                             </div>
                             <div class="col-12">
                                 <button type="button" class="btn btn-primary"
@@ -902,7 +939,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="tab-pane fade" id="serial" role="tabpanel" aria-labelledby="contact-tab">
+                <div class="tab-pane fade" id="serial" role="tabpanel">
                     <form id="serialForm" novalidate>
                         <div id="serial1Field" class="row d-none">
                             <h5>Serial 1</h5>
@@ -1038,7 +1075,31 @@
                         </div>
                     </form>
                 </div>
-                <div class="tab-pane fade" id="system" role="tabpanel" aria-labelledby="contact-tab">
+                <div class="tab-pane fade" id="modbus" role="tabpanel">
+                    <form id="modbusForm" novalidate>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" role="checkbox"
+                                        id="modbusTcpEnabled">
+                                    <label class="form-check-label" for="modbusTcpEnabled">TCP server</label>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                <label class="form-label" for="modbusUnitId">Unit ID</label>
+                                <input type="number" class="form-control" id="modbusUnitId" step="1" min="1" max="255"
+                                    required>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitModbusSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadModbusSettings()">Reset</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="tab-pane fade" id="system" role="tabpanel">
                     <button type="button" class="btn btn-danger" onclick="restart()">Restart</button>
                 </div>
             </div>

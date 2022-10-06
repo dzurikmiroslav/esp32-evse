@@ -18,6 +18,7 @@
 #include "aux.h"
 #include "serial.h"
 #include "proximity.h"
+#include "modbus.h"
 
 #define RETURN_ON_ERROR(x) do {                 \
         esp_err_t err_rc_ = (x);                \
@@ -44,7 +45,7 @@ cJSON* json_get_evse_config(void)
 
     cJSON_AddNumberToObject(root, "socketLockOperatingTime", socket_lock_get_operating_time());
     cJSON_AddNumberToObject(root, "socketLockBreakTime", socket_lock_get_break_time());
-    cJSON_AddBoolToObject(root, "socketLockDetectionHigh", socket_lock_get_detection_high());
+    cJSON_AddBoolToObject(root, "socketLockDetectionHigh", socket_lock_is_detection_high());
     cJSON_AddNumberToObject(root, "socketLockRetryCount", socket_lock_get_retry_count());
 
     cJSON_AddStringToObject(root, "energyMeter", energy_meter_mode_to_str(energy_meter_get_mode()));
@@ -201,7 +202,6 @@ esp_err_t json_set_mqtt_config(cJSON* root)
     return mqtt_set_config(enabled, server, base_topic, user, password, periodicity);
 }
 
-
 cJSON* json_get_serial_config(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -263,12 +263,30 @@ esp_err_t json_set_serial_config(cJSON* root)
     return ESP_OK;
 }
 
+cJSON* json_get_modbus_config(void)
+{
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddBoolToObject(root, "tcpEnabled", modbus_is_tcp_enabled());
+    cJSON_AddNumberToObject(root, "unitId", modbus_get_unit_id());
+
+    return root;
+}
+
+esp_err_t json_set_modbus_config(cJSON* root)
+{
+    bool tcp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "tcpEnabled"));
+    uint8_t unit_id = cJSON_GetObjectItem(root, "unitId")->valuedouble;
+
+    modbus_set_tcp_enabled(tcp_enabled);
+    return modbus_set_unit_id(unit_id);
+}
+
 cJSON* json_get_tcp_logger_config(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    cJSON_AddBoolToObject(root, "enabled", tcp_logger_get_enabled());
-    cJSON_AddNumberToObject(root, "port", tcp_logger_get_port());
+    cJSON_AddBoolToObject(root, "enabled", tcp_logger_is_enabled());
 
     return root;
 }
@@ -276,9 +294,10 @@ cJSON* json_get_tcp_logger_config(void)
 esp_err_t json_set_tcp_logger_config(cJSON* root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
-    uint16_t port = cJSON_GetObjectItem(root, "port")->valuedouble;
 
-    return tcp_logger_set_config(enabled, port);
+    tcp_logger_set_enabled(enabled);
+
+    return ESP_OK;
 }
 
 cJSON* json_get_state(void)
@@ -289,6 +308,8 @@ cJSON* json_get_state(void)
     cJSON_AddBoolToObject(root, "error", evse_get_state() == EVSE_STATE_E);
     cJSON_AddBoolToObject(root, "session", evse_state_is_session(evse_get_state()));
     cJSON_AddBoolToObject(root, "charging", evse_state_is_charging(evse_get_state()));
+    char str[2] = { 'A' + evse_get_state(), '\0' };
+    cJSON_AddStringToObject(root, "state", str);
     cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
     cJSON_AddBoolToObject(root, "limitReached", evse_is_limit_reached());
@@ -319,6 +340,10 @@ cJSON* json_get_info(void)
     esp_chip_info(&chip_info);
     cJSON_AddNumberToObject(root, "chipCores", chip_info.cores);
     cJSON_AddNumberToObject(root, "chipRevision", chip_info.revision);
+    multi_heap_info_t heap_info;
+    heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
+    cJSON_AddNumberToObject(root, "heapSize", heap_info.total_free_bytes + heap_info.total_allocated_bytes);
+    cJSON_AddNumberToObject(root, "freeHeapSize", heap_info.total_free_bytes);
     uint8_t mac[6];
     char str[32];
     esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);

@@ -34,6 +34,7 @@
 #include "tcp_logger.h"
 #include "aux.h"
 #include "at.h"
+#include "modbus.h"
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
 #define RESET_HOLD_TIME         10000 // 10sec
@@ -275,6 +276,7 @@ void app_main(void)
     evse_init();
     tcp_logger_init();
     at_init();
+    modbus_init();
 
     esp_log_set_vprintf(log_vprintf);
 
@@ -288,6 +290,7 @@ void app_main(void)
         aux_process();
         serial_process();
         mqtt_process();
+        modbus_process();
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }

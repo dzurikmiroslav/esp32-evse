@@ -5,6 +5,8 @@ set(srcs
     "src/webserver.c"
     "src/wifi.c"
     "src/mqtt.c"
+    "src/modbus.c"
+    "src/modbus_tcp.c"
     "src/tcp_logger.c"
     "src/at.c"
     "lib/cAT/src/cat.c")

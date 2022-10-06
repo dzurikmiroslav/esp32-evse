@@ -22,6 +22,10 @@ cJSON* json_get_serial_config(void);
 
 esp_err_t json_set_serial_config(cJSON* root);
 
+cJSON* json_get_modbus_config(void);
+
+esp_err_t json_set_modbus_config(cJSON* root);
+
 cJSON* json_get_tcp_logger_config(void);
 
 esp_err_t json_set_tcp_logger_config(cJSON* root);

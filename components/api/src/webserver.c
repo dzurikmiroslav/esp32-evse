@@ -26,20 +26,20 @@
 
 static const char* TAG = "webserver";
 
-extern const uint8_t web_favicon_ico_start[] asm("_binary_favicon_ico_start");
-extern const uint8_t web_favicon_ico_end[] asm("_binary_favicon_ico_end");
-extern const uint8_t web_index_html_start[] asm("_binary_index_html_start");
-extern const uint8_t web_index_html_end[] asm("_binary_index_html_end");
-extern const uint8_t web_settings_html_start[] asm("_binary_settings_html_start");
-extern const uint8_t web_settings_html_end[] asm("_binary_settings_html_end");
-extern const uint8_t web_management_html_start[] asm("_binary_management_html_start");
-extern const uint8_t web_management_html_end[] asm("_binary_management_html_end");
-extern const uint8_t web_about_html_start[] asm("_binary_about_html_start");
-extern const uint8_t web_about_html_end[] asm("_binary_about_html_end");
-extern const uint8_t web_bootstrap_bundle_min_js_start[] asm("_binary_bootstrap_bundle_min_js_start");
-extern const uint8_t web_bootstrap_bundle_min_js_end[] asm("_binary_bootstrap_bundle_min_js_end");
-extern const uint8_t web_bootstrap_min_css_start[] asm("_binary_bootstrap_min_css_start");
-extern const uint8_t web_bootstrap_min_css_end[] asm("_binary_bootstrap_min_css_end");
+extern const char web_favicon_ico_start[] asm("_binary_favicon_ico_start");
+extern const char web_favicon_ico_end[] asm("_binary_favicon_ico_end");
+extern const char web_index_html_start[] asm("_binary_index_html_start");
+extern const char web_index_html_end[] asm("_binary_index_html_end");
+extern const char web_settings_html_start[] asm("_binary_settings_html_start");
+extern const char web_settings_html_end[] asm("_binary_settings_html_end");
+extern const char web_management_html_start[] asm("_binary_management_html_start");
+extern const char web_management_html_end[] asm("_binary_management_html_end");
+extern const char web_about_html_start[] asm("_binary_about_html_start");
+extern const char web_about_html_end[] asm("_binary_about_html_end");
+extern const char web_bootstrap_bundle_min_js_start[] asm("_binary_bootstrap_bundle_min_js_start");
+extern const char web_bootstrap_bundle_min_js_end[] asm("_binary_bootstrap_bundle_min_js_end");
+extern const char web_bootstrap_min_css_start[] asm("_binary_bootstrap_min_css_start");
+extern const char web_bootstrap_min_css_end[] asm("_binary_bootstrap_min_css_end");
 
 static nvs_handle_t nvs;
 
@@ -195,8 +195,8 @@ static esp_err_t web_get_handler(httpd_req_t* req)
 {
     if (autorize_req(req)) {
         const char* type;
-        const uint8_t* buf_start;
-        const uint8_t* buf_end;
+        const char* buf_start;
+        const char* buf_end;
 
         if (strcmp(req->uri, "/favicon.ico") == 0) {
             type = "image/x-icon";
@@ -240,13 +240,7 @@ static esp_err_t web_get_handler(httpd_req_t* req)
         } else {
             httpd_resp_set_type(req, type);
             httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
-            int remaining = buf_end - buf_start;
-            while (remaining > 0) {
-                httpd_resp_send_chunk(req, (const char*)(buf_end - remaining), MIN(remaining, SCRATCH_BUFSIZE));
-                remaining -= SCRATCH_BUFSIZE;
-            }
-            httpd_resp_send_chunk(req, NULL, 0);
+            httpd_resp_send(req, (const char*)(buf_start), buf_end - buf_start);
         }
 
         return ESP_OK;
@@ -279,6 +273,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "mqtt", json_get_mqtt_config());
             cJSON_AddItemToObject(root, "tcpLogger", json_get_tcp_logger_config());
             cJSON_AddItemToObject(root, "serial", json_get_serial_config());
+            cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
         }
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             root = json_get_evse_config();
@@ -297,6 +292,9 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
             root = json_get_serial_config();
+        }
+        if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
+            root = json_get_modbus_config();
         }
         if (strcmp(req->uri, "/api/v1/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
@@ -354,6 +352,10 @@ static esp_err_t json_post_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
             ret = json_set_serial_config(root);
+            res_msg = "Config updated";
+        }
+        if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
+            ret = json_set_modbus_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/credentials") == 0) {
@@ -587,6 +589,8 @@ void webserver_init(void)
     httpd_handle_t server;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
+    config.max_open_sockets = 3;
+    config.lru_purge_enable = true;
 
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
     ESP_ERROR_CHECK(httpd_start(&server, &config));
