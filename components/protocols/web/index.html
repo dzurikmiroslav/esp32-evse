@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en" class="h-100">
+
+<head>
+    <title>EVSE</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/bootstrap.min.css">
+    <style rel="stylesheet">
+        .overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background-color: #ffffff;
+            opacity: 0.75;
+            z-index: 10;
+        }
+
+        .overlay:not(.show) {
+            visibility: hidden;
+        }
+
+        .overlay .spinner-border {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            margin-left: -1rem;
+            margin-top: -1rem;
+        }
+
+        main>.container {
+            padding-top: 60px;
+        }
+    </style>
+
+    <script src="/bootstrap.bundle.min.js"></script>
+    <script>
+        function showError(response) {
+            const errorModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('errorModal'));
+            const errorModalBody = document.getElementById('errorModalBody');
+
+            console.error(response);
+
+            if (response.status === 400 || response.status === 500) {
+                errorModalBody.innerText = response.statusText;
+            } else {
+                errorModalBody.innerHTML = 'Network error, try <a href="/" class="alert-link">reload this page</a>';
+            }
+            errorModal.show();
+        }
+
+        function jsonResponse(response) {
+            if (!response.ok) {
+                throw response;
+            }
+            return response.json();
+        }
+
+        function checkResponse(response) {
+            if (!response.ok) {
+                throw response;
+            }
+        }
+
+        function debounce(callback, wait) {
+            let timeoutId = null;
+            return (...args) => {
+                window.clearTimeout(timeoutId);
+                timeoutId = window.setTimeout(() => {
+                    callback.apply(null, args);
+                }, wait);
+            };
+        }
+
+        function formatElapsed(sec) {
+            const hour = Math.floor(sec / 3600);
+            sec %= 3600;
+            const min = Math.floor(sec / 60);
+            sec %= 60;
+
+            const arr = [];
+            if (hour > 0) {
+                arr.push(`${hour}h`);
+            }
+            if (min > 0 || hour == 0) {
+                arr.push(`${min}m`);
+            }
+            return arr.join(' ');
+        }
+
+        function formatLimitWs(value) {
+            return value === 0 ? 'none' : `${Math.round(value / 3600) / 1000} kWh`;
+        }
+
+        function formatLimitSec(value) {
+            return value === 0 ? 'none' : formatElapsed(value);
+        }
+
+        function formatLimitW(value) {
+            return value === 0 ? 'none' : `${value / 1000} kW`;
+        }
+
+        let state;
+
+        function refresh() {
+            document.getElementById('enabled').checked = state.enabled;
+
+            if (state.state === 'E') {
+                document.getElementById('status').innerText = 'Error';
+                document.getElementById('authrorize').classList.add('d-none');
+            } else if (state.state === 'F') {
+                document.getElementById('status').innerText = 'Not available';
+                document.getElementById('authrorize').classList.add('d-none');
+            } else {
+                if (state.pendingAuth) {
+                    document.getElementById('status').innerText = 'Pending authorization';
+                    document.getElementById('authrorize').classList.remove('d-none');
+                } else {
+                    document.getElementById('authrorize').classList.add('d-none');
+                    if (state.limitReached) {
+                        document.getElementById('status').innerText = 'Charging limit reached';
+                    } else if (state.state === 'C' || state.state === 'D') {
+                        document.getElementById('status').innerText = 'Charging';
+                    } else {
+                        if (state.state === 'B' || state.state === 'C' || state.state === 'D') {
+                            document.getElementById('status').innerText = 'EV connected';
+                        } else {
+                            document.getElementById('status').innerText = 'EV not connected';
+                        }
+                    }
+                }
+            }
+            document.getElementById('elapsed').innerText = formatElapsed(state.elapsed);
+            document.getElementById('actualPower').innerText = state.actualPower / 1000;
+            document.getElementById('consumption').innerText = Math.round(state.consumption / 3600) / 1000;
+            document.getElementById('session').classList.toggle('d-none', state.state !== 'B' && state.state !== 'C' && state.state !== 'D');
+        }
+
+        function loadState() {
+            fetch('/api/v1/state')
+                .then(jsonResponse)
+                .then(data => {
+                    state = data;
+                    refresh();
+                })
+                .catch(showError);
+        }
+
+        function loadEvseSettings() {
+            fetch('/api/v1/config/evse')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('evseChargingCurrent').value = data.chargingCurrent;
+                })
+                .catch(showError);
+        }
+
+        function sendEvseSettings(settings) {
+            //document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/config/evse', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            })
+                .then(checkResponse)
+                //.finally(() => document.getElementById('loading').classList.remove('show'))        
+                .catch(showError);
+        }
+
+        function authorize() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/state/authorize', { method: 'POST' })
+                .then(checkResponse)
+                .then(() => fetch('/api/v1/state'))
+                .then(jsonResponse)
+                .then(data => {
+                    state = data;
+                    refresh();
+                })       
+                .finally(() => document.getElementById('loading').classList.remove('show'))        
+                .catch(showError);
+        }
+
+        function updateEnabled() {
+            document.getElementById('loading').classList.add('show');
+
+            state.enabled = document.getElementById('enabled').checked;
+            if (!status.enabled && (state.state === 'C' || state.state === 'D')) {
+                state.state = 'B';
+            }
+
+            fetch(`/api/v1/state/${state.enabled ? 'enable' : 'disable'}`, { method: 'POST' })
+                .then(checkResponse)
+                .then(() => fetch('/api/v1/state'))
+                .then(jsonResponse)
+                .then(data => {
+                    state = data;
+                    refresh();
+                })
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            Promise.all([
+                fetch('/api/v1/boardConfig')
+                    .then(jsonResponse)
+                    .then(data => {
+                        document.getElementById('chargingCurrent').max = data.maxChargingCurrent;
+                    }),
+                fetch('/api/v1/config/evse')
+                    .then(jsonResponse)
+                    .then(data => {                    
+                        document.getElementById('enabled').disabled = data.aux1 === 'enable_switch' || data.aux2 === 'enable_switch' || data.aux3 === 'enable_switch';
+
+                        document.getElementById('chargingCurrent').value = data.chargingCurrent;
+                        document.getElementById('chargingCurrentValue').innerText = data.chargingCurrent;
+
+                        document.getElementById('consumptionLimit').value = data.consumptionLimit;
+                        document.getElementById('consumptionLimitValue').innerText = formatLimitWs(data.consumptionLimit);
+
+                        document.getElementById('elapsedLimit').value = data.elapsedLimit;
+                        document.getElementById('elapsedLimitValue').innerText = formatLimitSec(data.elapsedLimit);
+
+                        document.getElementById('underPowerLimit').value = data.underPowerLimit;
+                        document.getElementById('underPowerLimitValue').innerText = formatLimitW(data.underPowerLimit);
+                        
+                        if (data.consumptionLimit || data.elapsedLimit || data.underPowerLimit) {
+                            document.getElementById('sessionLimitAccordionButton').ariaExpanded = true;
+                            document.getElementById('sessionLimitAccordionButton').classList.remove('collapsed');
+                            document.getElementById('sessionLimitCollapse').classList.add('show');
+                        }
+                    })
+            ])
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
+
+            loadState();
+            setInterval(loadState, 10000);
+
+            const setChargingCurrent = debounce((value) => sendEvseSettings({ chargingCurrent: value }), 500);
+            document.getElementById('chargingCurrent').addEventListener('input', event => {
+                document.getElementById('chargingCurrentValue').innerText = event.target.value;
+                setChargingCurrent(event.target.valueAsNumber);
+            });
+
+            const setConsumptionLimit = debounce((value) => sendEvseSettings({ consumptionLimit: value }), 500);
+            document.getElementById('consumptionLimit').addEventListener('input', event => {
+                document.getElementById('consumptionLimitValue').innerText = formatLimitWs(event.target.valueAsNumber);
+                setConsumptionLimit(event.target.valueAsNumber);
+            });
+
+            const setElapsedLimit = debounce((value) => sendEvseSettings({ elapsedLimit: value }), 500);
+            document.getElementById('elapsedLimit').addEventListener('input', event => {
+                document.getElementById('elapsedLimitValue').innerText = formatLimitSec(event.target.valueAsNumber);
+                setElapsedLimit(event.target.valueAsNumber);
+            });
+
+            const setUnderPowerLimit = debounce((value) => sendEvseSettings({ underPowerLimit: value }), 500);
+            document.getElementById('underPowerLimit').addEventListener('input', event => {
+                document.getElementById('underPowerLimitValue').innerText = formatLimitW(event.target.valueAsNumber);
+                setUnderPowerLimit(event.target.valueAsNumber);
+            });
+        });
+    </script>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+    <header>
+        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">EVSE</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                    aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarCollapse">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="/index.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/settings.html">Settings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/management.html">Management</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/about.html">About</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-shrink-0 position-relative my-3">
+        <div id="loading" class="overlay fade show text-center">
+            <div class="spinner-border" role="status"></div>
+        </div>
+        <div class="container">
+            <div class="jumbotron">
+                <h1 id="status">EV not connected</h1>
+                <div id="session" class="my-3 d-none">
+                    <p class="lead">Elapsed time <strong id="elapsed"></strong></p>
+                    <p class="lead">Power <strong><span id="actualPower"></span>kW</strong></p>
+                    <p class="lead">Consumption <strong><span id="consumption"></span>kWh</strong></p>
+                </div>
+
+                <div class="my-3">
+                    <div class="form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="enabled"
+                            onchange="updateEnabled()">
+                        <label class="form-check-label" for="enabled">Enabled</label>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <label for="chargingCurrent" class="form-label">
+                            Charging current
+                            <span class="fw-bolder"><span id="chargingCurrentValue"></span> A</span>
+                        </label>
+                        <input type="range" class="form-range" min="6" max="80" step="0.1" id="chargingCurrent">
+                    </div>
+                </div>
+
+                <div id="authrorize" class="mt-y d-none">
+                    <button type="button" class="btn btn-success" onclick="authorize()">Authorize</button>
+                </div>
+
+                <div class="accordion my-3" id="accordionSessionLimit">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="sessionLimitHeading">
+                            <button class="accordion-button collapsed" id="sessionLimitAccordionButton" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#sessionLimitCollapse" aria-expanded="false"
+                                aria-controls="sessionLimitCollapse">
+                                Session limit
+                            </button>
+                        </h2>
+                        <div id="sessionLimitCollapse" class="accordion-collapse collapse"
+                            aria-labelledby="sessionLimitHeading" data-bs-parent="#accordionSessionLimit">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label for="consumptionLimit" class="form-label">
+                                            Consumption <span id="consumptionLimitValue" class="fw-bolder"></span>
+                                        </label>
+                                        <input type="range" class="form-range" min="0" max="180000000" step="360000"
+                                            id="consumptionLimit">
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label for="elapsedLimit" class="form-label">
+                                            Elapsed <span id="elapsedLimitValue" class="fw-bolder"></span>
+                                        </label>
+                                        <input type="range" class="form-range" min="0" max="18000" step="300"
+                                            id="elapsedLimit">
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label for="underPowerLimit" class="form-label">
+                                            Under power <span id="underPowerLimitValue" class="fw-bolder"></span>
+                                        </label>
+                                        <input type="range" class="form-range" min="0" max="10000" step="10"
+                                            id="underPowerLimit">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container">
+            <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+        </div>
+    </footer>
+
+    <div class="modal fade" id="errorModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
+        aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
+                </div>
+                <div class="modal-body" id="errorModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

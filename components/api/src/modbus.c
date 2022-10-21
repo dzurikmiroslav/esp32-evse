@@ -8,8 +8,6 @@
 #include "nvs.h"
 
 #include "modbus.h"
-#include "modbus_tcp.h"
-#include "modbus_utils.h"
 #include "wifi.h"
 #include "evse.h"
 #include "energy_meter.h"
@@ -68,7 +66,6 @@
 #define UINT32_GET_LO(value)            ((uint16_t)(((uint32_t) (value)) & 0xFFFF))
 
 #define NVS_NAMESPACE                   "modbus"
-#define NVS_TCP_ENABLED                 "enabled"
 #define NVS_UNIT_ID                     "unit_id"
 
 static const char* TAG = "modbus";
@@ -82,12 +79,6 @@ void modbus_init(void)
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
     nvs_get_u8(nvs, NVS_UNIT_ID, &unit_id);
-
-    modbus_tcp_init();
-
-    if (modbus_is_tcp_enabled()) {
-        modbus_tcp_listen();
-    }
 }
 
 static uint16_t get_uptime(void)
@@ -296,71 +287,62 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
     return MODBUS_EX_NONE;
 }
 
-void modbus_process(void)
+uint16_t modbus_request_exec(uint8_t* data, uint16_t len)
 {
-    modbus_packet_t packet;
+    uint16_t resp_len = 0;
 
-    if (xQueueReceive(modbus_tcp_req_queue, &packet, 0)) {
-        if (unit_id == packet.data[0]) {
-            uint8_t fc = packet.data[1];
-            uint16_t addr;
-            uint16_t count;
-            uint16_t value;
-            uint8_t ex = MODBUS_EX_NONE;
+    if (unit_id == data[0]) {
+        uint8_t fc = data[1];
+        uint16_t addr;
+        uint16_t count;
+        uint16_t value;
+        uint8_t ex = MODBUS_EX_NONE;
 
-            if (fc == 3) {
-                addr = MODBUS_READ_UINT16(packet.data, 2);
-                count = MODBUS_READ_UINT16(packet.data, 4);
+        if (fc == 3) {
+            addr = MODBUS_READ_UINT16(data, 2);
+            count = MODBUS_READ_UINT16(data, 4);
 
-                packet.data[2] = count * 2;
-                packet.len = 3 + count * 2;
+            data[2] = count * 2;
+            resp_len = 3 + count * 2;
 
-                for (uint16_t i = 0; i < count; i++) {
-                    if ((ex = read_holding_register(addr + i, &value)) != MODBUS_EX_NONE) {
-                        break;
-                    }
-                    MODBUS_WRITE_UINT16(packet.data, 3 + 2 * i, value);
+            for (uint16_t i = 0; i < count; i++) {
+                if ((ex = read_holding_register(addr + i, &value)) != MODBUS_EX_NONE) {
+                    break;
                 }
-            } else if (fc == 6) {
-                addr = MODBUS_READ_UINT16(packet.data, 2);
+                MODBUS_WRITE_UINT16(data, 3 + 2 * i, value);
+            }
+        } else if (fc == 6) {
+            addr = MODBUS_READ_UINT16(data, 2);
 
-                ex = write_holding_register(addr, &packet.data[4], 0);
-            } else if (fc == 16) {
-                addr = MODBUS_READ_UINT16(packet.data, 2);
-                count = MODBUS_READ_UINT16(packet.data, 4);
+            ex = write_holding_register(addr, &data[4], 0);
+        } else if (fc == 16) {
+            addr = MODBUS_READ_UINT16(data, 2);
+            count = MODBUS_READ_UINT16(data, 4);
 
-                packet.len = 6;
+            resp_len = 6;
 
-                for (uint16_t i = 0; i < count; i++) {
-                    if ((ex = write_holding_register(addr + i, &packet.data[7 + 2 * i], count - i)) != MODBUS_EX_NONE) {
-                        break;
-                    }
+            for (uint16_t i = 0; i < count; i++) {
+                if ((ex = write_holding_register(addr + i, &data[7 + 2 * i], count - i)) != MODBUS_EX_NONE) {
+                    break;
                 }
-            } else {
-                ex = MODBUS_EX_ILLEGAL_FUNCTION;
             }
+        } else {
+            ex = MODBUS_EX_ILLEGAL_FUNCTION;
+        }
 
-            if (ex != MODBUS_EX_NONE) {
-                packet.data[1] = 0x8 | fc;
-                packet.data[2] = ex;
-                packet.len = 3;
-            }
-
-            xQueueSend(modbus_tcp_res_queue, &packet, portMAX_DELAY);
+        if (ex != MODBUS_EX_NONE) {
+            data[1] = 0x8 | fc;
+            data[2] = ex;
+            resp_len = 3;
         }
     }
+
+    return resp_len;
 }
 
 uint8_t modbus_get_unit_id(void)
 {
     return unit_id;
-}
-
-bool modbus_is_tcp_enabled(void)
-{
-    uint8_t value = false;
-    nvs_get_u8(nvs, NVS_TCP_ENABLED, &value);
-    return value;
 }
 
 esp_err_t modbus_set_unit_id(uint8_t _unit_id)
@@ -374,15 +356,4 @@ esp_err_t modbus_set_unit_id(uint8_t _unit_id)
     nvs_set_u8(nvs, NVS_UNIT_ID, unit_id);
 
     return ESP_OK;
-}
-
-void modbus_set_tcp_enabled(bool tcp_enabled)
-{
-    nvs_set_u8(nvs, NVS_TCP_ENABLED, tcp_enabled);
-
-    if (tcp_enabled) {
-        modbus_tcp_listen();
-    } else {
-        modbus_tcp_stop();
-    }
 }

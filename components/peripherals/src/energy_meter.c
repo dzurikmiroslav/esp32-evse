@@ -56,19 +56,13 @@ static float vlt_sens_zero[3] = { 0, 0, 0 };
 
 static int64_t prev_time = 0;
 
-static uint32_t get_detla_ms()
-{
-    int64_t now = esp_timer_get_time();
-    uint32_t delta = now - prev_time;
-    prev_time = now;
-    return delta / 1000;
-}
+static uint32_t detla_ms = 0;
 
 static void (*measure_fn)(void);
 
 static void set_calc_power(float p)
 {
-    session_consumption += roundf((p * get_detla_ms()) / 1000.0f);
+    session_consumption += roundf((p * detla_ms) / 1000.0f);
     power = roundf(p);
 }
 
@@ -216,7 +210,7 @@ static void measure_three_phase_cur_vlt(void)
         vlt_sens_zero[0] += (sample_vlt - vlt_sens_zero[0]) / ZERO_FIX;
         filtered_vlt = sample_vlt - vlt_sens_zero[0];
         vlt_sum[0] += filtered_vlt * filtered_vlt;
-        
+
         //L2
         sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
         sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
@@ -266,7 +260,7 @@ static void measure_pulse(void)
     session_consumption += delta_consumtion;
 
     if (delta_consumtion > 0) {
-        power = (delta_consumtion / get_detla_ms()) * 1000.0f;
+        power = (delta_consumtion / detla_ms) * 1000.0f;
     }
 }
 
@@ -415,19 +409,21 @@ esp_err_t energy_meter_set_ac_voltage(uint16_t _ac_voltage)
 void energy_meter_process(void)
 {
     evse_state_t state = evse_get_state();
+    int64_t now = esp_timer_get_time();
 
     if (!has_session && evse_state_is_session(state)) {
         ESP_LOGI(TAG, "Start session");
-        session_start_time = esp_timer_get_time();
+        session_start_time = now;
         session_end_time = 0;
         session_consumption = 0;
-        prev_time = session_start_time;
         has_session = true;
     } else if (!evse_state_is_session(state) && has_session) {
         ESP_LOGI(TAG, "End session");
-        session_end_time = esp_timer_get_time();
+        session_end_time = now;
         has_session = false;
     }
+
+    detla_ms = (now - prev_time) / 1000;
 
     if (evse_state_is_charging(state)) {
         (*measure_fn)();
@@ -436,6 +432,8 @@ void energy_meter_process(void)
         cur[0] = cur[1] = cur[2] = 0;
         power = 0;
     }
+
+    prev_time = now;
 }
 
 uint16_t energy_meter_get_power(void)

@@ -58,7 +58,7 @@ static void socket_lock_task_func(void* param)
     TickType_t previous_tick = 0;
     uint8_t attempt = 0;
 
-    for (;;) {
+    while (true) {
         if (xTaskNotifyWait(0x00, 0xff, &notification, portMAX_DELAY)) {
             if (notification & (LOCK_BIT | UNLOCK_BIT)) {
                 attempt = retry_count;

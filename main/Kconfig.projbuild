@@ -2,7 +2,7 @@ menu "EVSE Configuration"
 	
 	config BOARD_CONFIG_DEPLOY
 		bool "Deploy board config to SPI Nor Flash"
-		default y
+		default n
 		help
 			Deploy board config to SPI Nor Flash.
 			Choose this in production mode or once to copy config.

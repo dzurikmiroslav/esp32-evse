@@ -137,7 +137,7 @@ void board_config_load()
                     SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);
 #endif
 
-                    ESP_LOGE(TAG, "Unknown config value %s", value);
+                    ESP_LOGE(TAG, "Unknown config value %s=%s", key, value);
                 }
             }
         }

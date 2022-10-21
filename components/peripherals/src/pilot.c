@@ -96,7 +96,7 @@ void pilot_measure(void)
         ets_delay_us(100);
     }
 
-    ESP_LOGD(TAG, "Measure: %dmV - %dmV", low, high);
+    //ESP_LOGD(TAG, "Measure: %dmV - %dmV", low, high);
 
     if (high >= board_config.pilot_sens_down_treshold_12) {
         up_voltage = PILOT_VOLTAGE_12;

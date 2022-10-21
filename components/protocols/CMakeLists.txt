@@ -1,0 +1,22 @@
+set(srcs
+    "src/rest.c"
+    "src/mqtt.c"
+    "src/modbus_tcp.c"
+    "src/tcp_logger.c")
+
+set(embed_files
+    "web-gz/index.html"
+    "web-gz/settings.html"
+    "web-gz/management.html"
+    "web-gz/about.html"
+    "web-gz/bootstrap.min.css"
+    "web-gz/bootstrap.bundle.min.js"
+    "web-gz/favicon.ico"
+    "server_certs/ca_cert.pem")
+
+idf_component_register(SRCS "${srcs}"
+                    INCLUDE_DIRS "include"
+                    PRIV_INCLUDE_DIRS "src"
+                    EMBED_FILES "${embed_files}"
+                    PRIV_REQUIRES nvs_flash esp_http_server esp_https_ota app_update json mqtt
+                    REQUIRES config api)

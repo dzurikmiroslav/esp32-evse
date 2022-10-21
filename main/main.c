@@ -27,14 +27,15 @@
 #include "rcm.h"
 #include "energy_meter.h"
 #include "serial.h"
+#include "serial_logger.h"
 #include "board_config.h"
 #include "mqtt.h"
-#include "webserver.h"
+#include "rest.h"
 #include "wifi.h"
 #include "tcp_logger.h"
 #include "aux.h"
-#include "at.h"
 #include "modbus.h"
+#include "modbus_tcp.h"
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
 #define RESET_HOLD_TIME         10000 // 10sec
@@ -63,7 +64,7 @@ static void wifi_event_task_func(void* param)
 {
     EventBits_t mode_bits;
 
-    for (;;) {
+    while (true) {
         led_set_off(LED_ID_WIFI);
         mode_bits = xEventGroupWaitBits(wifi_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
         if (mode_bits & WIFI_AP_MODE_BIT) {
@@ -97,7 +98,7 @@ static void user_input_task_func(void* param)
     bool pressed = false;
     TickType_t press_tick = 0;
 
-    for (;;) {
+    while (true) {
         if (xTaskNotifyWait(0x00, 0xff, &notification, portMAX_DELAY)) {
             if (notification & PRESS_BIT) {
                 press_tick = xTaskGetTickCount();
@@ -214,12 +215,13 @@ static void update_leds(void)
 
 static int log_vprintf(const char* str, va_list l)
 {
-    char buf[256];
-    int len = vsprintf(buf, str, l);
-    serial_log_process(buf, len);
-    tcp_logger_log_process(buf, len);
+    static char buf[256];
 
-    return vprintf(str, l);
+    int len = vsprintf(buf, str, l);
+    serial_logger_print(buf, len);
+    tcp_logger_print(buf, len);
+
+    return len;
 }
 
 void app_main(void)
@@ -270,27 +272,25 @@ void app_main(void)
     aux_init();
     button_init();
     serial_init();
-    webserver_init();
+    rest_init();
     wifi_init();
     mqtt_init();
     evse_init();
     tcp_logger_init();
-    at_init();
     modbus_init();
+    modbus_tcp_init();
 
     esp_log_set_vprintf(log_vprintf);
 
-    xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 10, NULL);
-    xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 10, &user_input_task);
+    xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 5, NULL);
+    xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 5, &user_input_task);
 
-    for (;;) {
+    while (true) {
         evse_process();
         energy_meter_process();
         update_leds();
         aux_process();
-        serial_process();
         mqtt_process();
-        modbus_process();
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }

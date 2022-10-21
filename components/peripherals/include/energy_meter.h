@@ -89,7 +89,7 @@ uint16_t energy_meter_get_power(void);
 /**
  * @brief Get session elapsed time
  *
- * @return Time in S
+ * @return Time in s
  */
 uint32_t energy_meter_get_session_elapsed(void);
 
