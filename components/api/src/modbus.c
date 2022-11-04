@@ -314,6 +314,8 @@ uint16_t modbus_request_exec(uint8_t* data, uint16_t len)
         } else if (fc == 6) {
             addr = MODBUS_READ_UINT16(data, 2);
 
+            resp_len = 6;
+
             ex = write_holding_register(addr, &data[4], 0);
         } else if (fc == 16) {
             addr = MODBUS_READ_UINT16(data, 2);

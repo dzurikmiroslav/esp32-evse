@@ -96,7 +96,7 @@ void pilot_measure(void)
         ets_delay_us(100);
     }
 
-    //ESP_LOGD(TAG, "Measure: %dmV - %dmV", low, high);
+    ESP_LOGV(TAG, "Measure: %dmV - %dmV", low, high);
 
     if (high >= board_config.pilot_sens_down_treshold_12) {
         up_voltage = PILOT_VOLTAGE_12;
@@ -112,8 +112,8 @@ void pilot_measure(void)
 
     down_voltage_n12 = low <= board_config.pilot_sens_down_treshold_n12;
 
-    ESP_LOGD(TAG, "Up volate %d", up_voltage);
-    ESP_LOGD(TAG, "Down volate belov 12V %d", down_voltage_n12);
+    ESP_LOGV(TAG, "Up volate %d", up_voltage);
+    ESP_LOGV(TAG, "Down volate belov 12V %d", down_voltage_n12);
 }
 
 pilot_voltage_t pilot_get_up_voltage(void)

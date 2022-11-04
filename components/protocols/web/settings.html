@@ -581,6 +581,35 @@
             }
         }
 
+        function uploadBoardConfig() {
+            const uploadBoardConfigForm = document.getElementById('uploadBoardConfigForm');
+            const boardConfigFile = document.getElementById('boardConfigFile');
+
+            if (!uploadBoardConfigForm.checkValidity()) {
+                uploadBoardConfigForm.classList.add('was-validated');
+            } else {
+                document.getElementById('loading').classList.add('show');
+
+                fetch('/api/v1/boardConfig/raw', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: boardConfigFile.files[0]
+                })
+                    .then(() => {
+                        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('boardConfigUploadedModal'));
+                        modal.show();
+                    })
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        uploadBoardConfigForm.classList.remove('was-validated');
+                        boardConfigFile.value = null;
+                    })
+                    .catch(showError);
+            }
+        }
+
         function restart() {
             document.getElementById('loading').classList.add('show');
 
@@ -946,11 +975,13 @@
                             </div>
                             <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="mqttServer">Server</label>
-                                <input type="text" disabled class="form-control" id="mqttServer" required placeholder="mqtt://broker.com:1883">
+                                <input type="text" disabled class="form-control" id="mqttServer" required
+                                    placeholder="mqtt://broker.com:1883">
                             </div>
                             <div class="col-12 col-md-6 col-xl-4 mb-3">
                                 <label class="form-label" for="mqttBaseTopic">Base topic</label>
-                                <input type="text" disabled class="form-control" id="mqttBaseTopic" required placeholder="evse">
+                                <input type="text" disabled class="form-control" id="mqttBaseTopic" required
+                                    placeholder="evse">
                             </div>
                         </div>
                         <div class="row">
@@ -1160,8 +1191,10 @@
                     </form>
                 </div>
                 <div class="tab-pane fade" id="system" role="tabpanel">
+                    <button type="button" class="btn btn-danger mb-3" onclick="restart()">Restart</button>
 
-                    <p class="mb-1">Check for update</p>
+                    <h5>Firmware</h5>
+
                     <form id="updateFirmwareForm" novalidate class="d-flex mb-3">
                         <button type="button" class="btn btn-primary" onclick="checkUpdateFirmware()">Check for
                             update</button>
@@ -1169,20 +1202,40 @@
                             onclick="updateFirmware()"></button>
                         <p id="noUpdateAvailable" class="m-0 p-2 d-none">No update is available</p>
                     </form>
-        
-                    <p class="mb-1">Upload firmware (use binaries from <a
-                            href="https://github.com/dzurikmiroslav/esp32-evse/releases" target="_blank">releases</a>)</p>
-                    <form id="uploadFirmwareForm" novalidate class="d-md-flex gx-5 mb-3">
-                        <div class="flex-grow-1">
-                            <div class="input-group">
-                                <input type="file" class="form-control" id="firmwareFile" accept=".bin" required>
-                            </div>
+
+                    <form id="uploadFirmwareForm" novalidate class="row mb-3">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label" for="firmwareFile">
+                                Upload firmware (use binaries from <a
+                                    href="https://github.com/dzurikmiroslav/esp32-evse/releases"
+                                    target="_blank">releases</a>)
+                            </label>
+                            <input type="file" class="form-control" id="firmwareFile" accept=".bin" required>
                         </div>
-                        <button type="button" class="btn btn-secondary ms-md-2 mt-2 mt-md-0" onclick="uploadFirmware()">Flash
-                            firmware</button>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-secondary" onclick="uploadFirmware()">Flash</button>
+                        </div>
                     </form>
 
-                    <button type="button" class="btn btn-danger" onclick="restart()">Restart</button>
+                    <h5>Board configuration</h5>
+
+                    <p>Download board configuration <a href="/api/v1/boardConfig/raw" target="_blank">board.cfg</a></p>
+
+                    <div class="alert alert-warning" role="alert">
+                        Uploading an incorrect board configuration can cause the device to malfunction!
+                    </div>
+
+                    <form id="uploadBoardConfigForm" novalidate class="row mb-3">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label" for="boardConfigFile">
+                                Upload board config
+                            </label>
+                            <input type="file" class="form-control" id="boardConfigFile" accept=".cfg" required>
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-warning" onclick="uploadBoardConfig()">Upload</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -1241,6 +1294,25 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-danger" onclick="window.location.reload()">Reload now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="boardConfigUploadedModal" tabindex="-1" role="dialog" data-backdrop="static"
+        data-keyboard="false" aria-labelledby="boardConfigUploadedModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="boardConfigUploadedModalLabel">Board config</h5>
+                </div>
+                <div class="modal-body">
+                    <p>The board configuration has been successfully written, it will be loaded at the next startup</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal"
+                        onclick="restart()">Restart</button>
                 </div>
             </div>
         </div>

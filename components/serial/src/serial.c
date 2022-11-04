@@ -52,7 +52,7 @@ void serial_init(void)
     if (board_config.serial_3 == BOARD_CONFIG_SERIAL_UART) {
         ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_3, board_config.serial_3_txd_gpio, board_config.serial_3_rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     }
-    if (board_config.serial_2 == BOARD_CONFIG_SERIAL_RS485) {
+    if (board_config.serial_3 == BOARD_CONFIG_SERIAL_RS485) {
         ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_3, board_config.serial_3_txd_gpio, board_config.serial_3_rxd_gpio, board_config.serial_3_rts_gpio, UART_PIN_NO_CHANGE));
     }
 #endif

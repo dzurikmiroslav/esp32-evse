@@ -6,7 +6,7 @@
 #define BUF_SIZE            256
 #define EVENT_QUEUE_SIZE    20
 
-#define LOG_LVL_DATA        ESP_LOG_VERBOSE
+#define LOG_LVL_DATA        ESP_LOG_INFO
 
 static const char* TAG = "serial_modbus";
 
@@ -164,8 +164,14 @@ void serial_modbus_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
             ESP_LOGE(TAG, "uart_set_mode() returned 0x%x", err);
             return;
         }
-        //uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 122);
+        err = uart_set_rx_timeout(uart_num, 3);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_set_rx_timeout() returned 0x%x", err);
+            return;
+        }
     }
+
+    uart_set_always_rx_timeout(uart_num, true);
 
     xTaskCreate(serial_modbus_task_func, "serial_modbus_task", 2 * 1024, NULL, 5, &serial_modbus_task);
 }

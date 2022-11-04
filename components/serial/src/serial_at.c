@@ -9,7 +9,7 @@ static const char* TAG = "serial_at";
 
 static uart_port_t port = -1;
 
-static TaskHandle_t sterial_at_task = NULL;
+static TaskHandle_t serial_at_task = NULL;
 
 static int write_char(char ch)
 {
@@ -43,7 +43,7 @@ static struct cat_io_interface iface = {
     .write = write_char
 };
 
-static void sterial_at_task_func(void* param)
+static void serial_at_task_func(void* param)
 {
     uint8_t buf[BUF_SIZE];
 
@@ -79,7 +79,7 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
             .parity = parity,
             .stop_bits = stop_bit,
             .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-            .rx_flow_ctrl_thresh = 2,
+            .rx_flow_ctrl_thresh = 122,
             .source_clk = UART_SCLK_APB
     };
 
@@ -102,19 +102,23 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
             ESP_LOGE(TAG, "uart_set_mode() returned 0x%x", err);
             return;
         }
-        //uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 122);
+        err = uart_set_rx_timeout(uart_num, 3);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_set_rx_timeout() returned 0x%x", err);
+            return;
+        }
     }
 
-    xTaskCreate(sterial_at_task_func, "sterial_at_task", 2 * 1024, NULL, 5, &sterial_at_task);
+    xTaskCreate(serial_at_task_func, "serial_at_task", 2 * 1024, NULL, 5, &serial_at_task);
 }
 
 void serial_at_stop(void)
 {
     ESP_LOGI(TAG, "Stopping");
 
-    if (sterial_at_task) {
-        vTaskDelete(sterial_at_task);
-        sterial_at_task = NULL;
+    if (serial_at_task) {
+        vTaskDelete(serial_at_task);
+        serial_at_task = NULL;
     }
 
     if (port != -1) {

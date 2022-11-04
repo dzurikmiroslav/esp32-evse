@@ -26,7 +26,6 @@ void serial_logger_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
         .parity = parity,
         .stop_bits = stop_bit,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .rx_flow_ctrl_thresh = 2,
         .source_clk = UART_SCLK_APB
     };
 
@@ -49,7 +48,11 @@ void serial_logger_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
             ESP_LOGE(TAG, "uart_set_mode() returned 0x%x", err);
             return;
         }
-        //uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 122);
+        err = uart_set_rx_timeout(uart_num, 3);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_set_rx_timeout() returned 0x%x", err);
+            return;
+        }
     }
 }
 
