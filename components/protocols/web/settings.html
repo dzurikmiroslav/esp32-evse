@@ -629,18 +629,15 @@
                 document.querySelectorAll('#mqttForm input:not([role="switch"])').forEach(input => input.disabled = !event.target.checked);
             });
 
-            document.getElementById('evseSocketOutlet').addEventListener('change', event => {
-                document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !event.target.checked);
-            });
-
             fetch('/api/v1/boardConfig')
                 .then(jsonResponse)
                 .then(data => {
                     document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseSocketLockBreakTime').min = data.socketLockMinBreakTime;
-                    document.getElementById('evseSocketOutlet').disabled = !data.socketOutlet;
-                    if (data.socketOutlet) {
+                    document.getElementById('evseSocketOutlet').disabled = !data.proximity;
+                    if (data.socketLock) {
                         document.getElementById('evseSocketLockFields').classList.remove('d-none');
+                        document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = false);
                     }
                     document.getElementById('evseRcm').disabled = !data.rcm;
                     if (data.aux1) {

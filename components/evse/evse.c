@@ -22,7 +22,7 @@
 
 #define NVS_NAMESPACE                   "evse"
 #define NVS_DEFAULT_CHARGING_CURRENT    "def_chrg_curr"
-#define NVS_SOCKED_OUTLET               "socket_outlet"
+#define NVS_SOCKET_OUTLET               "socket_outlet"
 #define NVS_RCM                         "rcm"
 #define NVS_REQUIRE_AUTH                "require_auth"
 #define NVS_DEFAULT_CONSUMTION_LIMIT    "def_cons_lim"
@@ -81,8 +81,6 @@ static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 
 static bool socket_lock_locked = false;
 
-static bool socket_lock_can_unlock = false;
-
 static void set_pilot(enum pilot_state_e state)
 {
     if (state != pilot_state) {
@@ -115,7 +113,7 @@ static void set_state(evse_state_t next_state)
     switch (next_state)
     {
     case EVSE_STATE_A:
-        if (socket_outlet) {
+        if (socket_outlet && board_config.socket_lock) {
             set_socket_lock(false);
         }
         set_pilot(PILOT_STATE_12V);
@@ -124,7 +122,9 @@ static void set_state(evse_state_t next_state)
     case EVSE_STATE_B:
         if (socket_outlet) {
             cable_max_current = proximity_get_max_current();
-            set_socket_lock(true);
+            if (board_config.socket_lock) {
+                set_socket_lock(true);
+            }
         }
         ac_relay_set_state(false);
         break;
@@ -134,7 +134,7 @@ static void set_state(evse_state_t next_state)
         break;
     case EVSE_STATE_E:
     case EVSE_STATE_F:
-        if (socket_outlet) {
+        if (socket_outlet && board_config.socket_lock) {
             set_socket_lock(false);
         }
         if (next_state == EVSE_STATE_E) {
@@ -201,7 +201,7 @@ static bool can_goto_state_c(void)
         return false;
     }
 
-    if (socket_outlet && socket_lock_get_status() != SOCKED_LOCK_STATUS_IDLE) {
+    if (socket_outlet && board_config.socket_lock && socket_lock_get_status() != SOCKED_LOCK_STATUS_IDLE) {
         return false;
     }
 
@@ -222,10 +222,10 @@ void evse_process(void)
     // } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
     //     next_state = EVSE_STATE_E;
     //     error = EVSE_ERR_DIODE_SHORT;
-    } else if (socket_outlet && socket_lock_get_status() == SOCKED_LOCK_STATUS_LOCKING_FAIL && error != EVSE_ERR_LOCK_FAULT) {
+    } else if (socket_outlet && board_config.socket_lock && socket_lock_get_status() == SOCKED_LOCK_STATUS_LOCKING_FAIL && error != EVSE_ERR_LOCK_FAULT) {
         next_state = EVSE_STATE_E;
         error = EVSE_ERR_LOCK_FAULT;
-    } else if (socket_outlet && socket_lock_get_status() == SOCKED_LOCK_STATUS_UNLOCKING_FAIL && error != EVSE_ERR_UNLOCK_FAULT) {
+    } else if (socket_outlet && board_config.socket_lock && socket_lock_get_status() == SOCKED_LOCK_STATUS_UNLOCKING_FAIL && error != EVSE_ERR_UNLOCK_FAULT) {
         next_state = EVSE_STATE_E;
         error = EVSE_ERR_UNLOCK_FAULT;
     } else if (rcm && rcm_was_triggered()) {
@@ -380,7 +380,7 @@ void evse_init()
         require_auth = u8;
     }
 
-    if (nvs_get_u8(nvs, NVS_SOCKED_OUTLET, &u8) == ESP_OK) {
+    if (nvs_get_u8(nvs, NVS_SOCKET_OUTLET, &u8) == ESP_OK) {
         socket_outlet = u8;
     }
 
@@ -465,14 +465,14 @@ esp_err_t evse_set_socket_outlet(bool _socket_outlet)
 {
     ESP_LOGI(TAG, "Set socket outlet %d", _socket_outlet);
 
-    if (_socket_outlet && !(board_config.proximity_sens && board_config.socket_lock)) {
-        ESP_LOGE(TAG, "Cant work in socket outlet mode, proxmity pilot & socket lock not available");
+    if (_socket_outlet && !(board_config.proximity)) {
+        ESP_LOGE(TAG, "Cant work in socket outlet mode, proximity pilot not available");
         return ESP_ERR_INVALID_ARG;
     }
 
     socket_outlet = _socket_outlet;
 
-    nvs_set_u8(nvs, NVS_SOCKED_OUTLET, socket_outlet);
+    nvs_set_u8(nvs, NVS_SOCKET_OUTLET, socket_outlet);
     nvs_commit(nvs);
 
     return ESP_OK;

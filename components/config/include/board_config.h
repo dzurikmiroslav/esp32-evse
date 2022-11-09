@@ -19,6 +19,8 @@ typedef enum {
 
 typedef struct
 {
+    char device_name[32];
+
     bool led_charging : 1;
     gpio_num_t led_charging_gpio;
     bool led_error : 1;
@@ -29,18 +31,18 @@ typedef struct
     gpio_num_t button_wifi_gpio;
 
     gpio_num_t pilot_pwm_gpio;
-    adc_channel_t pilot_sens_adc_channel;
-    uint16_t pilot_sens_down_treshold_12;
-    uint16_t pilot_sens_down_treshold_9;
-    uint16_t pilot_sens_down_treshold_6;
-    uint16_t pilot_sens_down_treshold_3;
-    uint16_t pilot_sens_down_treshold_n12;
+    adc_channel_t pilot_adc_channel;
+    uint16_t pilot_down_treshold_12;
+    uint16_t pilot_down_treshold_9;
+    uint16_t pilot_down_treshold_6;
+    uint16_t pilot_down_treshold_3;
+    uint16_t pilot_down_treshold_n12;
 
-    bool proximity_sens : 1;
-    adc_channel_t proximity_sens_adc_channel;
-    uint16_t proximity_sens_down_treshold_13;
-    uint16_t proximity_sens_down_treshold_20;
-    uint16_t proximity_sens_down_treshold_32;
+    bool proximity : 1;
+    adc_channel_t proximity_adc_channel;
+    uint16_t proximity_down_treshold_13;
+    uint16_t proximity_down_treshold_20;
+    uint16_t proximity_down_treshold_32;
 
     uint8_t max_charging_current;
 

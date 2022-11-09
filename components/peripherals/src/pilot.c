@@ -12,7 +12,7 @@
 #define PILOT_PWM_DUTY_RES      LEDC_TIMER_10_BIT
 #define PILOT_PWM_MAX_DUTY      1023
 
-#define PILOT_SENS_SAMPLES      64
+#define PILOT_SAMPLES      64
 
 static const char* TAG = "pilot";
 
@@ -47,7 +47,7 @@ void pilot_init(void)
 
     ledc_fade_func_install(0);
 
-    ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.pilot_sens_adc_channel, ADC_ATTEN_DB_11));
+    ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.pilot_adc_channel, ADC_ATTEN_DB_11));
 
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &adc_char);
 }
@@ -86,7 +86,7 @@ void pilot_measure(void)
     uint32_t low = 3300;
 
     for (int i = 0; i < 100; i++) {
-        int adc_reading = adc1_get_raw(board_config.pilot_sens_adc_channel);
+        int adc_reading = adc1_get_raw(board_config.pilot_adc_channel);
         uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &adc_char);
         if (voltage > high) {
             high = voltage;
@@ -98,19 +98,19 @@ void pilot_measure(void)
 
     ESP_LOGV(TAG, "Measure: %dmV - %dmV", low, high);
 
-    if (high >= board_config.pilot_sens_down_treshold_12) {
+    if (high >= board_config.pilot_down_treshold_12) {
         up_voltage = PILOT_VOLTAGE_12;
-    } else if (high >= board_config.pilot_sens_down_treshold_9) {
+    } else if (high >= board_config.pilot_down_treshold_9) {
         up_voltage = PILOT_VOLTAGE_9;
-    } else if (high >= board_config.pilot_sens_down_treshold_6) {
+    } else if (high >= board_config.pilot_down_treshold_6) {
         up_voltage = PILOT_VOLTAGE_6;
-    } else if (high >= board_config.pilot_sens_down_treshold_3) {
+    } else if (high >= board_config.pilot_down_treshold_3) {
         up_voltage = PILOT_VOLTAGE_3;
     } else {
         up_voltage = PILOT_VOLTAGE_1;
     }
 
-    down_voltage_n12 = low <= board_config.pilot_sens_down_treshold_n12;
+    down_voltage_n12 = low <= board_config.pilot_down_treshold_n12;
 
     ESP_LOGV(TAG, "Up volate %d", up_voltage);
     ESP_LOGV(TAG, "Down volate belov 12V %d", down_voltage_n12);

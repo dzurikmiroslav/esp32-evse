@@ -44,6 +44,12 @@ board_config_serial_t atoser(const char* value)
         continue;                                   \
     }                                               \
 
+#define SET_CONFIG_VALUE_STR(name, prop)            \
+    if (!strcmp(key, name)) {                       \
+        strcpy(board_config.prop, value);           \
+        continue;                                   \
+    }                                               \
+
 void board_config_load()
 {
     memset(&board_config, 0, sizeof(board_config_t));
@@ -75,6 +81,7 @@ void board_config_load()
             if (key != NULL) {
                 char* value = strtok_r(NULL, "=", &saveptr);
                 if (value != NULL) {
+                    SET_CONFIG_VALUE_STR("DEVICE_NAME", device_name);
                     SET_CONFIG_VALUE("LED_CHARGING", led_charging, atob);
                     SET_CONFIG_VALUE("LED_CHARGING_GPIO", led_charging_gpio, atoi);
                     SET_CONFIG_VALUE("LED_ERROR", led_error, atob);
@@ -83,17 +90,17 @@ void board_config_load()
                     SET_CONFIG_VALUE("LED_WIFI_GPIO", led_wifi_gpio, atoi);
                     SET_CONFIG_VALUE("BUTTION_WIFI_GPIO", button_wifi_gpio, atoi);
                     SET_CONFIG_VALUE("PILOT_PWM_GPIO", pilot_pwm_gpio, atoi);
-                    SET_CONFIG_VALUE("PILOT_SENS_ADC_CHANNEL", pilot_sens_adc_channel, atoi);
-                    SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_12", pilot_sens_down_treshold_12, atoi);
-                    SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_9", pilot_sens_down_treshold_9, atoi);
-                    SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_6", pilot_sens_down_treshold_6, atoi);
-                    SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_3", pilot_sens_down_treshold_3, atoi);
-                    SET_CONFIG_VALUE("PILOT_SENS_DOWN_TRESHOLD_N12", pilot_sens_down_treshold_n12, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_SENS", proximity_sens, atob);
-                    SET_CONFIG_VALUE("PROXIMITY_SENS_ADC_CHANNEL", proximity_sens_adc_channel, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_13", proximity_sens_down_treshold_13, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_20", proximity_sens_down_treshold_20, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_SENS_DOWN_TRESHOLD_32", proximity_sens_down_treshold_32, atoi);
+                    SET_CONFIG_VALUE("PILOT_ADC_CHANNEL", pilot_adc_channel, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_12", pilot_down_treshold_12, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_9", pilot_down_treshold_9, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_6", pilot_down_treshold_6, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_3", pilot_down_treshold_3, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_N12", pilot_down_treshold_n12, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY", proximity, atob);
+                    SET_CONFIG_VALUE("PROXIMITY_ADC_CHANNEL", proximity_adc_channel, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_DOWN_TRESHOLD_13", proximity_down_treshold_13, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_DOWN_TRESHOLD_20", proximity_down_treshold_20, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_DOWN_TRESHOLD_32", proximity_down_treshold_32, atoi);
                     SET_CONFIG_VALUE("MAX_CHARGING_CURRENT", max_charging_current, atoi);
                     SET_CONFIG_VALUE("AC_RELAY_GPIO", ac_relay_gpio, atoi);
                     SET_CONFIG_VALUE("SOCKET_LOCK", socket_lock, atob);

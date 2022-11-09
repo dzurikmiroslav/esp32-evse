@@ -85,8 +85,10 @@
                 fetch('/api/v1/boardConfig')
                     .then(jsonResponse)
                     .then(data => {
+                        document.getElementById('deviceName').innerText = data.deviceName;
                         document.getElementById('maxChargingCurrent').innerText = data.maxChargingCurrent;
-                        document.getElementById('socketOutlet').innerText = YES_NO[data.socketOutlet];
+                        document.getElementById('proximity').innerText = YES_NO[data.proximity];
+                        document.getElementById('socketLock').innerText = YES_NO[data.socketLock];
                         document.getElementById('rcm').innerText = YES_NO[data.rcm];
                         document.getElementById('energyMeter').innerText = data.energyMeter;
                         document.getElementById('energyMeterThreePhases').innerText = YES_NO[data.energyMeterThreePhases];
@@ -156,7 +158,7 @@
             <div class="spinner-border" role="status"></div>
         </div>
         <div class="container">
-            <p class="lead">Information</p>
+            <p class="lead">Status</p>
             <table class="table table-striped table-sm">
                 <tbody>
                     <tr>
@@ -217,16 +219,24 @@
                 </tbody>
             </table>
 
-            <p class="lead">Board configuration</p>
+            <p class="lead">Device info</p>
             <table class="table table-striped table-sm">
                 <tbody>
+                    <tr>
+                        <th scope="row">Device name</th>
+                        <td id="deviceName"></td>
+                    </tr>
                     <tr>
                         <th scope="row">Max charging current</th>
                         <td id="maxChargingCurrent"></td>
                     </tr>
                     <tr>
-                        <th scope="row">Socket outlet</th>
-                        <td id="socketOutlet"></td>
+                        <th scope="row">Proximity pilot</th>
+                        <td id="proximity"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Socket lock</th>
+                        <td id="socketLock"></td>
                     </tr>
                     <tr>
                         <th scope="row">Residual current monitor</th>

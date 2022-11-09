@@ -4,7 +4,6 @@
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 #include "esp_log.h"
-#include "esp_timer.h"
 #include "driver/gpio.h"
 #include "nvs.h"
 

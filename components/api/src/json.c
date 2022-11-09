@@ -375,10 +375,12 @@ cJSON* json_get_board_config(void)
 {
     cJSON* root = cJSON_CreateObject();
 
+    cJSON_AddStringToObject(root, "deviceName", board_config.device_name);
     cJSON_AddNumberToObject(root, "maxChargingCurrent", board_config.max_charging_current);
-    cJSON_AddBoolToObject(root, "socketOutlet", board_config.socket_lock && board_config.proximity_sens);
+    cJSON_AddBoolToObject(root, "socketLock", board_config.socket_lock);
+    cJSON_AddBoolToObject(root, "proximity", board_config.proximity);
     cJSON_AddNumberToObject(root, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
-    cJSON_AddBoolToObject(root, "rcm", board_config.socket_lock && board_config.rcm);
+    cJSON_AddBoolToObject(root, "rcm", board_config.rcm);
     switch (board_config.energy_meter) {
     case BOARD_CONFIG_ENERGY_METER_CUR:
         cJSON_AddStringToObject(root, "energyMeter", "cur");

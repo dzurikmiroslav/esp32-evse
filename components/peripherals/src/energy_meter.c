@@ -6,7 +6,6 @@
 #include "driver/ledc.h"
 #include "driver/gpio.h"
 #include "driver/adc.h"
-#include "driver/timer.h"
 #include "esp_adc_cal.h"
 #include "nvs.h"
 

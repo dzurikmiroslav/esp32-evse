@@ -160,7 +160,7 @@ bool evse_is_limit_reached(void);
 uint32_t evse_get_consumption_limit(void);
 
 /**
- * @brief Set socket outlet, when true do control pilot and socket lock functionality, stored in NVS
+ * @brief Set socket outlet, stored in NVS
  * 
  * @param socket_outlet 
  * @return esp_err_t 
