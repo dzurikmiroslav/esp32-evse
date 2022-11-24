@@ -102,7 +102,13 @@
                 fetch('/api/v1/info')
                     .then(jsonResponse)
                     .then(data => {
-                        document.getElementById('uptime').innerText = formatUptime(data.uptime);
+                        document.getElementById('uptime').innerText = formatUptime(data.uptime);                        
+                        if (data.temperatureSensorCount > 1) {
+                            document.getElementById('temperature').innerText = `${data.temperatureLow}/${data.temperatureHigh} °C`;
+                        } else {
+                            document.getElementById('temperature').innerText = `${data.temperatureHigh} °C`;
+                        }
+                        document.getElementById('temperatureSensorCount').innerText = data.temperatureSensorCount;                        
                         document.getElementById('ip').innerText = data.ip;
                         document.getElementById('ipAp').innerText = data.ipAp;
                         document.getElementById('mac').innerText = data.mac;
@@ -164,6 +170,14 @@
                     <tr>
                         <th scope="row">Uptime</th>
                         <td id="uptime"></td>
+                    </tr>                    
+                    <tr>
+                        <th scope="row">Temperature</th>
+                        <td id="temperature"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Temperature sensor count</th>
+                        <td id="temperatureSensorCount"></td>
                     </tr>
                     <tr>
                         <th scope="row">Version</th>

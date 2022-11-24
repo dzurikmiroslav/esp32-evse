@@ -19,6 +19,7 @@
 #include "proximity.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
+#include "temp_sensor.h"
 
 #define RETURN_ON_ERROR(x) do {                 \
         esp_err_t err_rc_ = (x);                \
@@ -355,6 +356,11 @@ cJSON* json_get_info(void)
     esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
     esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
     cJSON_AddStringToObject(root, "ipAp", str);
+    cJSON_AddNumberToObject(root, "temperatureSensorCount", temp_sensor_count());
+    int16_t temp_lo, temp_hi = 0;
+    temp_sensor_measure(&temp_lo, &temp_hi);
+    cJSON_AddNumberToObject(root, "temperatureLow", temp_lo / 100.0);
+    cJSON_AddNumberToObject(root, "temperatureHigh", temp_hi / 100.0);
     return root;
 }
 

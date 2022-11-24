@@ -94,6 +94,9 @@ typedef struct
     gpio_num_t serial_3_txd_gpio;
     gpio_num_t serial_3_rts_gpio;
 #endif
+
+    bool temp_sensor : 1;
+    gpio_num_t temp_sensor_gpio;
 } board_config_t;
 
 extern board_config_t board_config;

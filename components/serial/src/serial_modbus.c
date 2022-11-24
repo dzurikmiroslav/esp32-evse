@@ -6,7 +6,7 @@
 #define BUF_SIZE            256
 #define EVENT_QUEUE_SIZE    20
 
-#define LOG_LVL_DATA        ESP_LOG_INFO
+#define LOG_LVL_DATA        ESP_LOG_VERBOSE
 
 static const char* TAG = "serial_modbus";
 
@@ -87,7 +87,6 @@ static void serial_modbus_task_func(void* param)
 
     while (true) {
         if (xQueueReceive(uart_queue, (void*)&event, portMAX_DELAY)) {
-            ESP_LOGI(TAG, "event: %d", event.type);
             switch (event.type) {
             case UART_DATA:
                 if (event.timeout_flag) {

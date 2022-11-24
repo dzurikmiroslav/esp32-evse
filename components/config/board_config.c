@@ -143,6 +143,8 @@ void board_config_load()
                     SET_CONFIG_VALUE("SERIAL_3_TXD_GPIO", serial_3_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);
 #endif
+                    SET_CONFIG_VALUE("TEMP_SENSOR", temp_sensor, atob);
+                    SET_CONFIG_VALUE("TEMP_SENSOR_GPIO", temp_sensor_gpio, atoi);
 
                     ESP_LOGE(TAG, "Unknown config value %s=%s", key, value);
                 }

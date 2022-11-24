@@ -36,6 +36,7 @@
 #include "aux.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
+#include "temp_sensor.h"
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
 #define RESET_HOLD_TIME         10000 // 10sec
@@ -271,6 +272,7 @@ void app_main(void)
     led_init();
     aux_init();
     button_init();
+    temp_sensor_init();
     serial_init();
     rest_init();
     wifi_init();

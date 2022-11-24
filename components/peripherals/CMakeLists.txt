@@ -6,7 +6,9 @@ set(srcs
     "src/energy_meter.c"
     "src/socket_lock.c"
     "src/rcm.c"
-    "src/aux.c")
+    "src/aux.c"
+    "src/onewire.c"
+    "src/temp_sensor.c")
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include"
