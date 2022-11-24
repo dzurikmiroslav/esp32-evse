@@ -12,32 +12,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout for ESP32
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-          path: esp32
+    strategy:
+      matrix:
+        platform: [esp32, esp32s2]
 
-      - name: Checkout for ESP32-S2
+    steps:
+      - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: true
-          path: esp32s2
    
-      - name: Build ESP32
+      - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v4.4.3
-          target: esp32
-          path: esp32
-     
-      - name: Build ESP32-S2
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: v4.4.3
-          target: esp32s2
-          path: esp32s2
+          target: ${{ matrix.platform }}
 
       - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/')
