@@ -1,4 +1,6 @@
 #include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "nvs.h"
@@ -10,6 +12,7 @@
 #define NVS_NAMESPACE           "aux"
 #define NVS_MODE                "mode_%x"
 
+#define PROCESS_INTERVAL        100
 #define BUTTON_DEBOUNCE_TIME    200
 
 static const char* TAG = "aux";
@@ -56,6 +59,44 @@ static void IRAM_ATTR aux_isr_handler(void* arg)
     }
 }
 
+static void process_task_func(void* param)
+{
+    while (true) {
+        xSemaphoreTake(mutex, portMAX_DELAY);
+
+        for (int i = 0; i < AUX_ID_MAX; i++) {
+            if (auxs[i].gpio != GPIO_NUM_NC) {
+                switch (auxs[i].mode) {
+                case AUX_MODE_ENABLE_BUTTON:
+                    if (auxs[i].pressed) {
+                        auxs[i].pressed = false;
+                        evse_set_enabled(!evse_is_enabled());
+                    }
+                    break;
+                case AUX_MODE_AUTHORIZE_BUTTON:
+                    if (auxs[i].pressed) {
+                        auxs[i].pressed = false;
+                        evse_authorize();
+                    }
+                    break;
+                case AUX_MODE_ENABLE_SWITCH:
+                    if (gpio_get_level(auxs[i].gpio) && !evse_is_enabled()) {
+                        evse_set_enabled(true);
+                    }
+                    if (!gpio_get_level(auxs[i].gpio) && evse_is_enabled()) {
+                        evse_set_enabled(false);
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        xSemaphoreGive(mutex);
+
+        vTaskDelay(pdMS_TO_TICKS(PROCESS_INTERVAL));
+    }
+}
 
 void aux_init(void)
 {
@@ -109,42 +150,8 @@ void aux_init(void)
             ESP_ERROR_CHECK(gpio_isr_handler_add(auxs[i].gpio, aux_isr_handler, &auxs[i]));
         }
     }
-}
 
-void aux_process(void)
-{
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    for (int i = 0; i < AUX_ID_MAX; i++) {
-        if (auxs[i].gpio != GPIO_NUM_NC) {
-            switch (auxs[i].mode) {
-            case AUX_MODE_ENABLE_BUTTON:
-                if (auxs[i].pressed) {
-                    auxs[i].pressed = false;
-                    evse_set_enabled(!evse_is_enabled());
-                }
-                break;
-            case AUX_MODE_AUTHORIZE_BUTTON:
-                if (auxs[i].pressed) {
-                    auxs[i].pressed = false;
-                    evse_authorize();
-                }
-                break;
-            case AUX_MODE_ENABLE_SWITCH:
-                if (gpio_get_level(auxs[i].gpio) && !evse_is_enabled()) {
-                    evse_set_enabled(true);
-                }
-                if (!gpio_get_level(auxs[i].gpio) && evse_is_enabled()) {
-                    evse_set_enabled(false);
-                }
-                break;
-            default:
-                break;
-            }
-        }
-    }
-
-    xSemaphoreGive(mutex);
+    xTaskCreate(process_task_func, "aux_process_task", 4096, NULL, 5, NULL);
 }
 
 aux_mode_t aux_get_mode(aux_id_t id)

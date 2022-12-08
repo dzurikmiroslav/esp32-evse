@@ -51,6 +51,7 @@ static void close_conn(int* sock)
         ESP_LOG_LEVEL(LOG_LVL_CONN, TAG, "Socket (#%d), closed", *sock);
     }
     close(*sock);
+    *sock = -1;
 }
 
 static int accept_conn(int listen_sock)

@@ -62,7 +62,7 @@ static void timer_callback(TimerHandle_t xTimer)
     led->on = !led->on;
     gpio_set_level(led->gpio, led->on);
 
-    xTimerChangePeriod(xTimer, (led->on ? led->ontime : led->offtime) / portTICK_RATE_MS, BLOCK_TIME);
+    xTimerChangePeriod(xTimer, pdMS_TO_TICKS(led->on ? led->ontime : led->offtime), BLOCK_TIME);
 }
 
 void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
@@ -92,7 +92,7 @@ void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
             gpio_set_level(led->gpio, led->on);
 
             if (led->timer == NULL) {
-                led->timer = xTimerCreate("led_timer", ontime / portTICK_RATE_MS, pdFALSE, (void*)led, timer_callback);
+                led->timer = xTimerCreate("led_timer", pdMS_TO_TICKS(ontime), pdFALSE, (void*)led, timer_callback);
             }
             xTimerStart(led->timer, BLOCK_TIME);
         }

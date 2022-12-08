@@ -148,7 +148,7 @@ static cJSON* firmware_check_update()
 
     char avl_version[32];
     if (ota_get_available_version(avl_version) == ESP_OK) {
-        const esp_app_desc_t* app_desc = esp_ota_get_app_description();
+        const esp_app_desc_t* app_desc = esp_app_get_description();
 
         root = cJSON_CreateObject();
         cJSON_AddStringToObject(root, "available", avl_version);
@@ -433,14 +433,18 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
 
         char avl_version[32];
         if (ota_get_available_version(avl_version) == ESP_OK) {
-            const esp_app_desc_t* app_desc = esp_ota_get_app_description();
+            const esp_app_desc_t* app_desc = esp_app_get_description();
 
             if (ota_is_newer_version(app_desc->version, avl_version)) {
                 extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 
-                esp_http_client_config_t config = {
+                esp_http_client_config_t http_config = {
                     .url = OTA_FIRMWARE_URL,
                     .cert_pem = server_cert_pem_start
+                };
+
+                esp_https_ota_config_t config = {
+                    .http_config = &http_config
                 };
 
                 esp_err_t err = esp_https_ota(&config);
@@ -484,7 +488,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         bool image_header_was_checked = false;
 
         update_partition = esp_ota_get_next_update_partition(NULL);
-        ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
+        ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%lx", update_partition->subtype, update_partition->address);
         if (update_partition == NULL) {
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
             evse_set_avalable(true);
@@ -503,7 +507,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
                     memcpy(&new_app_desc, &buf[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
                     ESP_LOGI(TAG, "New firmware version: %s", new_app_desc.version);
 
-                    const esp_app_desc_t* app_desc = esp_ota_get_app_description();
+                    const esp_app_desc_t* app_desc = esp_app_get_description();
                     if (strcmp(app_desc->project_name, new_app_desc.project_name) != 0)
                     {
                         ESP_LOGE(TAG, "Received firmware is not %s", app_desc->project_name);

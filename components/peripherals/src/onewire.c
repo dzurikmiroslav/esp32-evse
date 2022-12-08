@@ -1,6 +1,8 @@
 #include <string.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "rom/ets_sys.h"
+
 #include "onewire.h"
 
 #define ONEWIRE_SELECT_ROM 0x55

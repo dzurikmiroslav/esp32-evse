@@ -1,28 +1,28 @@
 #include "esp_log.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 
 #include "proximity.h"
 #include "board_config.h"
-
+#include "adc.h"
 
 static const char* TAG = "proximity";
-
-static esp_adc_cal_characteristics_t adc_char;
 
 void proximity_init(void)
 {
     if (board_config.proximity) {
-        ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.proximity_adc_channel, ADC_ATTEN_DB_11));
-
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &adc_char);
+        adc_oneshot_chan_cfg_t config = {
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .atten = ADC_ATTEN_DB_11
+        };
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.proximity_adc_channel, &config));
     }
 }
 
 uint8_t proximity_get_max_current(void)
 {
-    int adc_reading = adc1_get_raw(board_config.proximity_adc_channel);
-    uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &adc_char);
+    int voltage ;
+    adc_oneshot_read(adc_handle, board_config.pilot_adc_channel, &voltage);
+    adc_cali_raw_to_voltage(adc_cali_handle, voltage, &voltage);
+    
     ESP_LOGD(TAG, "Measured: %dmV", voltage);
 
     uint8_t current;

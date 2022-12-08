@@ -2,13 +2,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
-#include "esp_system.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_netif.h"
+#include "esp_mac.h"
 #include "nvs.h"
-#include "mdns.h"
+//#include "mdns.h"
 
 #include "wifi.h"
 
@@ -135,9 +135,9 @@ void wifi_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
-    ESP_ERROR_CHECK(mdns_init());
-    ESP_ERROR_CHECK(mdns_hostname_set("evse"));
-    ESP_ERROR_CHECK(mdns_instance_name_set("EVSE controller"));
+    // ESP_ERROR_CHECK(mdns_init());
+    // ESP_ERROR_CHECK(mdns_hostname_set("evse"));
+    // ESP_ERROR_CHECK(mdns_instance_name_set("EVSE controller"));
 
     sta_try_start();
 }

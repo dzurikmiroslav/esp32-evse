@@ -1,9 +1,9 @@
 #ifndef BOARD_CONFIG_H_
 #define BOARD_CONFIG_H_
 
+#include "hal/adc_types.h"
+#include "hal/gpio_types.h"
 #include "soc/soc_caps.h"
-#include "driver/gpio.h"
-#include "driver/adc.h"
 
 typedef enum {
     BOARD_CONFIG_ENERGY_METER_NONE,
@@ -70,8 +70,6 @@ typedef struct
     adc_channel_t energy_meter_l2_vlt_adc_channel;
     adc_channel_t energy_meter_l3_vlt_adc_channel;
     float energy_meter_vlt_scale;
-
-    gpio_num_t energy_meter_ext_pulse_gpio;
 
     bool aux_1 : 1;
     gpio_num_t aux_1_gpio;

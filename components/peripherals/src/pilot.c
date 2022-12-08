@@ -1,10 +1,10 @@
 #include "esp_log.h"
 #include "driver/ledc.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
+#include "rom/ets_sys.h"
 
 #include "pilot.h"
 #include "board_config.h"
+#include "adc.h"
 
 #define PILOT_PWM_TIMER         LEDC_TIMER_0
 #define PILOT_PWM_CHANNEL       LEDC_CHANNEL_0
@@ -15,8 +15,6 @@
 #define PILOT_SAMPLES      64
 
 static const char* TAG = "pilot";
-
-static esp_adc_cal_characteristics_t adc_char;
 
 static pilot_voltage_t up_voltage;
 
@@ -47,9 +45,11 @@ void pilot_init(void)
 
     ledc_fade_func_install(0);
 
-    ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.pilot_adc_channel, ADC_ATTEN_DB_11));
-
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &adc_char);
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .atten = ADC_ATTEN_DB_11
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.pilot_adc_channel, &config));
 }
 
 void pilot_set_level(bool level)
@@ -74,7 +74,7 @@ void pilot_set_amps(uint16_t amps)
         return;
     }
 
-    ESP_LOGI(TAG, "Set amp %dA*10 duty %d/%d", amps, duty, PILOT_PWM_MAX_DUTY);
+    ESP_LOGI(TAG, "Set amp %dA*10 duty %lu/%d", amps, duty, PILOT_PWM_MAX_DUTY);
 
     ledc_set_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, duty);
     ledc_update_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL);
@@ -82,19 +82,23 @@ void pilot_set_amps(uint16_t amps)
 
 void pilot_measure(void)
 {
-    uint32_t high = 0;
-    uint32_t low = 3300;
+    int high = 0;
+    int low = 3300;
 
     for (int i = 0; i < 100; i++) {
-        int adc_reading = adc1_get_raw(board_config.pilot_adc_channel);
-        uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &adc_char);
-        if (voltage > high) {
-            high = voltage;
-        } else if (voltage < low) {
-            low = voltage;
+        int adc_reading;
+        adc_oneshot_read(adc_handle, board_config.pilot_adc_channel, &adc_reading);
+
+        if (adc_reading > high) {
+            high = adc_reading;
+        } else if (adc_reading < low) {
+            low = adc_reading;
         }
         ets_delay_us(100);
     }
+
+    adc_cali_raw_to_voltage(adc_cali_handle, high, &high);
+    adc_cali_raw_to_voltage(adc_cali_handle, low, &low);
 
     ESP_LOGV(TAG, "Measure: %dmV - %dmV", low, high);
 

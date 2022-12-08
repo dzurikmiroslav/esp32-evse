@@ -1,18 +1,9 @@
 #ifndef MQTT_H_
 #define MQTT_H_
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
+#include <stdint.h>
+#include <stdbool.h>
 #include "esp_err.h"
-
-#define MQTT_CONNECTED_BIT          BIT0
-#define MQTT_DISCONNECTED_BIT       BIT1
-
-/**
- * @brief MQTT event group MQTT_CONNECTED_BIT | MQTT_DISCONNECTED_BIT
- * 
- */
-extern EventGroupHandle_t mqtt_event_group;
 
 /**
  * @brief Initialize MQTT
@@ -75,11 +66,5 @@ void mqtt_get_user(char* value);
  * @return uint16_t 
  */
 uint16_t mqtt_get_periodicity(void);
-
-/**
- * @brief MQTT main loop
- * 
- */
-void mqtt_process(void);
 
 #endif /* MQTT_H_ */

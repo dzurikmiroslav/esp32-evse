@@ -3,16 +3,16 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "driver/ledc.h"
 #include "driver/gpio.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 #include "nvs.h"
 
 #include "energy_meter.h"
 #include "evse.h"
 #include "board_config.h"
 #include "aux.h"
+#include "adc.h"
 
 #define NVS_NAMESPACE           "evse_emeter"
 #define NVS_MODE                "mode"
@@ -32,8 +32,6 @@ static energy_meter_mode_t mode = ENERGY_METER_MODE_NONE;
 static uint16_t ac_voltage = 250;
 
 static uint16_t pulse_amount = 1000;
-
-static esp_adc_cal_characteristics_t sens_adc_char;
 
 static uint16_t power = 0;
 
@@ -81,8 +79,10 @@ static void measure_none(void)
 
 static uint32_t read_adc(adc_channel_t channel)
 {
-    int adc_reading = adc1_get_raw(channel);
-    return esp_adc_cal_raw_to_voltage(adc_reading, &sens_adc_char);
+    int adc_reading = 0;
+    adc_oneshot_read(adc_handle, channel, &adc_reading);
+    adc_cali_raw_to_voltage(adc_cali_handle, adc_reading, &adc_reading);
+    return adc_reading;
 }
 
 static float get_zero(adc_channel_t channel)
@@ -288,29 +288,30 @@ void energy_meter_init(void)
 
     nvs_get_u16(nvs, NVS_AC_VOLTAGE, &ac_voltage);
     nvs_get_u16(nvs, NVS_PULSE_AMOUNT, &pulse_amount);
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .atten = ADC_ATTEN_DB_11
+    };
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &sens_adc_char);
         vlt[0] = ac_voltage;
 
-        ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l1_cur_adc_channel, &config));
         if (board_config.energy_meter_three_phases) {
-            ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_cur_adc_channel, ADC_ATTEN_DB_11));
-            ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l2_cur_adc_channel, &config));
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l3_cur_adc_channel, &config));
         }
     }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 1100, &sens_adc_char);
-
-        ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_cur_adc_channel, ADC_ATTEN_DB_11));
-        ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l1_vlt_adc_channel, ADC_ATTEN_DB_11));
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l1_cur_adc_channel, &config));
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l1_vlt_adc_channel, &config));
 
         if (board_config.energy_meter_three_phases) {
-            ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_cur_adc_channel, ADC_ATTEN_DB_11));
-            ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_cur_adc_channel, ADC_ATTEN_DB_11));
-            ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l2_vlt_adc_channel, ADC_ATTEN_DB_11));
-            ESP_ERROR_CHECK(adc1_config_channel_atten(board_config.energy_meter_l3_vlt_adc_channel, ADC_ATTEN_DB_11));
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l2_cur_adc_channel, &config));
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l3_cur_adc_channel, &config));
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l2_vlt_adc_channel, &config));
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l3_vlt_adc_channel, &config));
         }
     }
 

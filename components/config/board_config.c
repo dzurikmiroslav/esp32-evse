@@ -2,7 +2,6 @@
 #include <ctype.h>
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_vfs.h"
 #include "esp_err.h"
 
 #include "board_config.h"
@@ -64,11 +63,11 @@ void board_config_load()
     while (fgets(buffer, 256, file)) {
         int buf_length = strlen(buffer);
         int buf_start = 0;
-        while (buf_start < buf_length && isspace(buffer[buf_start])) {
+        while (buf_start < buf_length && isspace((unsigned char)buffer[buf_start])) {
             buf_start++;
         }
         int buf_end = buf_length;
-        while (buf_end > 0 && !isgraph(buffer[buf_end - 1])) {
+        while (buf_end > 0 && !isgraph((unsigned char)buffer[buf_end - 1])) {
             buf_end--;
         }
 
@@ -122,7 +121,6 @@ void board_config_load()
                     SET_CONFIG_VALUE("ENERGY_METER_L2_VLT_ADC_CHANNEL", energy_meter_l2_vlt_adc_channel, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER_L3_VLT_ADC_CHANNEL", energy_meter_l3_vlt_adc_channel, atoi);
                     SET_CONFIG_VALUE("ENERGY_METER_VLT_SCALE", energy_meter_vlt_scale, atoff);
-                    SET_CONFIG_VALUE("ENERGY_METER_EXT_PULSE_GPIO", energy_meter_ext_pulse_gpio, atoi);
                     SET_CONFIG_VALUE("AUX_1", aux_1, atob);
                     SET_CONFIG_VALUE("AUX_1_GPIO", aux_1_gpio, atoi);
                     SET_CONFIG_VALUE("AUX_2", aux_2, atob);

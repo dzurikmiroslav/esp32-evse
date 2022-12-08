@@ -34,7 +34,7 @@
 #define NVS_ENABLED             "enabled"
 
 #define LOG_LVL_DATA            ESP_LOG_VERBOSE
-#define LOG_LVL_CONN            ESP_LOG_DEBUG
+#define LOG_LVL_CONN            ESP_LOG_VERBOSE
 
 static const char* TAG = "modbus_tcp";
 

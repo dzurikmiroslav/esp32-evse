@@ -3,7 +3,7 @@
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
-#include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_ota_ops.h"
 #include "nvs.h"
 
@@ -228,7 +228,7 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
     default:
         //string registers
         if (addr >= MODBUS_REG_APP_VERSION && addr <= MODBUS_REG_APP_VERSION + 16) {
-            const esp_app_desc_t* app_desc = esp_ota_get_app_description();
+            const esp_app_desc_t* app_desc = esp_app_get_description();
             *value = app_desc->version[(addr - MODBUS_REG_APP_VERSION) * 2] << 8 | app_desc->version[(addr - MODBUS_REG_APP_VERSION) * 2 + 1];
         } else {
             return MODBUS_EX_ILLEGAL_DATA_ADDRESS;

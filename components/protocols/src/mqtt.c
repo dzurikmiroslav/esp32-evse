@@ -1,6 +1,7 @@
 #include <string.h>
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_event.h"
@@ -24,15 +25,11 @@ static const char* TAG = "mqtt";
 
 static nvs_handle nvs;
 
-static SemaphoreHandle_t mutex;
+static TaskHandle_t client_task = NULL;
 
 static esp_mqtt_client_handle_t client = NULL;
 
-EventGroupHandle_t mqtt_event_group;
-
-static uint16_t periodicity;
-
-static TickType_t send_tick = 0;
+static uint16_t periodicity = 30;
 
 static void subcribe_topics(void)
 {
@@ -113,22 +110,20 @@ static void handle_message(const char* topic, const char* data)
     }
 }
 
-static void mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
+static void event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data)
 {
+    esp_mqtt_event_handle_t event = event_data;
     char topic[48];
     char data[256];
 
-    switch (event->event_id) {
+    switch (event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected");
-        xEventGroupClearBits(mqtt_event_group, MQTT_DISCONNECTED_BIT);
-        xEventGroupSetBits(mqtt_event_group, MQTT_CONNECTED_BIT);
+        vTaskResume(client_task);
         subcribe_topics();
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "Disconnected");
-        xEventGroupClearBits(mqtt_event_group, MQTT_CONNECTED_BIT);
-        xEventGroupSetBits(mqtt_event_group, MQTT_DISCONNECTED_BIT);
         break;
     case MQTT_EVENT_DATA:
         memset(topic, 0, sizeof(topic));
@@ -142,33 +137,61 @@ static void mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     }
 }
 
-static void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data)
+static void client_task_func(void* param)
 {
-    mqtt_event_handler_cb(event_data);
+    while (true) {
+        if (!client) {
+            vTaskSuspend(NULL);
+        }
+
+        cJSON* root = json_get_state();
+        publish_message("/state", root);
+        cJSON_Delete(root);
+
+        vTaskDelay(pdMS_TO_TICKS(periodicity * 1000));
+    }
 }
 
-static void try_start(void)
+static void client_start(void)
 {
-    if (mqtt_get_enabled()) {
-        char server[64];
-        char user[32];
-        char password[64];
+    char server[64];
+    char user[32];
+    char password[64];
 
-        mqtt_get_server(server);
-        mqtt_get_user(user);
-        mqtt_get_password(password);
-        periodicity = mqtt_get_periodicity();
+    mqtt_get_server(server);
+    mqtt_get_user(user);
+    mqtt_get_password(password);
 
-        if (strlen(server) > 0) {
-            esp_mqtt_client_config_t mqtt_cfg = {
-                    .uri = server,
-                    .username = user,
-                    .password = password
-            };
-            client = esp_mqtt_client_init(&mqtt_cfg);
-            esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-            esp_mqtt_client_start(client);
+    esp_mqtt_client_config_t cfg = {
+        .broker.address.uri = server,
+        .credentials.username = user,
+        .credentials.authentication.password = password
+    };
+
+    if (client) {
+        if (esp_mqtt_set_config(client, &cfg) != ESP_OK) {
+            ESP_LOGW(TAG, "Cant set config");
         }
+    } else {
+        client = esp_mqtt_client_init(&cfg);
+        if (esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, event_handler, client) != ESP_OK) {
+            ESP_LOGW(TAG, "Cant register handler");
+        }
+        if (client == NULL) {
+            ESP_LOGW(TAG, "Cant set config");
+        } else {
+            if (esp_mqtt_client_start(client) != ESP_OK) {
+                ESP_LOGW(TAG, "Cant start");
+            }
+        }
+    }
+}
+
+static void client_stop(void)
+{
+    if (client != NULL) {
+        esp_mqtt_client_destroy(client);
+        client = NULL;
     }
 }
 
@@ -176,13 +199,18 @@ void mqtt_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    mqtt_event_group = xEventGroupCreate();
-    mutex = xSemaphoreCreateMutex();
+    nvs_get_u16(nvs, NVS_PERIODICITY, &periodicity);
 
-    try_start();
+    esp_register_shutdown_handler(&client_stop);
+
+    xTaskCreate(client_task_func, "mqtt_client_task", 4096, NULL, 5, &client_task);
+
+    if (mqtt_get_enabled()) {
+        client_start();
+    }
 }
 
-esp_err_t mqtt_set_config(bool enabled, const char* server, const char* base_topic, const char* user, const char* password, uint16_t periodicity)
+esp_err_t mqtt_set_config(bool enabled, const char* server, const char* base_topic, const char* user, const char* password, uint16_t _periodicity)
 {
     if (enabled) {
         if (server == NULL || strlen(server) == 0) {
@@ -201,6 +229,11 @@ esp_err_t mqtt_set_config(bool enabled, const char* server, const char* base_top
                 ESP_LOGE(TAG, "Required base topic");
                 return ESP_ERR_INVALID_ARG;
             }
+        }
+
+        if (_periodicity == 0) {
+            ESP_LOGE(TAG, "Periodicity muse be larger than zero");
+            return ESP_ERR_INVALID_ARG;
         }
     }
 
@@ -224,33 +257,26 @@ esp_err_t mqtt_set_config(bool enabled, const char* server, const char* base_top
         return ESP_ERR_INVALID_ARG;
     }
 
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
     nvs_set_u8(nvs, NVS_ENABLED, enabled);
-    if (server != NULL) {
-        nvs_set_str(nvs, NVS_SERVER, server);
-    }
-    if (base_topic != NULL) {
-        nvs_set_str(nvs, NVS_BASE_TOPIC, base_topic);
-    }
-    if (user != NULL) {
-        nvs_set_str(nvs, NVS_USER, user);
-    }
-    if (password != NULL) {
-        nvs_set_str(nvs, NVS_PASSWORD, password);
-    }
-    if (periodicity > 0) {
-        nvs_set_u16(nvs, NVS_PERIODICITY, periodicity);
-    }
+
+    nvs_set_str(nvs, NVS_SERVER, server);
+
+    nvs_set_str(nvs, NVS_BASE_TOPIC, base_topic);
+
+    nvs_set_str(nvs, NVS_USER, user);
+
+    nvs_set_str(nvs, NVS_PASSWORD, password);
+
+    nvs_set_u16(nvs, NVS_PERIODICITY, _periodicity);
+    periodicity = _periodicity;
 
     nvs_commit(nvs);
 
-    if (client != NULL) {
-        esp_mqtt_client_destroy(client);
+    if (enabled) {
+        client_start();
+    } else {
+        client_stop();
     }
-    try_start();
-
-    xSemaphoreGive(mutex);
 
     return ESP_OK;
 }
@@ -292,26 +318,5 @@ void mqtt_get_password(char* value)
 
 uint16_t mqtt_get_periodicity(void)
 {
-    uint16_t value = 30;
-    nvs_get_u16(nvs, NVS_PERIODICITY, &value);
-    return value;
-}
-
-void mqtt_process(void)
-{
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    if (client != NULL && periodicity > 0) {
-        TickType_t tick = xTaskGetTickCount();
-        if (tick >= send_tick + pdMS_TO_TICKS(periodicity * 1000)) {
-            send_tick = tick;
-            if (xEventGroupGetBits(mqtt_event_group) & MQTT_CONNECTED_BIT) {
-                cJSON* root = json_get_state();
-                publish_message("/state", root);
-                cJSON_Delete(root);
-            }
-        }
-    }
-
-    xSemaphoreGive(mutex);
+    return periodicity;
 }

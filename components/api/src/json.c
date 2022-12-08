@@ -1,9 +1,11 @@
 #include <string.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
-#include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_ota_ops.h"
+#include "esp_timer.h"
+#include "esp_chip_info.h"
+#include "esp_mac.h"
 
 #include "json.h"
 #include "mqtt.h"
@@ -327,7 +329,7 @@ cJSON* json_get_info(void)
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(root, "uptime", esp_timer_get_time() / 1000000);
-    const esp_app_desc_t* app_desc = esp_ota_get_app_description();
+    const esp_app_desc_t* app_desc = esp_app_get_description();
     cJSON_AddStringToObject(root, "appVersion", app_desc->version);
     cJSON_AddStringToObject(root, "appDate", app_desc->date);
     cJSON_AddStringToObject(root, "appTime", app_desc->time);
@@ -336,7 +338,8 @@ cJSON* json_get_info(void)
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     cJSON_AddNumberToObject(root, "chipCores", chip_info.cores);
-    cJSON_AddNumberToObject(root, "chipRevision", chip_info.revision);
+    chip_info.revision = 301;
+    cJSON_AddNumberToObject(root, "chipRevision", chip_info.revision / 100);
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
     cJSON_AddNumberToObject(root, "heapSize", heap_info.total_allocated_bytes);

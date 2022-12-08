@@ -1,4 +1,5 @@
 set(srcs
+    "src/protocols.c"
     "src/rest.c"
     "src/mqtt.c"
     "src/modbus_tcp.c"

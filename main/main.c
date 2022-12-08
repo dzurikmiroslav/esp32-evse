@@ -4,39 +4,26 @@
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-#include "freertos/event_groups.h"
-#include "esp_system.h"
+
 #include "esp_ota_ops.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
-#include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_spiffs.h"
 #include "driver/gpio.h"
-#include "driver/adc.h"
 
 #include "evse.h"
+#include "peripherals.h"
 #include "led.h"
-#include "pilot.h"
-#include "proximity.h"
-#include "ac_relay.h"
-#include "socket_lock.h"
-#include "rcm.h"
-#include "energy_meter.h"
+#include "api.h"
+#include "protocols.h"
+#include "tcp_logger.h"
 #include "serial.h"
 #include "serial_logger.h"
 #include "board_config.h"
-#include "mqtt.h"
-#include "rest.h"
 #include "wifi.h"
-#include "tcp_logger.h"
-#include "aux.h"
-#include "modbus.h"
-#include "modbus_tcp.h"
-#include "temp_sensor.h"
+
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
 #define RESET_HOLD_TIME         10000 // 10sec
@@ -139,10 +126,14 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 
 static void button_init(void)
 {
-    gpio_pad_select_gpio(board_config.button_wifi_gpio);
-    ESP_ERROR_CHECK(gpio_set_direction(board_config.button_wifi_gpio, GPIO_MODE_INPUT));
-    ESP_ERROR_CHECK(gpio_set_pull_mode(board_config.button_wifi_gpio, GPIO_PULLUP_ONLY));
-    ESP_ERROR_CHECK(gpio_set_intr_type(board_config.button_wifi_gpio, GPIO_INTR_ANYEDGE));
+    gpio_config_t conf = {
+        .pin_bit_mask = BIT64(board_config.button_wifi_gpio),
+        .mode = GPIO_MODE_INPUT,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .intr_type = GPIO_INTR_ANYEDGE        
+    };
+    ESP_ERROR_CHECK(gpio_config(&conf));
     ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
 }
 
@@ -259,28 +250,15 @@ void app_main(void)
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
-
     board_config_load();
 
-    pilot_init();
-    proximity_init();
-    ac_relay_init();
-    socket_lock_init();
-    rcm_init();
-    energy_meter_init();
-    led_init();
-    aux_init();
-    button_init();
-    temp_sensor_init();
-    serial_init();
-    rest_init();
     wifi_init();
-    mqtt_init();
+    peripherals_init();
+    api_init();
+    serial_init();
+    protocols_init();
     evse_init();
-    tcp_logger_init();
-    modbus_init();
-    modbus_tcp_init();
+    button_init();
 
     esp_log_set_vprintf(log_vprintf);
 
@@ -289,10 +267,7 @@ void app_main(void)
 
     while (true) {
         evse_process();
-        energy_meter_process();
         update_leds();
-        aux_process();
-        mqtt_process();
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }

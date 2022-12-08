@@ -350,6 +350,8 @@ void evse_process(void)
     state_update();
 
     xSemaphoreGive(mutex);
+
+    energy_meter_process();
 }
 
 void evse_set_avalable(bool avalable)
