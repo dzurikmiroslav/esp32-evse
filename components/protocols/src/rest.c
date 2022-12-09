@@ -124,6 +124,7 @@ static cJSON* read_request_json(httpd_req_t* req)
         received = httpd_req_recv(req, body + cur_len, total_len);
         if (received <= 0) {
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed receive request");
+            free((void*)body);
             return NULL;
         }
         cur_len += received;
