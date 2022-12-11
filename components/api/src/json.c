@@ -312,6 +312,7 @@ cJSON* json_get_state(void)
     cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
     cJSON_AddBoolToObject(root, "limitReached", evse_is_limit_reached());
+    cJSON_AddNumberToObject(root, "error", evse_get_error()); // TODO format
     cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
     cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
     cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());

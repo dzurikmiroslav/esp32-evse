@@ -61,6 +61,8 @@ static void IRAM_ATTR aux_isr_handler(void* arg)
 
 static void process_task_func(void* param)
 {
+    vTaskDelay(pdMS_TO_TICKS(PROCESS_INTERVAL)); // TODO wait until evse init
+
     while (true) {
         xSemaphoreTake(mutex, portMAX_DELAY);
 
