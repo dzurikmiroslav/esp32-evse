@@ -5,6 +5,7 @@
 
 #include "timeout_utils.h"
 #include "wifi.h"
+#include "rest.h"
 
 static void restart_fucn(void* arg)
 {
@@ -40,7 +41,7 @@ static void wifi_set_config_func(void* arg)
     vTaskDelete(NULL);
 }
 
-esp_err_t timeout_set_wifi_config(bool enabled, const char* ssid, const char* password)
+esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const char* password)
 {
     if (enabled) {
         if (ssid == NULL || strlen(ssid) == 0) {
@@ -70,4 +71,20 @@ esp_err_t timeout_set_wifi_config(bool enabled, const char* ssid, const char* pa
     xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*)config, 10, NULL);
 
     return ESP_OK;
+}
+
+static void rest_set_enabled_fucn(void* arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    bool enabled = (int)arg;
+
+    rest_set_enabled(enabled);
+
+    vTaskDelete(NULL);
+}
+
+void timeout_rest_set_enabled(bool enabled)
+{
+    xTaskCreate(rest_set_enabled_fucn, "rest_set_enabled", 2 * 1024, (void*)(int)enabled, 10, NULL);
 }

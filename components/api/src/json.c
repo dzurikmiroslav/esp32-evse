@@ -21,6 +21,7 @@
 #include "proximity.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
+#include "rest.h"
 #include "temp_sensor.h"
 
 #define RETURN_ON_ERROR(x) do {                 \
@@ -147,13 +148,18 @@ cJSON* json_get_wifi_config(void)
     return root;
 }
 
-esp_err_t json_set_wifi_config(cJSON* root)
+esp_err_t json_set_wifi_config(cJSON* root, bool timeout)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
     char* ssid = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ssid"));
     char* password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
 
-    return timeout_set_wifi_config(enabled, ssid, password);
+    if (timeout) {
+        return timeout_wifi_set_config(enabled, ssid, password);
+    } else {
+        return wifi_set_config(enabled, ssid, password);
+    }
+
 }
 
 cJSON* json_get_wifi_scan(void)
@@ -299,6 +305,28 @@ esp_err_t json_set_tcp_logger_config(cJSON* root)
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
 
     tcp_logger_set_enabled(enabled);
+
+    return ESP_OK;
+}
+
+cJSON* json_get_rest_config(void)
+{
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddBoolToObject(root, "enabled", rest_is_enabled());
+
+    return root;
+}
+
+esp_err_t json_set_rest_config(cJSON* root, bool timeout)
+{
+    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
+
+    if (timeout) {
+        timeout_rest_set_enabled(enabled);
+    } else {
+        rest_set_enabled(enabled);
+    }
 
     return ESP_OK;
 }

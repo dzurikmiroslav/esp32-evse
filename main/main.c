@@ -22,6 +22,7 @@
 #include "serial.h"
 #include "serial_logger.h"
 #include "board_config.h"
+#include "rest.h"
 #include "wifi.h"
 
 
@@ -65,6 +66,9 @@ static void wifi_event_task_func(void* param)
             } else {
                 if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
+                    if (!rest_is_enabled()) {
+                        rest_stop();
+                    }
                 }
             }
         } else if (mode_bits & WIFI_STA_MODE_BIT) {
@@ -100,6 +104,7 @@ static void user_input_task_func(void* param)
                     } else {
                         if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {
                             wifi_ap_start();
+                            rest_start();
                         }
                     }
                 }

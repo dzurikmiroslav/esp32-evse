@@ -8,6 +8,10 @@
 
     <link rel="stylesheet" href="/bootstrap.min.css">
     <style rel="stylesheet">
+        body {
+            padding-top: 56px;
+        }
+
         .overlay {
             position: absolute;
             left: 0;
@@ -30,26 +34,17 @@
             margin-left: -1rem;
             margin-top: -1rem;
         }
-
-        main>.container {
-            padding-top: 60px;
-        }
     </style>
 
     <script src="/bootstrap.bundle.min.js"></script>
     <script>
         function showError(response) {
-            const errorModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('errorModal'));
-            const errorModalBody = document.getElementById('errorModalBody');
-
-            console.error(response);
-
             if (response.status === 400 || response.status === 500) {
-                errorModalBody.innerText = response.statusText;
+                response.text().then(text => document.getElementById('errorText').innerText = text);
+                new bootstrap.Toast('#errorToast').show();
             } else {
-                errorModalBody.innerHTML = 'Network error, try <a href="/" class="alert-link">reload this page</a>';
+                new bootstrap.Toast('#networkErrorToast').show();
             }
-            errorModal.show();
         }
 
         function submitCredentials() {
@@ -75,10 +70,7 @@
                     }
                     return response.text();
                 })
-                .then(text => {
-                    const alert = document.getElementById('alert');
-                    alert.innerHTML = `<div class="alert alert-success alert-dismissible" role="alert">${text}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
-                })
+                .then(text => new bootstrap.Toast('#updatedToast').show())
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
         }
@@ -86,16 +78,22 @@
 </head>
 
 <body class="d-flex flex-column h-100">
+
     <header>
-        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
             <div class="container-fluid">
+                <div class="d-lg-none" style="width: 56px;"></div>
                 <a class="navbar-brand" href="/">EVSE</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
                     aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
+                        class="bi bi-three-dots" viewBox="0 0 16 16">
+                        <path
+                            d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+                    </svg>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarCollapse">
-                    <ul class="navbar-nav mr-auto">
+                    <ul class="navbar-nav me-auto">
                         <li class="nav-item">
                             <a class="nav-link" href="/index.html">Home</a>
                         </li>
@@ -114,13 +112,13 @@
         </nav>
     </header>
 
-    <main class="flex-shrink-0 position-relative my-3">
+    <main class="flex-shrink-0 position-relative py-3">
         <div id="loading" class="overlay fade text-center">
             <div class="spinner-border" role="status"></div>
         </div>
         <div class="container">
             <div id="alert"></div>
-            <h5>Admin user and password</h5>
+            <h5>REST/Web user and password</h5>
             <form id="form">
                 <div class="row">
                     <div class="col-12 col-md-6 col-xl-4 mb-3">
@@ -147,17 +145,33 @@
         </div>
     </footer>
 
-    <div class="modal fade" id="errorModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
-        aria-labelledby="errorModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
-                </div>
-                <div class="modal-body" id="errorModalBody"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                </div>
+    <div class="toast-container position-fixed p-3 end-0">
+        <div id="updatedToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-success rounded border-0">
+                <span class="me-auto">Successfully updated</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+
+        <div id="errorToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-danger rounded border-0">
+                <span class="me-auto" id="errorText"></span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+
+        <div id="networkErrorToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-danger">
+                <span class="me-auto">Network error</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="toast"
+                    onclick="window.location.reload()">Reload
+                    page</button>
             </div>
         </div>
     </div>

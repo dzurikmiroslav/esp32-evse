@@ -8,6 +8,10 @@
 
     <link rel="stylesheet" href="/bootstrap.min.css">
     <style rel="stylesheet">
+        body {
+            padding-top: 56px;
+        }
+
         .overlay {
             position: absolute;
             left: 0;
@@ -30,26 +34,17 @@
             margin-left: -1rem;
             margin-top: -1rem;
         }
-
-        main>.container {
-            padding-top: 60px;
-        }
     </style>
 
     <script src="/bootstrap.bundle.min.js"></script>
     <script>
         function showError(response) {
-            const errorModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('errorModal'));
-            const errorModalBody = document.getElementById('errorModalBody');
-
-            console.error(response);
-
             if (response.status === 400 || response.status === 500) {
-                errorModalBody.innerText = response.statusText;
+                response.text().then(text => document.getElementById('errorText').innerText = text);
+                new bootstrap.Toast('#errorToast').show();
             } else {
-                errorModalBody.innerHTML = 'Network error, try <a href="/" class="alert-link">reload this page</a>';
+                new bootstrap.Toast('#networkErrorToast').show();
             }
-            errorModal.show();
         }
 
         function jsonResponse(response) {
@@ -132,6 +127,7 @@
                     document.getElementById('mqttPassword').value = '';
                     document.getElementById('mqttPeriodicity').value = data.mqtt.periodicity;
                     document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;
+                    document.getElementById('restEnabled').checked = data.rest.enabled;
                     document.getElementById('serial1Mode').value = data.serial.serial1Mode;
                     document.getElementById('serial1BaudRate').value = data.serial.serial1BaudRate;
                     document.getElementById('serial1DataBits').value = data.serial.serial1DataBits;
@@ -275,6 +271,21 @@
                 .catch(showError);
         }
 
+        function loadRestSettings() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/config/rest')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('restEnabled').checked = data.enabled;
+                })
+                .finally(() => {
+                    document.getElementById('restForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
         function loadSerialSettings() {
             document.getElementById('loading').classList.add('show');
 
@@ -354,6 +365,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('evseForm').classList.remove('was-validated');
@@ -382,6 +394,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('wifiForm').classList.remove('was-validated');
@@ -413,6 +426,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('mqttForm').classList.remove('was-validated');
@@ -439,9 +453,37 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('tcpLoggerForm').classList.remove('was-validated');
+                    })
+                    .catch(showError);
+            }
+        }
+
+        function submitRestSettings() {
+            if (!document.getElementById('restForm').checkValidity()) {
+                document.getElementById('restForm').classList.add('was-validated');
+            } else {
+                document.getElementById('loading').classList.add('show');
+
+                const config = {
+                    enabled: document.getElementById('restEnabled').checked
+                };
+
+                fetch('/api/v1/config/rest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        document.getElementById('restForm').classList.remove('was-validated');
                     })
                     .catch(showError);
             }
@@ -479,6 +521,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('serialForm').classList.remove('was-validated');
@@ -506,6 +549,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
+                    .then(text => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         document.getElementById('modbusForm').classList.remove('was-validated');
@@ -515,19 +559,30 @@
         }
 
         function showReload() {
-            const reloadModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('reloadModal'));
             const reloadCountdown = document.getElementById('reloadCountdown');
-            let counter = 20;
+            let counter = 10;
 
             reloadCountdown.innerText = counter--;
-            reloadModal.show()
-            setInterval(() => {
+
+            let toast = bootstrap.Toast.getOrCreateInstance('#reloadToast');
+            if (toast.intervalId) {
+                clearInterval(toast.intervalId);
+            }
+            toast.show();
+            toast.intervalId = setInterval(() => {
                 if (counter > 0) {
                     reloadCountdown.innerText = counter--;
                 } else {
-                    window.location.reload();
+                    clearInterval(toast.intervalId);
+                    if (toast.isShown()) {
+                        window.location.reload();
+                    } else {
+                        toast.hide();
+                    }
                 }
             }, 1000);
+
+            document.getElementById('reloadToast').addEventListener('hide.bs.toast', () => clearInterval(toast.intervalId), { once: true });
         }
 
         function checkUpdateFirmware() {
@@ -550,6 +605,7 @@
             fetch('/api/v1/firmware/update', {
                 method: 'POST'
             })
+                .then(text => new bootstrap.Toast('#firmwareUpdatedToast').show())
                 .then(showReload)
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
@@ -571,6 +627,7 @@
                     },
                     body: firmwareFile.files[0]
                 })
+                    .then(text => new bootstrap.Toast('#firmwareUpdatedToast').show())
                     .then(showReload)
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
@@ -597,10 +654,7 @@
                     },
                     body: boardConfigFile.files[0]
                 })
-                    .then(() => {
-                        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('boardConfigUploadedModal'));
-                        modal.show();
-                    })
+                    .then(() => new bootstrap.Toast('#configUpdatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         uploadBoardConfigForm.classList.remove('was-validated');
@@ -702,6 +756,14 @@
             });
 
             loadSettings();
+
+            document.querySelectorAll('button[data-bs-toggle="tab"]')
+                .forEach(tab => tab.addEventListener('shown.bs.tab', event => {
+                    const offcanvas = bootstrap.Offcanvas.getInstance('#offcanvasNavbar');
+                    if (offcanvas) {
+                        offcanvas.hide();
+                    }
+                }));
         });
     </script>
 </head>
@@ -709,15 +771,24 @@
 <body class="d-flex flex-column h-100">
 
     <header>
-        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
             <div class="container-fluid">
+                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas"
+                    data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar"
+                    aria-label="Toggle settings navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
                 <a class="navbar-brand" href="/">EVSE</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
                     aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
+                        class="bi bi-three-dots" viewBox="0 0 16 16">
+                        <path
+                            d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+                    </svg>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarCollapse">
-                    <ul class="navbar-nav mr-auto">
+                    <ul class="navbar-nav me-auto">
                         <li class="nav-item">
                             <a class="nav-link" href="/index.html">Home</a>
                         </li>
@@ -736,503 +807,562 @@
         </nav>
     </header>
 
-    <main class="flex-shrink-0 position-relative my-3">
+    <main class="flex-shrink-0 position-relative py-3">
         <div id="loading" class="overlay fade show text-center">
             <div class="spinner-border" role="status"></div>
         </div>
         <div class="container">
-            <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="evse-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#evse" aria-controls="evse" aria-selected="true">EVSE</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="wifi-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#wifi" aria-controls="wifi" aria-selected="false">WiFi</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="mqtt-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#mqtt" aria-controls="mqtt" aria-selected="false">MQTT</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tcpLogger-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#tcpLogger" aria-controls="tcpLogger" aria-selected="false">TCP logger</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="serial-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#serial" aria-controls="serial" aria-selected="false">Serial</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="modbus-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#modbus" aria-controls="modbus" aria-selected="false">Modbus</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="system-tab" type="button" role="tab" data-bs-toggle="tab"
-                        data-bs-target="#system" aria-controls="system" aria-selected="false">System</button>
-                </li>
-            </ul>
-            <div class="tab-content" id="myTabContent">
-                <div class="tab-pane fade show active" id="evse" role="tabpanel">
-                    <form id="evseForm" novalidate>
-                        <div class="row">
-                            <div class="col-12 col-md-6 col-xl-4">
-                                <label for="evseDefaultChargingCurrent" class="form-label">
-                                    Charging current
-                                    <span class="fw-bolder"><span id="evseDefaultChargingCurrentValue"></span> A</span>
-                                </label>
-                                <input type="range" class="form-range" min="6" max="80" step="0.1"
-                                    id="evseDefaultChargingCurrent">
-                            </div>
+            <div class="row">
+                <div class="col col-lg-2">
+                    <div class="offcanvas-lg offcanvas-start" tabindex="-1" id="offcanvasNavbar"
+                        aria-labelledby="offcanvasNavbarLabel">
+                        <div class="offcanvas-header">
+                            <h5 class="offcanvas-title" id="offcanvasNavbarLabel">Settings</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                                data-bs-target="#offcanvasNavbar" aria-label="Close"></button>
                         </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6 col-xl-4">
-                                <label for="evseDefaultConsumptionLimit" class="form-label">
-                                    Consumption limit <span id="evseDefaultConsumptionLimitValue"
-                                        class="fw-bolder"></span>
-                                </label>
-                                <input type="range" class="form-range" min="0" max="180000000" step="360000"
-                                    id="evseDefaultConsumptionLimit">
-                            </div>
-
-                            <div class="col-12 col-md-6 col-xl-4">
-                                <label for="evseDefaultElapsedLimit" class="form-label">
-                                    Elapsed limit <span id="evseDefaultElapsedLimitValue" class="fw-bolder"></span>
-                                </label>
-                                <input type="range" class="form-range" min="0" max="18000" step="300"
-                                    id="evseDefaultElapsedLimit">
-                            </div>
-
-                            <div class="col-12 col-md-6 col-xl-4">
-                                <label for="evseDefaultUnderPowerLimit" class="form-label">
-                                    Under power limit <span id="evseDefaultUnderPowerLimitValue"
-                                        class="fw-bolder"></span>
-                                </label>
-                                <input type="range" class="form-range" min="0" max="10000" step="10"
-                                    id="evseDefaultUnderPowerLimit">
-                            </div>
+                        <div class="offcanvas-body">
+                            <ul class="nav nav-pills flex-column" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="evse-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#evse" aria-controls="evse"
+                                        aria-selected="true">EVSE</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="wifi-tab" type="button" role="tab" data-bs-toggle="tab"
+                                        data-bs-target="#wifi" aria-controls="wifi" aria-selected="false">WiFi</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="mqtt-tab" type="button" role="tab" data-bs-toggle="tab"
+                                        data-bs-target="#mqtt" aria-controls="mqtt" aria-selected="false">MQTT</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="tcpLogger-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#tcpLogger" aria-controls="tcpLogger"
+                                        aria-selected="false">TCP
+                                        logger</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="rest-tab" type="button" role="tab" data-bs-toggle="tab"
+                                        data-bs-target="#rest" aria-controls="rest"
+                                        aria-selected="false">REST/Web</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="serial-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#serial" aria-controls="serial"
+                                        aria-selected="false">Serial</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="modbus-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#modbus" aria-controls="modbus"
+                                        aria-selected="false">Modbus</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="system-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#system" aria-controls="system"
+                                        aria-selected="false">System</button>
+                                </li>
+                            </ul>
                         </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="evseRequireAuth">
-                                    <label class="form-check-label" for="evseRequireAuth">Require authorization</label>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="evseRcm">
-                                    <label class="form-check-label" for="evseRcm">Residual current monitor</label>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="evseSocketOutlet">
-                                    <label class="form-check-label" for="evseSocketOutlet">Socket outlet</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row d-none" id="evseSocketLockFields">
-                            <h5>Socket lock</h5>
-                            <div class="col-6 col-md-3 col-xl-2 mb-3">
-                                <label class="form-label" for="evseSocketLockOperatingTime">Operating time</label>
-                                <input type="number" class="form-control" id="evseSocketLockOperatingTime" min="100"
-                                    max="1000" step="1" required disabled>
-                            </div>
-                            <div class="col-6 col-md-3 col-xl-2 mb-3">
-                                <label class="form-label" for="evseSocketLockBreakTime">Break time</label>
-                                <input type="number" class="form-control" id="evseSocketLockBreakTime" step="1" required
-                                    disabled>
-                            </div>
-                            <div class="col-6 col-md-3 col-xl-2 mb-3">
-                                <label class="form-label" for="evseSocketLockRetryCount">Retry count</label>
-                                <input type="number" class="form-control" id="evseSocketLockRetryCount" step="1"
-                                    required min="0" disabled>
-                            </div>
-                            <div class="col-6 col-md-3 col-xl-2 mb-3">
-                                <label class="form-label" for="evseSocketLockDetectionHigh">Detection</label>
-                                <select class="form-select" id="evseSocketLockDetectionHigh" disabled>
-                                    <option value="false">Unlocked high</option>
-                                    <option value="true">Locked high</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <h5>Energy meter</h5>
-                            <div class="col-12 col-md-6 col-xl-3 mb-3">
-                                <label class="form-label" for="evseEnergyMeter">Type</label>
-                                <select class="form-select" id="evseEnergyMeter">
-                                    <option value="none">None</option>
-                                    <option id="evseEnergyMeterCur" value="cur" disabled>Current sensing</option>
-                                    <option id="evseEnergyMeterCurVlt" value="cur_vlt" disabled>Current and voltage
-                                        sensing</option>
-                                    <option value="pulse">Pulse energy meter</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="evseAcVoltage">AC voltage</label>
-                                <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
-                                    step="1" required>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="evsePulseAmount">Impulse amount Wh</label>
-                                <input type="number" class="form-control" id="evsePulseAmount" min="0" max="65535"
-                                    step="1" required>
-                            </div>
-                        </div>
-                        <div class="row d-none" id="evseAuxFields">
-                            <h5>IO</h5>
-                            <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux1Field">
-                                <label class="form-label" for="evseAux1">AUX 1</label>
-                                <select class="form-select" id="evseAux1" disabled>
-                                    <option value="none">None</option>
-                                    <option value="enable_button">Enable button</option>
-                                    <option value="enable_switch">Enable switch</option>
-                                    <option value="authorize_button">Authorize button</option>
-                                    <option value="pulse_energy_meter">Pulse energy meter</option>
-                                </select>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux2Field">
-                                <label class="form-label" for="evseAux2">AUX 2</label>
-                                <select class="form-select" id="evseAux2" disabled>
-                                    <option value="none">None</option>
-                                    <option value="enable_button">Enable button</option>
-                                    <option value="enable_switch">Enable switch</option>
-                                    <option value="authorize_button">Authorize button</option>
-                                    <option value="pulse_energy_meter">Pulse energy meter</option>
-                                </select>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux3Field">
-                                <label class="form-label" for="evseAux3">AUX 3</label>
-                                <select class="form-select" id="evseAux3" disabled>
-                                    <option value="none">None</option>
-                                    <option value="enable_button">Enable button</option>
-                                    <option value="enable_switch">Enable switch</option>
-                                    <option value="authorize_button">Authorize button</option>
-                                    <option value="pulse_energy_meter">Pulse energy meter</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitEvseSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadEvseSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="wifi" role="tabpanel">
-                    <form id="wifiForm" novalidate>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="wifiEnabled">
-                                    <label class="form-check-label" for="wifiEnabled">Enabled</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="wifiFields" class="row">
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="wifiSsid">SSID</label>
-                                <div class="input-group">
-                                    <input type="text" disabled class="form-control" id="wifiSsid" required>
-                                    <button type="button" onclick="loadWifiScan()"
-                                        class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        Search
-                                        <span class="visually-hidden">Toggle Dropdown</span>
-                                    </button>
-                                    <ul id="wifiScanList" class="dropdown-menu"></ul>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="wifiPassword">Password</label>
-                                <input type="password" disabled class="form-control" id="wifiPassword">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitWifiSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadWifiSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="mqtt" role="tabpanel">
-                    <form id="mqttForm" novalidate>
-                        <div class="row">
-                            <div class="col-12 md-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="mqttEnabled">
-                                    <label class="form-check-label" for="mqttEnabled">Enabled</label>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="mqttServer">Server</label>
-                                <input type="text" disabled class="form-control" id="mqttServer" required
-                                    placeholder="mqtt://broker.com:1883">
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="mqttBaseTopic">Base topic</label>
-                                <input type="text" disabled class="form-control" id="mqttBaseTopic" required
-                                    placeholder="evse">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="mqttUser">User</label>
-                                <input type="text" disabled class="form-control" id="mqttUser">
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                <label class="form-label" for="mqttPassword">Password</label>
-                                <input type="password" disabled class="form-control" id="mqttPassword">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="mqttPeriodicity">Periodicity</label>
-                                <input type="number" disabled class="form-control" id="mqttPeriodicity" step="1" min="1"
-                                    required>
-                            </div>
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitMqttSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadMqttSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="tcpLogger" role="tabpanel">
-                    <form id="tcpLoggerForm" novalidate>
-                        <div class="row">
-                            <div class="col-12 mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="tcpLoggerEnabled">
-                                    <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitTcpLoggerSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadTcpLoggerSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="serial" role="tabpanel">
-                    <form id="serialForm" novalidate>
-                        <div id="serial1Field" class="row d-none">
-                            <h5>Serial 1</h5>
-                            <div class="col-12 col-md-6 col-lg-4 mb-3">
-                                <label class="form-label" for="serial1Mode">Mode</label>
-                                <select class="form-select" id="serial1Mode" disabled>
-                                    <option value="none">None</option>
-                                    <option value="at">AT commander</option>
-                                    <option value="log">System logs</option>
-                                    <option value="modbus">Modbus</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial1BaudRate">Baud rate</label>
-                                <input type="number" class="form-control" id="serial1BaudRate" min="2400" max="230400"
-                                    step="1" required disabled>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial1DataBits">Data bits</label>
-                                <select class="form-select" id="serial1DataBits" disabled>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial1StopBits">Stop bits</label>
-                                <select class="form-select" id="serial1StopBits" disabled>
-                                    <option value="1">1</option>
-                                    <option value="1.5">1.5</option>
-                                    <option value="2">2</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial1Parity">Parity</label>
-                                <select class="form-select" id="serial1Parity" disabled>
-                                    <option value="disable">disable</option>
-                                    <option value="even">even</option>
-                                    <option value="odd">odd</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="serial2Field" class="row d-none">
-                            <h5>Serial 2</h5>
-                            <div class="col-12 col-md-6 col-lg-4 mb-3">
-                                <label class="form-label" for="serial2Mode">Mode</label>
-                                <select class="form-select" id="serial2Mode" disabled>
-                                    <option value="none">None</option>
-                                    <option value="at">AT commander</option>
-                                    <option value="log">System logs</option>
-                                    <option value="modbus">Modbus</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial2BaudRate">Baud rate</label>
-                                <input type="number" disabled class="form-control" id="serial2BaudRate" min="2400"
-                                    max="230400" step="1" required disabled>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial2DataBits">Data bits</label>
-                                <select class="form-select" id="serial2DataBits" disabled>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial2StopBits">Stop bits</label>
-                                <select class="form-select" id="serial2StopBits" disabled>
-                                    <option value="1">1</option>
-                                    <option value="1.5">1.5</option>
-                                    <option value="2">2</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial2Parity">Parity</label>
-                                <select class="form-select" id="serial2Parity" disabled>
-                                    <option value="disable">disable</option>
-                                    <option value="even">even</option>
-                                    <option value="odd">odd</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="serial3Field" class="row g-3 mb-3 d-none">
-                            <h5>Serial 3</h5>
-                            <div class="col-12 col-md-6 col-lg-4 mb-3">
-                                <label class="form-label" for="serial3Mode">Mode</label>
-                                <select class="form-select" id="serial3Mode" disabled>
-                                    <option value="none">None</option>
-                                    <option value="at">AT commander</option>
-                                    <option value="log">System logs</option>
-                                    <option value="modbus">Modbus</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial3BaudRate">Baud rate</label>
-                                <input type="number" disabled class="form-control" id="serial3BaudRate" min="2400"
-                                    max="230400" step="1" required disabled>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial3DataBits">Data bits</label>
-                                <select class="form-select" id="serial3DataBits" disabled>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial3StopBits">Stop bits</label>
-                                <select class="form-select" id="serial3StopBits" disabled>
-                                    <option value="1">1</option>
-                                    <option value="1.5">1.5</option>
-                                    <option value="2">2</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="serial3Parity">Parity</label>
-                                <select class="form-select" id="serial3Parity" disabled>
-                                    <option value="disable">disable</option>
-                                    <option value="even">even</option>
-                                    <option value="odd">odd</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitSerialSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadSerialSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="modbus" role="tabpanel">
-                    <form id="modbusForm" novalidate>
-                        <div class="row">
-                            <div class="col-12 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" role="checkbox"
-                                        id="modbusTcpEnabled">
-                                    <label class="form-check-label" for="modbusTcpEnabled">TCP server</label>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2 mb-3">
-                                <label class="form-label" for="modbusUnitId">Unit ID</label>
-                                <input type="number" class="form-control" id="modbusUnitId" step="1" min="1" max="255"
-                                    required>
-                            </div>
-                            <div class="col-12">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitModbusSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadModbusSettings()">Reset</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="system" role="tabpanel">
-                    <button type="button" class="btn btn-danger mb-3" onclick="restart()">Restart</button>
-
-                    <h5>Firmware</h5>
-
-                    <form id="updateFirmwareForm" novalidate class="d-flex mb-3">
-                        <button type="button" class="btn btn-primary" onclick="checkUpdateFirmware()">Check for
-                            update</button>
-                        <button id="updateButton" type="button" class="btn btn-success ms-2 d-none"
-                            onclick="updateFirmware()"></button>
-                        <p id="noUpdateAvailable" class="m-0 p-2 d-none">No update is available</p>
-                    </form>
-
-                    <form id="uploadFirmwareForm" novalidate class="row mb-3">
-                        <div class="col-12 col-md-6 mb-3">
-                            <label class="form-label" for="firmwareFile">
-                                Upload firmware (use binaries from <a
-                                    href="https://github.com/dzurikmiroslav/esp32-evse/releases"
-                                    target="_blank">releases</a>)
-                            </label>
-                            <input type="file" class="form-control" id="firmwareFile" accept=".bin" required>
-                        </div>
-                        <div class="col-12">
-                            <button type="button" class="btn btn-secondary" onclick="uploadFirmware()">Flash</button>
-                        </div>
-                    </form>
-
-                    <h5>Board configuration</h5>
-
-                    <p>Download board configuration <a href="/api/v1/boardConfig/raw" target="_blank">board.cfg</a></p>
-
-                    <div class="alert alert-warning" role="alert">
-                        Uploading an incorrect board configuration can cause the device to malfunction!
                     </div>
+                </div>
+                <div class="tab-content col-12 col-lg-10">
+                    <div class="tab-pane fade show active" id="evse" role="tabpanel">
+                        <h5>EVSE</h5>
+                        <form id="evseForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label for="evseDefaultChargingCurrent" class="form-label">
+                                        Charging current
+                                        <span class="fw-bolder"><span id="evseDefaultChargingCurrentValue"></span>
+                                            A</span>
+                                    </label>
+                                    <input type="range" class="form-range" min="6" max="80" step="0.1"
+                                        id="evseDefaultChargingCurrent">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label for="evseDefaultConsumptionLimit" class="form-label">
+                                        Consumption limit <span id="evseDefaultConsumptionLimitValue"
+                                            class="fw-bolder"></span>
+                                    </label>
+                                    <input type="range" class="form-range" min="0" max="180000000" step="360000"
+                                        id="evseDefaultConsumptionLimit">
+                                </div>
 
-                    <form id="uploadBoardConfigForm" novalidate class="row mb-3">
-                        <div class="col-12 col-md-6 mb-3">
-                            <label class="form-label" for="boardConfigFile">
-                                Upload board config
-                            </label>
-                            <input type="file" class="form-control" id="boardConfigFile" accept=".cfg" required>
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label for="evseDefaultElapsedLimit" class="form-label">
+                                        Elapsed limit <span id="evseDefaultElapsedLimitValue" class="fw-bolder"></span>
+                                    </label>
+                                    <input type="range" class="form-range" min="0" max="18000" step="300"
+                                        id="evseDefaultElapsedLimit">
+                                </div>
+
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label for="evseDefaultUnderPowerLimit" class="form-label">
+                                        Under power limit <span id="evseDefaultUnderPowerLimitValue"
+                                            class="fw-bolder"></span>
+                                    </label>
+                                    <input type="range" class="form-range" min="0" max="10000" step="10"
+                                        id="evseDefaultUnderPowerLimit">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="evseRequireAuth">
+                                        <label class="form-check-label" for="evseRequireAuth">Require
+                                            authorization</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="evseRcm">
+                                        <label class="form-check-label" for="evseRcm">Residual current
+                                            monitor</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="evseSocketOutlet">
+                                        <label class="form-check-label" for="evseSocketOutlet">Socket outlet</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row d-none" id="evseSocketLockFields">
+                                <h5>Socket lock</h5>
+                                <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                    <label class="form-label" for="evseSocketLockOperatingTime">Operating
+                                        time</label>
+                                    <input type="number" class="form-control" id="evseSocketLockOperatingTime" min="100"
+                                        max="1000" step="1" required disabled>
+                                </div>
+                                <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                    <label class="form-label" for="evseSocketLockBreakTime">Break time</label>
+                                    <input type="number" class="form-control" id="evseSocketLockBreakTime" step="1"
+                                        required disabled>
+                                </div>
+                                <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                    <label class="form-label" for="evseSocketLockRetryCount">Retry count</label>
+                                    <input type="number" class="form-control" id="evseSocketLockRetryCount" step="1"
+                                        required min="0" disabled>
+                                </div>
+                                <div class="col-6 col-md-3 col-xl-2 mb-3">
+                                    <label class="form-label" for="evseSocketLockDetectionHigh">Detection</label>
+                                    <select class="form-select" id="evseSocketLockDetectionHigh" disabled>
+                                        <option value="false">Unlocked high</option>
+                                        <option value="true">Locked high</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <h5>Energy meter</h5>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="evseEnergyMeter">Type</label>
+                                    <select class="form-select" id="evseEnergyMeter">
+                                        <option value="none">None</option>
+                                        <option id="evseEnergyMeterCur" value="cur" disabled>Current sensing
+                                        </option>
+                                        <option id="evseEnergyMeterCurVlt" value="cur_vlt" disabled>Current and
+                                            voltage
+                                            sensing</option>
+                                        <option value="pulse">Pulse energy meter</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 mb-3">
+                                    <label class="form-label" for="evseAcVoltage">AC voltage</label>
+                                    <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
+                                        step="1" required>
+                                </div>
+                                <div class="col-6 col-md-3 mb-3">
+                                    <label class="form-label" for="evsePulseAmount">Impulse amount Wh</label>
+                                    <input type="number" class="form-control" id="evsePulseAmount" min="0" max="65535"
+                                        step="1" required>
+                                </div>
+                            </div>
+                            <div class="row d-none" id="evseAuxFields">
+                                <h5>IO</h5>
+                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux1Field">
+                                    <label class="form-label" for="evseAux1">AUX 1</label>
+                                    <select class="form-select" id="evseAux1" disabled>
+                                        <option value="none">None</option>
+                                        <option value="enable_button">Enable button</option>
+                                        <option value="enable_switch">Enable switch</option>
+                                        <option value="authorize_button">Authorize button</option>
+                                        <option value="pulse_energy_meter">Pulse energy meter</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux2Field">
+                                    <label class="form-label" for="evseAux2">AUX 2</label>
+                                    <select class="form-select" id="evseAux2" disabled>
+                                        <option value="none">None</option>
+                                        <option value="enable_button">Enable button</option>
+                                        <option value="enable_switch">Enable switch</option>
+                                        <option value="authorize_button">Authorize button</option>
+                                        <option value="pulse_energy_meter">Pulse energy meter</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux3Field">
+                                    <label class="form-label" for="evseAux3">AUX 3</label>
+                                    <select class="form-select" id="evseAux3" disabled>
+                                        <option value="none">None</option>
+                                        <option value="enable_button">Enable button</option>
+                                        <option value="enable_switch">Enable switch</option>
+                                        <option value="authorize_button">Authorize button</option>
+                                        <option value="pulse_energy_meter">Pulse energy meter</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitEvseSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadEvseSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="wifi" role="tabpanel">
+                        <h5>WiFi</h5>
+                        <form id="wifiForm" novalidate>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="wifiEnabled">
+                                        <label class="form-check-label" for="wifiEnabled">Enabled</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="wifiFields" class="row">
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="wifiSsid">SSID</label>
+                                    <div class="input-group">
+                                        <input type="text" disabled class="form-control" id="wifiSsid" required>
+                                        <button type="button" onclick="loadWifiScan()"
+                                            class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            Search
+                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                        </button>
+                                        <ul id="wifiScanList" class="dropdown-menu"></ul>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="wifiPassword">Password</label>
+                                    <input type="password" disabled class="form-control" id="wifiPassword">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitWifiSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadWifiSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="mqtt" role="tabpanel">
+                        <h5>MQTT</h5>
+                        <form id="mqttForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 md-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="mqttEnabled">
+                                        <label class="form-check-label" for="mqttEnabled">Enabled</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="mqttServer">Server</label>
+                                    <input type="text" disabled class="form-control" id="mqttServer" required
+                                        placeholder="mqtt://broker.com:1883">
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="mqttBaseTopic">Base topic</label>
+                                    <input type="text" disabled class="form-control" id="mqttBaseTopic" required
+                                        placeholder="evse">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="mqttUser">User</label>
+                                    <input type="text" disabled class="form-control" id="mqttUser">
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="mqttPassword">Password</label>
+                                    <input type="password" disabled class="form-control" id="mqttPassword">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="mqttPeriodicity">Periodicity</label>
+                                    <input type="number" disabled class="form-control" id="mqttPeriodicity" step="1"
+                                        min="1" required>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitMqttSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadMqttSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="tcpLogger" role="tabpanel">
+                        <h5>TCP logger</h5>
+                        <form id="tcpLoggerForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                            id="tcpLoggerEnabled">
+                                        <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitTcpLoggerSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadTcpLoggerSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="rest" role="tabpanel">
+                        <h5>REST/Web</h5>
+                        <form id="restForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="restEnabled">
+                                        <label class="form-check-label" for="restEnabled">Enabled</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitRestSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadRestSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="serial" role="tabpanel">
+                        <form id="serialForm" novalidate>
+                            <div id="serial1Field" class="row d-none">
+                                <h5>Serial 1</h5>
+                                <div class="col-12 col-md-6 col-lg-4 mb-3">
+                                    <label class="form-label" for="serial1Mode">Mode</label>
+                                    <select class="form-select" id="serial1Mode" disabled>
+                                        <option value="none">None</option>
+                                        <option value="at">AT commander</option>
+                                        <option value="log">System logs</option>
+                                        <option value="modbus">Modbus</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial1BaudRate">Baud rate</label>
+                                    <input type="number" class="form-control" id="serial1BaudRate" min="2400"
+                                        max="230400" step="1" required disabled>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial1DataBits">Data bits</label>
+                                    <select class="form-select" id="serial1DataBits" disabled>
+                                        <option value="5">5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                        <option value="8">8</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial1StopBits">Stop bits</label>
+                                    <select class="form-select" id="serial1StopBits" disabled>
+                                        <option value="1">1</option>
+                                        <option value="1.5">1.5</option>
+                                        <option value="2">2</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial1Parity">Parity</label>
+                                    <select class="form-select" id="serial1Parity" disabled>
+                                        <option value="disable">disable</option>
+                                        <option value="even">even</option>
+                                        <option value="odd">odd</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="serial2Field" class="row d-none">
+                                <h5>Serial 2</h5>
+                                <div class="col-12 col-md-6 col-lg-4 mb-3">
+                                    <label class="form-label" for="serial2Mode">Mode</label>
+                                    <select class="form-select" id="serial2Mode" disabled>
+                                        <option value="none">None</option>
+                                        <option value="at">AT commander</option>
+                                        <option value="log">System logs</option>
+                                        <option value="modbus">Modbus</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial2BaudRate">Baud rate</label>
+                                    <input type="number" disabled class="form-control" id="serial2BaudRate" min="2400"
+                                        max="230400" step="1" required disabled>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial2DataBits">Data bits</label>
+                                    <select class="form-select" id="serial2DataBits" disabled>
+                                        <option value="5">5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                        <option value="8">8</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial2StopBits">Stop bits</label>
+                                    <select class="form-select" id="serial2StopBits" disabled>
+                                        <option value="1">1</option>
+                                        <option value="1.5">1.5</option>
+                                        <option value="2">2</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial2Parity">Parity</label>
+                                    <select class="form-select" id="serial2Parity" disabled>
+                                        <option value="disable">disable</option>
+                                        <option value="even">even</option>
+                                        <option value="odd">odd</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="serial3Field" class="row g-3 mb-3 d-none">
+                                <h5>Serial 3</h5>
+                                <div class="col-12 col-md-6 col-lg-4 mb-3">
+                                    <label class="form-label" for="serial3Mode">Mode</label>
+                                    <select class="form-select" id="serial3Mode" disabled>
+                                        <option value="none">None</option>
+                                        <option value="at">AT commander</option>
+                                        <option value="log">System logs</option>
+                                        <option value="modbus">Modbus</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial3BaudRate">Baud rate</label>
+                                    <input type="number" disabled class="form-control" id="serial3BaudRate" min="2400"
+                                        max="230400" step="1" required disabled>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial3DataBits">Data bits</label>
+                                    <select class="form-select" id="serial3DataBits" disabled>
+                                        <option value="5">5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                        <option value="8">8</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial3StopBits">Stop bits</label>
+                                    <select class="form-select" id="serial3StopBits" disabled>
+                                        <option value="1">1</option>
+                                        <option value="1.5">1.5</option>
+                                        <option value="2">2</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="serial3Parity">Parity</label>
+                                    <select class="form-select" id="serial3Parity" disabled>
+                                        <option value="disable">disable</option>
+                                        <option value="even">even</option>
+                                        <option value="odd">odd</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitSerialSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadSerialSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="modbus" role="tabpanel">
+                        <h5>Modbus</h5>
+                        <form id="modbusForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" role="checkbox"
+                                            id="modbusTcpEnabled">
+                                        <label class="form-check-label" for="modbusTcpEnabled">TCP server</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                                    <label class="form-label" for="modbusUnitId">Unit ID</label>
+                                    <input type="number" class="form-control" id="modbusUnitId" step="1" min="1"
+                                        max="255" required>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary"
+                                        onclick="submitModbusSettings()">Submit</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="loadModbusSettings()">Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="system" role="tabpanel">
+                        <h5>System</h5>
+                        <button type="button" class="btn btn-danger mb-3" onclick="restart()">Restart</button>
+
+                        <h5>Firmware</h5>
+
+                        <form id="updateFirmwareForm" novalidate class="d-flex mb-3">
+                            <button type="button" class="btn btn-primary" onclick="checkUpdateFirmware()">Check for
+                                update</button>
+                            <button id="updateButton" type="button" class="btn btn-success ms-2 d-none"
+                                onclick="updateFirmware()"></button>
+                            <p id="noUpdateAvailable" class="m-0 p-2 d-none">No update is available</p>
+                        </form>
+
+                        <form id="uploadFirmwareForm" novalidate class="row mb-3">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label class="form-label" for="firmwareFile">
+                                    Upload firmware (use binaries from <a
+                                        href="https://github.com/dzurikmiroslav/esp32-evse/releases"
+                                        target="_blank">releases</a>)
+                                </label>
+                                <input type="file" class="form-control" id="firmwareFile" accept=".bin" required>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-warning" onclick="uploadFirmware()">Flash</button>
+                            </div>
+                        </form>
+
+                        <h5>Board configuration</h5>
+
+                        <p>Download board configuration <a href="/api/v1/boardConfig/raw" target="_blank">board.cfg</a>
+                        </p>
+
+                        <div class="alert alert-warning" role="alert">
+                            Uploading an incorrect board configuration can cause the device to malfunction!
                         </div>
-                        <div class="col-12">
-                            <button type="button" class="btn btn-warning" onclick="uploadBoardConfig()">Upload</button>
-                        </div>
-                    </form>
+
+                        <form id="uploadBoardConfigForm" novalidate class="row mb-3">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label class="form-label" for="boardConfigFile">
+                                    Upload board config
+                                </label>
+                                <input type="file" class="form-control" id="boardConfigFile" accept=".cfg" required>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-warning"
+                                    onclick="uploadBoardConfig()">Upload</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1244,77 +1374,74 @@
         </div>
     </footer>
 
-    <div class="modal fade" id="errorModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
-        aria-labelledby="errorModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
-                </div>
-                <div class="modal-body" id="errorModalBody"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                </div>
+    <div class="toast-container position-fixed p-3 end-0">
+        <div id="updatedToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-success rounded border-0">
+                <span class="me-auto">Successfully updated</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+
+        <div id="configUpdatedToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true"
+            data-bs-autohide="false">
+            <div class="toast-header text-bg-warning">
+                <span class="me-auto">Successfully updated</span>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                The board configuration has been successfully written, it will be loaded at the next startup
+                <div class="mt-2 pt-2 border-top"></div>
+                <button type="button" class="btn btn-sm btn-danger" data-bs-dismiss="toast"
+                    onclick="restart()">Restart</button>
+            </div>
+        </div>
+
+        <div id="firmwareUpdatedToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true"
+            data-bs-autohide="false">
+            <div class="toast-header text-bg-warning">
+                <span class="me-auto">Successfully flashed</span>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                Device will be restated
+            </div>
+        </div>
+
+        <div id="reloadToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true"
+            data-bs-autohide="false">
+            <div class="toast-header text-bg-warning">
+                <span class="me-auto">Reload in <span id="reloadCountdown"></span> seconds</span>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="toast"
+                    onclick="window.location.reload()">Reload
+                    now</button>
+            </div>
+        </div>
+
+        <div id="errorToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-danger rounded border-0">
+                <span class="me-auto" id="errorText"></span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+
+        <div id="networkErrorToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-danger">
+                <span class="me-auto">Network error</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="toast"
+                    onclick="window.location.reload()">Reload
+                    page</button>
             </div>
         </div>
     </div>
-
-    <div class="modal fade" id="restartModal" tabindex="-1" role="dialog" aria-labelledby="restartModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="restartModalLabel">Restart required</h5>
-                </div>
-                <div class="modal-body">
-                    <p>Your settings require restart of EVSE controller.</p>
-                    <p>Restart now?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" data-dismiss="modal"
-                        onclick="restart()">Restart</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="reloadModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false"
-        aria-labelledby="reloadModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="reloadModalLabel">Reload</h5>
-                </div>
-                <div class="modal-body">
-                    <p>Reload in <span id="reloadCountdown"></span> seconds</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" onclick="window.location.reload()">Reload now</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="boardConfigUploadedModal" tabindex="-1" role="dialog" data-backdrop="static"
-        data-keyboard="false" aria-labelledby="boardConfigUploadedModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="boardConfigUploadedModalLabel">Board config</h5>
-                </div>
-                <div class="modal-body">
-                    <p>The board configuration has been successfully written, it will be loaded at the next startup</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal"
-                        onclick="restart()">Restart</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </body>
 
 </html>

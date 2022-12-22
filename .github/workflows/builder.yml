@@ -25,7 +25,7 @@ jobs:
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: v5.0.0
+          esp_idf_version: v5.0
           target: ${{ matrix.platform }}
 
       - name: Upload artifact

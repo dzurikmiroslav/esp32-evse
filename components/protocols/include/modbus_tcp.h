@@ -1,6 +1,8 @@
 #ifndef MODBUS_TCP_H
 #define MODBUS_TCP_H
 
+#include <stdbool.h>
+
 /**
  * @brief Init modbus tcp
  * 

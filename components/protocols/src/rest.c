@@ -15,14 +15,15 @@
 #include "timeout_utils.h"
 #include "evse.h"
 
-#define SCRATCH_BUFSIZE             1024
+#define SCRATCH_BUFSIZE     1024
 
-#define MAX_JSON_SIZE               (200*1024) // 200 KB
-#define MAX_JSON_SIZE_STR           "200KB"
+#define MAX_JSON_SIZE       (200*1024) // 200 KB
+#define MAX_JSON_SIZE_STR   "200KB"
 
-#define NVS_NAMESPACE               "webserver"
-#define NVS_USER                    "user"
-#define NVS_PASSWORD                "password"
+#define NVS_NAMESPACE       "rest"
+#define NVS_ENABLED         "enabled"
+#define NVS_USER            "user"
+#define NVS_PASSWORD        "password"
 
 static const char* TAG = "rest";
 
@@ -45,6 +46,8 @@ static nvs_handle_t nvs;
 
 static char user[32];
 static char password[32];
+
+static httpd_handle_t server = NULL;
 
 static bool autorize_req(httpd_req_t* req)
 {
@@ -275,6 +278,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "tcpLogger", json_get_tcp_logger_config());
             cJSON_AddItemToObject(root, "serial", json_get_serial_config());
             cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
+            cJSON_AddItemToObject(root, "rest", json_get_rest_config());
         }
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             root = json_get_evse_config();
@@ -290,6 +294,9 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/tcpLogger") == 0) {
             root = json_get_tcp_logger_config();
+        }
+        if (strcmp(req->uri, "/api/v1/config/rest") == 0) {
+            root = json_get_rest_config();
         }
         if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
             root = json_get_serial_config();
@@ -340,7 +347,7 @@ static esp_err_t json_post_handler(httpd_req_t* req)
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {
-            ret = json_set_wifi_config(root);
+            ret = json_set_wifi_config(root, true);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/mqtt") == 0) {
@@ -349,6 +356,10 @@ static esp_err_t json_post_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/tcpLogger") == 0) {
             ret = json_set_tcp_logger_config(root);
+            res_msg = "Config updated";
+        }
+        if (strcmp(req->uri, "/api/v1/config/rest") == 0) {
+            ret = json_set_rest_config(root, true);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
@@ -660,6 +671,118 @@ static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
     }
 }
 
+void rest_start(void)
+{
+    if (server == NULL) {
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        config.uri_match_fn = httpd_uri_match_wildcard;
+        config.max_uri_handlers = 10;
+        config.max_open_sockets = 3;
+        config.lru_purge_enable = true;
+
+        ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
+        ESP_ERROR_CHECK(httpd_start(&server, &config));
+
+        httpd_uri_t board_config_raw_get_uri = {
+            .uri = "/api/v1/boardConfig/raw",
+            .method = HTTP_GET,
+            .handler = board_config_raw_get_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &board_config_raw_get_uri));
+
+        httpd_uri_t board_config_raw_post_uri = {
+            .uri = "/api/v1/boardConfig/raw",
+            .method = HTTP_POST,
+            .handler = board_config_raw_post_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &board_config_raw_post_uri));
+
+        httpd_uri_t json_get_uri = {
+           .uri = "/api/v1/*",
+           .method = HTTP_GET,
+           .handler = json_get_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_get_uri));
+
+        httpd_uri_t state_post_uri = {
+            .uri = "/api/v1/state/*",
+            .method = HTTP_POST,
+            .handler = state_post_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &state_post_uri));
+
+        httpd_uri_t restart_post_uri = {
+            .uri = "/api/v1/restart",
+            .method = HTTP_POST,
+            .handler = restart_post_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &restart_post_uri));
+
+        httpd_uri_t firmware_update_post_uri = {
+            .uri = "/api/v1/firmware/update",
+            .method = HTTP_POST,
+            .handler = firmware_update_post_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_update_post_uri));
+
+        httpd_uri_t firmware_upload_post_uri = {
+            .uri = "/api/v1/firmware/upload",
+            .method = HTTP_POST,
+            .handler = firmware_upload_post_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_upload_post_uri));
+
+        httpd_uri_t json_post_uri = {
+           .uri = "/api/v1/*",
+           .method = HTTP_POST,
+           .handler = json_post_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_post_uri));
+
+        httpd_uri_t root_get_uri = {
+            .uri = "/",
+            .method = HTTP_GET,
+            .handler = root_get_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &root_get_uri));
+
+        httpd_uri_t web_get_uri = {
+            .uri = "/*",
+            .method = HTTP_GET,
+            .handler = web_get_handler
+        };
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &web_get_uri));
+    }
+}
+
+void rest_stop(void)
+{
+    if (server != NULL) {
+        httpd_stop(server);
+        server = NULL;
+    }
+}
+
+void rest_set_enabled(bool enabled)
+{
+    nvs_set_u8(nvs, NVS_ENABLED, enabled);
+
+    nvs_commit(nvs);
+
+    if (enabled) {
+        rest_start();
+    } else {
+        rest_stop();
+    }
+}
+
+bool rest_is_enabled(void)
+{
+    uint8_t value = true;
+    nvs_get_u8(nvs, NVS_ENABLED, &value);
+    return value;
+}
+
 void rest_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
@@ -672,86 +795,7 @@ void rest_init(void)
         password[0] = '\0';
     }
 
-    ESP_LOGI(TAG, "Web user: '%s'", user);
-    ESP_LOGI(TAG, "Web password: '%s'", password); // TODO remove
-
-    httpd_handle_t server;
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 10;
-    config.max_open_sockets = 3;
-    config.lru_purge_enable = true;
-
-    ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
-    ESP_ERROR_CHECK(httpd_start(&server, &config));
-
-    httpd_uri_t board_config_raw_get_uri = {
-        .uri = "/api/v1/boardConfig/raw",
-        .method = HTTP_GET,
-        .handler = board_config_raw_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &board_config_raw_get_uri));
-
-    httpd_uri_t board_config_raw_post_uri = {
-        .uri = "/api/v1/boardConfig/raw",
-        .method = HTTP_POST,
-        .handler = board_config_raw_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &board_config_raw_post_uri));
-
-    httpd_uri_t json_get_uri = {
-       .uri = "/api/v1/*",
-       .method = HTTP_GET,
-       .handler = json_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_get_uri));
-
-    httpd_uri_t state_post_uri = {
-        .uri = "/api/v1/state/*",
-        .method = HTTP_POST,
-        .handler = state_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &state_post_uri));
-
-    httpd_uri_t restart_post_uri = {
-        .uri = "/api/v1/restart",
-        .method = HTTP_POST,
-        .handler = restart_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &restart_post_uri));
-
-    httpd_uri_t firmware_update_post_uri = {
-        .uri = "/api/v1/firmware/update",
-        .method = HTTP_POST,
-        .handler = firmware_update_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_update_post_uri));
-
-    httpd_uri_t firmware_upload_post_uri = {
-        .uri = "/api/v1/firmware/upload",
-        .method = HTTP_POST,
-        .handler = firmware_upload_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_upload_post_uri));
-
-    httpd_uri_t json_post_uri = {
-       .uri = "/api/v1/*",
-       .method = HTTP_POST,
-       .handler = json_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_post_uri));
-
-    httpd_uri_t root_get_uri = {
-        .uri = "/",
-        .method = HTTP_GET,
-        .handler = root_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &root_get_uri));
-
-    httpd_uri_t web_get_uri = {
-        .uri = "/*",
-        .method = HTTP_GET,
-        .handler = web_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &web_get_uri));
+    if (rest_is_enabled()) {
+        rest_start();
+    }
 }
