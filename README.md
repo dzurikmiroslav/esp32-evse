@@ -22,4 +22,7 @@ _One firmware to rull them all._ Not really :-), one per device platform (ESP32,
 
 Firmware ist not hardcoded to GPIOs or oher harware design features. All configuration is writen outside firmware in configuration file on dedicated parition.
 
+![The San Juan Mountains are beautiful!](/images/minimal-circuit.png "Minimal circuit")
+
+
 ### Web interface
