@@ -20,13 +20,13 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
 
 _One firmware to rull them all._ Not really :-), one per device platform (ESP32, ESP32-S2...).
 
-Firmware ist not hardcoded to GPIOs or oher harware design features. All configuration is writen outside firmware in configuration file on dedicated parition.
+Firmware ist not hardcoded to GPIOs or oher harware design features. All configuration is writen outside firmware in configuration file named _board.cfg_ on dedicated parition.
 
-For example, on following sheme is minimal EVSE circuit with ESP32. Wihout 
+For example, on following sheme is minimal EVSE circuit with ESP32.
 
 ![Minimal circuit](/images/minimal-circuit.png "Minimal circuit")
 
-For this circuit there is configuration file _board.cfg_
+For this circuit there is _board.cfg_
 
 ```bash
 #Device name
