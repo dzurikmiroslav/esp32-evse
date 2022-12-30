@@ -18,7 +18,7 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
 
 ### Generic firmware
 
-_One firmware to rull them all._ Not really :-), one per device platform (ESP32, ESP32-S2...).
+_One firmware to rull them all._ Not really :-) one per device platform (ESP32, ESP32-S2...).
 
 Firmware ist not hardcoded to GPIOs or other harware design features. All configuration is writen outside firmware in configuration file named _board.cfg_ on dedicated parition.
 
@@ -43,5 +43,18 @@ PILOT_DOWN_TRESHOLD_N12=265
 AC_RELAY_GPIO=32
 ```
 
-
 ### Web interface
+
+Fully responsive web interface is accesible local network IP address on port 80.
+
+Dashboard page
+
+![Dashboard](/images/web-dashboard.png "Dashboard") 
+
+Settings page
+
+![Settings](/images/web-settings.png "Settings")
+
+Mobile dashboard page
+
+![Dashboard mobile](/images/web-dashboard-mobile.png "Dashboard mobile")
