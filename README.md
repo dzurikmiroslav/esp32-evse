@@ -29,7 +29,7 @@ For example, on following sheme is minimal EVSE circuit with ESP32.
 
 ![Minimal circuit](/images/minimal-circuit.png "Minimal circuit")
 
-For this circuit there is _board.cfg_, see [BOARD_CONFIG.md](/BOARD_CONFIG.md "BOARD_CONFIG.md") for more informations.
+For this circuit there is _board.cfg_, see [doc/BOARD_CONFIG.md](/doc/BOARD_CONFIG.md "BOARD_CONFIG.md") for more informations.
 
 ```bash
 #Device name
