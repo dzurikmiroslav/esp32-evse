@@ -34,6 +34,8 @@ For this circuit there is _board.cfg_, see [doc/BOARD_CONFIG.md](/doc/BOARD_CONF
 ```bash
 #Device name
 DEVICE_NAME=ESP32 minimal EVSE
+#Button
+BUTTION_WIFI_GPIO=0
 #Pilot  
 PILOT_PWM_GPIO=33
 PILOT_ADC_CHANNEL=7
