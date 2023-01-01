@@ -25,7 +25,7 @@ Source code ist not hardcoded to GPIOs or other harware design features.
 All code is writen in ESP-IDF without additional mapping layer like Arduino.
 
 All configuration is writen outside firmware in configuration file named _board.cfg_ on dedicated parition.
-For example, on following sheme is minimal EVSE circuit with ESP32.
+For example, on following sheme is minimal EVSE circuit with ESP32 devkit.
 
 ![Minimal circuit](/images/minimal-circuit.png "Minimal circuit")
 
