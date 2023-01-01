@@ -13,7 +13,7 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
  - Integrated energy meter
  - REST API
  - MQTT API
- - Modbus (RS485, TCP)
+ - [Modbus](/doc/MODBUS.md "MODBUS.md") (RS485, TCP)
  - AT commands
 
 ### Generic firmware
