@@ -11,7 +11,7 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
  - Responsive web-interface
  - OTA update
  - Integrated energy meter
- - REST API
+ - [REST](/doc/REST.md "REST.md") API
  - MQTT API
  - [Modbus](/doc/MODBUS.md "MODBUS.md") (RS485, TCP)
  - AT commands
