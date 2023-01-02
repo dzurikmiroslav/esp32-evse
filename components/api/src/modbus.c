@@ -81,7 +81,7 @@ void modbus_init(void)
     nvs_get_u8(nvs, NVS_UNIT_ID, &unit_id);
 }
 
-static uint16_t get_uptime(void)
+static uint32_t get_uptime(void)
 {
     return esp_timer_get_time() / 1000000;
 }
@@ -247,6 +247,16 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         evse_set_enabled(value);
+        break;
+    case MODBUS_REG_CHR_CURRENT:
+        if (evse_set_chaging_current(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_DEF_CHR_CURRENT:
+        if (evse_set_default_chaging_current(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
         break;
     case MODBUS_REG_CONSUMTION_LIM:
         if (left > 0) {
