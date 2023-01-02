@@ -579,7 +579,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         ESP_LOGI(TAG, "Prepare to restart system!");
         timeout_restart();
 
-        httpd_resp_sendstr(req, "File uploaded successfully");
+        httpd_resp_sendstr(req, "Firmware uploaded successfully");
 
         return ESP_OK;
     } else {
