@@ -1,3 +1,17 @@
+# Modbus
+
+Controller support Modbus slave over TCP/IP and RTU/serial.
+
+Modbus settings are in web interface, when you can enable/disable Modbus TCP server and set Unit ID.
+Modbus TCP are listening on port 502.
+
+![Modbus settings](/images/web-settings-modbus.png "Modbus settings")
+
+Modbus RTU can be set in serial settings, any serial interface (UART, RS-485) can be operating in Modbus slave mode. Only one interface can operate in Modbus mode!
+
+![Serial settings](/images/web-settings-serial.png "Serial settings")
+
+Table of Modbus registers. (Note, Register Address starting at zero, Register Number = Register Address + 1)
 
 Register Address | Number Of Registers |  Access | Description | Representation
 --- | --- | --- | --- | ---
