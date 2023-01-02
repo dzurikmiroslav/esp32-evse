@@ -72,19 +72,3 @@ esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const char* pa
 
     return ESP_OK;
 }
-
-static void rest_set_enabled_fucn(void* arg)
-{
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    bool enabled = (int)arg;
-
-    rest_set_enabled(enabled);
-
-    vTaskDelete(NULL);
-}
-
-void timeout_rest_set_enabled(bool enabled)
-{
-    xTaskCreate(rest_set_enabled_fucn, "rest_set_enabled", 2 * 1024, (void*)(int)enabled, 10, NULL);
-}

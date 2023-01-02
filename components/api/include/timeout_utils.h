@@ -20,11 +20,4 @@ void timeout_restart(void);
  */
 esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const char* password);
 
-/**
- * @brief Set Rest enabled in 1 second
- * 
- * @param enabled 
- */
-void timeout_rest_set_enabled(bool enabled);
-
 #endif /* TIMEOUT_UTILS_H */

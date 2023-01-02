@@ -128,15 +128,18 @@ void board_config_load()
                     SET_CONFIG_VALUE("AUX_3", aux_3, atob);
                     SET_CONFIG_VALUE("AUX_3_GPIO", aux_3_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_1", serial_1, atoser);
+                    SET_CONFIG_VALUE_STR("SERIAL_1_NAME", serial_1_name);
                     SET_CONFIG_VALUE("SERIAL_1_RXD_GPIO", serial_1_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_1_TXD_GPIO", serial_1_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_1_RTS_GPIO", serial_1_rts_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2", serial_2, atoser);
+                    SET_CONFIG_VALUE_STR("SERIAL_2_NAME", serial_2_name);
                     SET_CONFIG_VALUE("SERIAL_2_RXD_GPIO", serial_2_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2_TXD_GPIO", serial_2_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2_RTS_GPIO", serial_2_rts_gpio, atoi);
 #if SOC_UART_NUM > 2
                     SET_CONFIG_VALUE("SERIAL_3", serial_3, atoser);
+                    SET_CONFIG_VALUE_STR("SERIAL_3_NAME", serial_3_name);
                     SET_CONFIG_VALUE("SERIAL_3_RXD_GPIO", serial_3_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_TXD_GPIO", serial_3_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);

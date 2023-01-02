@@ -309,28 +309,6 @@ esp_err_t json_set_tcp_logger_config(cJSON* root)
     return ESP_OK;
 }
 
-cJSON* json_get_rest_config(void)
-{
-    cJSON* root = cJSON_CreateObject();
-
-    cJSON_AddBoolToObject(root, "enabled", rest_is_enabled());
-
-    return root;
-}
-
-esp_err_t json_set_rest_config(cJSON* root, bool timeout)
-{
-    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
-
-    if (timeout) {
-        timeout_rest_set_enabled(enabled);
-    } else {
-        rest_set_enabled(enabled);
-    }
-
-    return ESP_OK;
-}
-
 cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -436,11 +414,15 @@ cJSON* json_get_board_config(void)
     cJSON_AddBoolToObject(root, "aux3", board_config.aux_3);
 
     cJSON_AddStringToObject(root, "serial1", serial_to_str(board_config.serial_1));
+    cJSON_AddStringToObject(root, "serial1Name", board_config.serial_1_name);
     cJSON_AddStringToObject(root, "serial2", serial_to_str(board_config.serial_2));
+    cJSON_AddStringToObject(root, "serial2Name", board_config.serial_2_name);
 #if SOC_UART_NUM > 2
     cJSON_AddStringToObject(root, "serial3", serial_to_str(board_config.serial_3));
+    cJSON_AddStringToObject(root, "serial3Name", board_config.serial_3_name);
 #else
     cJSON_AddStringToObject(root, "serial3", serial_to_str(BOARD_CONFIG_SERIAL_NONE));
+    cJSON_AddStringToObject(root, "serial3Name", "");
 #endif
     return root;
 }

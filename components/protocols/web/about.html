@@ -90,9 +90,9 @@
                         document.getElementById('aux1').innerText = YES_NO[data.aux1];
                         document.getElementById('aux2').innerText = YES_NO[data.aux2];
                         document.getElementById('aux3').innerText = YES_NO[data.aux3];
-                        document.getElementById('serial1').innerText = data.serial1;
-                        document.getElementById('serial2').innerText = data.serial2;
-                        document.getElementById('serial3').innerText = data.serial3;
+                        document.getElementById('serial1').innerText = data.serial1 !== 'none' ? data.serial1Name : 'N/A';
+                        document.getElementById('serial2').innerText = data.serial2 !== 'none' ? data.serial2Name : 'N/A';
+                        document.getElementById('serial3').innerText = data.serial3 !== 'none' ? data.serial3Name : 'N/A';
                     }),
                 fetch('/api/v1/info')
                     .then(jsonResponse)

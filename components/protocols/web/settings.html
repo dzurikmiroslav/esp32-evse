@@ -126,8 +126,7 @@
                     document.getElementById('mqttUser').value = data.mqtt.user;
                     document.getElementById('mqttPassword').value = '';
                     document.getElementById('mqttPeriodicity').value = data.mqtt.periodicity;
-                    document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;
-                    document.getElementById('restEnabled').checked = data.rest.enabled;
+                    document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;                   
                     document.getElementById('serial1Mode').value = data.serial.serial1Mode;
                     document.getElementById('serial1BaudRate').value = data.serial.serial1BaudRate;
                     document.getElementById('serial1DataBits').value = data.serial.serial1DataBits;
@@ -266,21 +265,6 @@
                 })
                 .finally(() => {
                     document.getElementById('tcpLoggerForm').classList.remove('was-validated');
-                    document.getElementById('loading').classList.remove('show');
-                })
-                .catch(showError);
-        }
-
-        function loadRestSettings() {
-            document.getElementById('loading').classList.add('show');
-
-            fetch('/api/v1/config/rest')
-                .then(jsonResponse)
-                .then(data => {
-                    document.getElementById('restEnabled').checked = data.enabled;
-                })
-                .finally(() => {
-                    document.getElementById('restForm').classList.remove('was-validated');
                     document.getElementById('loading').classList.remove('show');
                 })
                 .catch(showError);
@@ -462,33 +446,6 @@
             }
         }
 
-        function submitRestSettings() {
-            if (!document.getElementById('restForm').checkValidity()) {
-                document.getElementById('restForm').classList.add('was-validated');
-            } else {
-                document.getElementById('loading').classList.add('show');
-
-                const config = {
-                    enabled: document.getElementById('restEnabled').checked
-                };
-
-                fetch('/api/v1/config/rest', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(config)
-                })
-                    .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
-                    .finally(() => {
-                        document.getElementById('loading').classList.remove('show');
-                        document.getElementById('restForm').classList.remove('was-validated');
-                    })
-                    .catch(showError);
-            }
-        }
-
         function submitSerialSettings() {
             if (!document.getElementById('serialForm').checkValidity()) {
                 document.getElementById('serialForm').classList.add('was-validated');
@@ -560,7 +517,7 @@
 
         function showReload() {
             const reloadCountdown = document.getElementById('reloadCountdown');
-            let counter = 10;
+            let counter = 20;
 
             reloadCountdown.innerText = counter--;
 
@@ -688,12 +645,18 @@
                 .then(data => {
                     document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseSocketLockBreakTime').min = data.socketLockMinBreakTime;
-                    document.getElementById('evseSocketOutlet').disabled = !data.proximity;
+                    if (data.proximity) {
+                        document.getElementById('evseSocketOutletField').classList.remove('d-none');
+                        document.getElementById('evseSocketOutlet').disabled = false;
+                    }
                     if (data.socketLock) {
                         document.getElementById('evseSocketLockFields').classList.remove('d-none');
                         document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = false);
                     }
-                    document.getElementById('evseRcm').disabled = !data.rcm;
+                    if (data.rcm) {
+                        document.getElementById('evseRcmField').classList.remove('d-none');
+                        document.getElementById('evseRcm').disabled = false;
+                    }
                     if (data.aux1) {
                         document.getElementById('evseAux1Field').classList.remove('d-none');
                         document.getElementById('evseAux1').disabled = false;
@@ -717,14 +680,17 @@
                         document.getElementById('evseEnergyMeterCurVlt').disabled = false;
                     }
                     if (data.serial1 !== 'none') {
+                        document.getElementById('serial1Name').innerText = data.serial1Name;
                         document.getElementById('serial1Field').classList.remove('d-none');
                         document.querySelectorAll('#serial1Field input, #serial1Field select').forEach(input => input.disabled = false);
                     }
                     if (data.serial2 !== 'none') {
+                        document.getElementById('serial2Name').innerText = data.serial2Name;
                         document.getElementById('serial2Field').classList.remove('d-none');
                         document.querySelectorAll('#serial2Field input, #serial2Field select').forEach(input => input.disabled = false);
                     }
                     if (data.serial3 !== 'none') {
+                        document.getElementById('serial3Name').innerText = data.serial3Name;
                         document.getElementById('serial3Field').classList.remove('d-none');
                         document.querySelectorAll('#serial3Field input, #serial3Field select').forEach(input => input.disabled = false);
                     }
@@ -843,11 +809,6 @@
                                         logger</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="rest-tab" type="button" role="tab" data-bs-toggle="tab"
-                                        data-bs-target="#rest" aria-controls="rest"
-                                        aria-selected="false">REST/Web</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="serial-tab" type="button" role="tab"
                                         data-bs-toggle="tab" data-bs-target="#serial" aria-controls="serial"
                                         aria-selected="false">Serial</button>
@@ -916,16 +877,16 @@
                                             authorization</label>
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <div id="evseRcmField" class="col-12 col-md-6 col-xl-4 mb-3 d-none">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="evseRcm">
+                                        <input class="form-check-input" type="checkbox" id="evseRcm" disabled>
                                         <label class="form-check-label" for="evseRcm">Residual current
                                             monitor</label>
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                                <div id="evseSocketOutletField" class="col-12 col-md-6 col-xl-4 mb-3">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="evseSocketOutlet">
+                                        <input class="form-check-input" type="checkbox" id="evseSocketOutlet" disabled>
                                         <label class="form-check-label" for="evseSocketOutlet">Socket outlet</label>
                                     </div>
                                 </div>
@@ -1130,29 +1091,10 @@
                             </div>
                         </form>
                     </div>
-                    <div class="tab-pane fade" id="rest" role="tabpanel">
-                        <h5>REST/Web</h5>
-                        <form id="restForm" novalidate>
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="restEnabled">
-                                        <label class="form-check-label" for="restEnabled">Enabled</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-primary"
-                                        onclick="submitRestSettings()">Submit</button>
-                                    <button type="button" class="btn btn-secondary"
-                                        onclick="loadRestSettings()">Reset</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
                     <div class="tab-pane fade" id="serial" role="tabpanel">
                         <form id="serialForm" novalidate>
                             <div id="serial1Field" class="row d-none">
-                                <h5>Serial 1</h5>
+                                <h5 id="serial1Name">Serial 1</h5>
                                 <div class="col-12 col-md-6 col-lg-4 mb-3">
                                     <label class="form-label" for="serial1Mode">Mode</label>
                                     <select class="form-select" id="serial1Mode" disabled>
@@ -1194,7 +1136,7 @@
                                 </div>
                             </div>
                             <div id="serial2Field" class="row d-none">
-                                <h5>Serial 2</h5>
+                                <h5 id="serial2Name">Serial 2</h5>
                                 <div class="col-12 col-md-6 col-lg-4 mb-3">
                                     <label class="form-label" for="serial2Mode">Mode</label>
                                     <select class="form-select" id="serial2Mode" disabled>
@@ -1235,8 +1177,8 @@
                                     </select>
                                 </div>
                             </div>
-                            <div id="serial3Field" class="row g-3 mb-3 d-none">
-                                <h5>Serial 3</h5>
+                            <div id="serial3Field" class="row mb-3 d-none">
+                                <h5 id="serial3Name">Serial 3</h5>
                                 <div class="col-12 col-md-6 col-lg-4 mb-3">
                                     <label class="form-label" for="serial3Mode">Mode</label>
                                     <select class="form-select" id="serial3Mode" disabled>

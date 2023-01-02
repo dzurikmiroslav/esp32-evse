@@ -30,10 +30,6 @@ cJSON* json_get_tcp_logger_config(void);
 
 esp_err_t json_set_tcp_logger_config(cJSON* root);
 
-cJSON* json_get_rest_config(void);
-
-esp_err_t json_set_rest_config(cJSON* root, bool timeout);
-
 cJSON* json_get_state(void);
 
 cJSON* json_get_info(void);

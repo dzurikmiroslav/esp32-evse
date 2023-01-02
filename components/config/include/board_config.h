@@ -79,15 +79,18 @@ typedef struct
     gpio_num_t aux_3_gpio;
 
     board_config_serial_t serial_1;
+    char serial_1_name[16];
     gpio_num_t serial_1_rxd_gpio;
     gpio_num_t serial_1_txd_gpio;
     gpio_num_t serial_1_rts_gpio;
     board_config_serial_t serial_2;
+    char serial_2_name[16];
     gpio_num_t serial_2_rxd_gpio;
     gpio_num_t serial_2_txd_gpio;
     gpio_num_t serial_2_rts_gpio;
 #if SOC_UART_NUM > 2
     board_config_serial_t serial_3;
+    char serial_3_name[16];
     gpio_num_t serial_3_rxd_gpio;
     gpio_num_t serial_3_txd_gpio;
     gpio_num_t serial_3_rts_gpio;
