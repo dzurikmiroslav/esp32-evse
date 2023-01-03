@@ -45,6 +45,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: context.payload.release.id,
-              name: 'esp32-evse.bin',
+              name: '${{ matrix.platform }}-evse.bin',
               data: fs.readFileSync('./build/esp32-evse.bin')
             });
