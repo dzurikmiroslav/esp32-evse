@@ -78,7 +78,7 @@ Dev board with basic functionality, single phase energy meter, RS485. One side p
 
 ESP32-S2 based EVSE with advanced functionality, three phase energy meter, RS485, UART, 1WIRE, RCM, socket lock.
 
-**Currenlty in development not nested!**
+**Currenlty in development not tested!**
 
 [EasyEDA project](https://oshwlab.com/dzurik.miroslav/esp32s2-diy-evse)
 
