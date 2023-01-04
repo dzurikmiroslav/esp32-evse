@@ -4,9 +4,9 @@
 #include <stdbool.h>
 #include "esp_err.h"
 
-#define OTA_VERSION_URL "https://raw.githubusercontent.com/dzurikmiroslav/esp32-evse/firmware/version.txt"
+#define OTA_VERSION_URL "https://dzurikmiroslav.github.io/esp32-evse/firmware/version.txt"
 
-#define OTA_FIRMWARE_URL "https://raw.githubusercontent.com/dzurikmiroslav/esp32-evse/firmware/esp32-evse.bin"
+#define OTA_FIRMWARE_URL "https://dzurikmiroslav.github.io/esp32-evse/firmware/"
 
 esp_err_t ota_get_available_version(char* version);
 

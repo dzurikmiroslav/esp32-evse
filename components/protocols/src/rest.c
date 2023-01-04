@@ -442,7 +442,7 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
                 extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 
                 esp_http_client_config_t http_config = {
-                    .url = OTA_FIRMWARE_URL,
+                    .url = OTA_FIRMWARE_URL CONFIG_IDF_TARGET "-evse.bin",
                     .cert_pem = server_cert_pem_start
                 };
 
