@@ -6,12 +6,7 @@ on:
       - master
   release:
     types:
-      - created  
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+      - created
 
 jobs:
   build:
