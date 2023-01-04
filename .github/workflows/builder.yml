@@ -48,8 +48,11 @@ jobs:
               name: '${{ matrix.platform }}-evse.bin',
               data: fs.readFileSync('./build/esp32-evse.bin')
             });
+            
+      - name: Prepare asses
+        run: |
+          mkdir -p _site/ota
+          cp build/esp32-evse.bin _site/ota/esp32-evse.bin
 
       - name: Upload assets
         uses: actions/upload-pages-artifact@v1
-        with:
-          path: build/esp32-evse.bin
