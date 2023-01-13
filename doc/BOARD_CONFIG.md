@@ -76,7 +76,7 @@ All board configs are stored in [_cfg_](https://github.com/dzurikmiroslav/esp32-
 | SERIAL_3_TXD_GPIO * | Serial tx gpio | uint32 |
 | SERIAL_3_RTS_GPIO * | Serial rts gpio | uint32 |
 
-**Note** Serial 3 is available only on MCU that have more than two uart.
+**Note** Serial 3 is available only on MCU that have more than two uarts.
 
 ### PILOT_DOWN_TRESHOLD_X calculation
 
@@ -123,10 +123,8 @@ PILOT_DOWN_TRESHOLD_N12=265
 ```
 
 **Note 1**
-
 When designing a new voltage divider, remember the ESP32 adc [_suggested range_](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/peripherals/adc.html#_CPPv425adc1_config_channel_atten14adc1_channel_t11adc_atten_t).
 (adc is configured for attenuation 11dB)
 
 **Note 2**
-
 On my EV (VW eUp) in state B,C,D sometimes low voltage is not below 10.5V but smaller. That cause error of diode short. I need to investigate the right value...
