@@ -45,6 +45,7 @@ void temp_sensor_init(void)
     mutex = xSemaphoreCreateMutex();
 
     if (board_config.temp_sensor) {
+        gpio_reset_pin(board_config.temp_sensor_gpio);
         onewire_search_t search;
         onewire_addr_t addr;
         onewire_search_start(&search);

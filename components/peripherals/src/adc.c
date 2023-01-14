@@ -1,7 +1,7 @@
 #include "adc.h"
 #include "esp_log.h"
 
-const static char* TAG = "ADC";
+const static char* TAG = "adc";
 
 adc_oneshot_unit_handle_t adc_handle;
 
