@@ -64,6 +64,6 @@ bool rcm_test(void)
 bool rcm_was_triggered(void)
 {
     bool _triggered = triggered;
-    _triggered = false;
+    triggered = false;
     return _triggered;
 }
