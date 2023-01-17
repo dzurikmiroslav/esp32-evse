@@ -113,7 +113,7 @@ static void set_state(evse_state_t next_state)
     switch (next_state)
     {
     case EVSE_STATE_A:
-        if (socket_outlet && board_config.socket_lock) {
+        if ( board_config.socket_lock && socket_outlet) {
             set_socket_lock(false);
         }
         set_pilot(PILOT_STATE_12V);
@@ -134,7 +134,8 @@ static void set_state(evse_state_t next_state)
         break;
     case EVSE_STATE_E:
     case EVSE_STATE_F:
-        if (socket_outlet && board_config.socket_lock) {
+        ac_relay_set_state(false);
+        if ( board_config.socket_lock && socket_outlet) {
             set_socket_lock(false);
         }
         if (next_state == EVSE_STATE_E) {
@@ -219,9 +220,9 @@ void evse_process(void)
         next_state = EVSE_STATE_A;
         error = EVSE_ERR_NONE;
     // TODO hotfix :)
-    // } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
-    //     next_state = EVSE_STATE_E;
-    //     error = EVSE_ERR_DIODE_SHORT;
+    } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
+        next_state = EVSE_STATE_E;
+        error = EVSE_ERR_DIODE_SHORT;
     } else if (socket_outlet && board_config.socket_lock && socket_lock_get_status() == SOCKED_LOCK_STATUS_LOCKING_FAIL && error != EVSE_ERR_LOCK_FAULT) {
         next_state = EVSE_STATE_E;
         error = EVSE_ERR_LOCK_FAULT;
