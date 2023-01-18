@@ -7,7 +7,7 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
 
 ## Key features
 
- - Generic firmware
+ - Hardware abstraction for device design
  - Responsive web-interface
  - OTA update
  - Integrated energy meter
@@ -16,7 +16,7 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
  - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
  - AT commands
 
-### Generic firmware
+### Device definition method
 
 _One firmware to rull them all._ Not really :-) one per device platform (ESP32, ESP32-S2...).
 
