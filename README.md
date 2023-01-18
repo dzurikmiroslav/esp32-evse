@@ -11,9 +11,9 @@ This repository contains J1772 EVSE firmware for ESP32 based devices.
  - Responsive web-interface
  - OTA update
  - Integrated energy meter
- - [REST](/doc/REST.md "REST.md") API
+ - [REST](https://github.com/dzurikmiroslav/esp32-evse/wiki/Rest) API
  - MQTT API
- - [Modbus](/doc/MODBUS.md "MODBUS.md") (RS485, TCP)
+ - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
  - AT commands
 
 ### Generic firmware
@@ -27,9 +27,10 @@ All code is writen in ESP-IDF without additional mapping layer like Arduino.
 All configuration is writen outside firmware in configuration file named _board.cfg_ on dedicated parition.
 For example, on following sheme is minimal EVSE circuit with ESP32 devkit.
 
-![Minimal circuit](/images/minimal-circuit.png "Minimal circuit")
+![Minimal circuit](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/minimal-circuit.png)
 
-For this circuit there is _board.cfg_, see [doc/BOARD_CONFIG.md](/doc/BOARD_CONFIG.md "BOARD_CONFIG.md") for more informations.
+For this circuit there is _board.cfg_, see [Wifi board config](https://github.com/dzurikmiroslav/esp32-evse/wiki/Board-config) for more informations.
+
 
 ```bash
 #Device name
@@ -54,15 +55,15 @@ Fully responsive web interface is accesible local network IP address on port 80.
 
 Dashboard page
 
-![Dashboard](/images/web-dashboard.png "Dashboard") 
+![Dashboard](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-dashboard.png) 
 
 Settings page
 
-![Settings](/images/web-settings.png "Settings")
+![Settings](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-settings.png)
 
 Mobile dashboard page
 
-![Dashboard mobile](/images/web-dashboard-mobile.png "Dashboard mobile")
+![Dashboard mobile](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-dashboard-mobile.png)
 
 ### Hardware
 
@@ -72,7 +73,7 @@ Dev board with basic functionality, single phase energy meter, RS485. One side p
 
 [EasyEDA project](https://oshwlab.com/dzurik.miroslav/esp32-devkit-evse)
 
-![ESP32DevkitC](/images/esp32devkitc.jpg "ESP32DevkitC")
+![ESP32DevkitC](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/images/esp32devkitc.jpg)
 
 ### ESP32-S2 DIY ALPHA
 
@@ -82,4 +83,4 @@ ESP32-S2 based EVSE with advanced functionality, three phase energy meter, RS485
 
 [EasyEDA project](https://oshwlab.com/dzurik.miroslav/esp32s2-diy-evse)
 
-![ESP32-S2-DA](/images/esp32s2da.png "ESP32-S2-DA")
+![ESP32-S2-DA](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/images/esp32s2da.png)
