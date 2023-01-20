@@ -1,14 +1,11 @@
 ![ESP32 EVSE](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/logo-full.svg)
 
-# EVSE firmware for ESP32 based devices
-
-This repository contains J1772 EVSE firmware for ESP32 based devices.
+J1772 EVSE firmware for ESP32 based devices.
 
 ![Build with ESP-IDF](https://github.com/dzurikmiroslav/esp32-evse/workflows/Build%20with%20ESP-IDF/badge.svg)
 [![License](https://img.shields.io/github/license/dzurikmiroslav/esp32-evse.svg)](LICENSE.md)
 
 ## Key features
-
  - Hardware abstraction for device design
  - Responsive web-interface
  - OTA update
