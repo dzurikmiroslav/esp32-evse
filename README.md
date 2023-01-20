@@ -64,9 +64,9 @@ Mobile dashboard page
 
 ![Dashboard mobile](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-dashboard-mobile.png)
 
-### Hardware
+## Hardware
 
-#### ESP32DevkitC
+### ESP32DevkitC
 
 Dev board with basic functionality, single phase energy meter, RS485. One side pcb, for DIY makers easy to make at home conditions ;-)
 
@@ -74,7 +74,7 @@ Dev board with basic functionality, single phase energy meter, RS485. One side p
 
 ![ESP32DevkitC](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/esp32devkitc.jpg)
 
-### ESP32-S2 DIY ALPHA
+## ESP32-S2 DIY ALPHA
 
 ESP32-S2 based EVSE with advanced functionality, three phase energy meter, RS485, UART, 1WIRE, RCM, socket lock.
 
