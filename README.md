@@ -1,3 +1,5 @@
+![ESP32 EVSE](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/logo-full.svg)
+
 # EVSE firmware for ESP32 based devices
 
 This repository contains J1772 EVSE firmware for ESP32 based devices.
@@ -73,7 +75,7 @@ Dev board with basic functionality, single phase energy meter, RS485. One side p
 
 [EasyEDA project](https://oshwlab.com/dzurik.miroslav/esp32-devkit-evse)
 
-![ESP32DevkitC](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/images/esp32devkitc.jpg)
+![ESP32DevkitC](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/esp32devkitc.jpg)
 
 ### ESP32-S2 DIY ALPHA
 
