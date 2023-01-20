@@ -113,7 +113,7 @@ static void set_state(evse_state_t next_state)
     switch (next_state)
     {
     case EVSE_STATE_A:
-        if ( board_config.socket_lock && socket_outlet) {
+        if (board_config.socket_lock && socket_outlet) {
             set_socket_lock(false);
         }
         set_pilot(PILOT_STATE_12V);
@@ -135,7 +135,7 @@ static void set_state(evse_state_t next_state)
     case EVSE_STATE_E:
     case EVSE_STATE_F:
         ac_relay_set_state(false);
-        if ( board_config.socket_lock && socket_outlet) {
+        if (board_config.socket_lock && socket_outlet) {
             set_socket_lock(false);
         }
         if (next_state == EVSE_STATE_E) {
@@ -209,6 +209,17 @@ static bool can_goto_state_c(void)
     return true;
 }
 
+static void rcm_selftest(void)
+{
+    if (rcm && rcm_test() == false) {
+        error = EVSE_ERR_RCM_SELFTEST_FAULT;
+        set_state(EVSE_STATE_E);
+    } else if (error == EVSE_ERR_RCM_SELFTEST_FAULT || error == EVSE_ERR_RCM_TRIGGERED) {
+        error = EVSE_ERR_NONE;
+        set_state(EVSE_STATE_A);
+    }
+}
+
 void evse_process(void)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
@@ -216,10 +227,9 @@ void evse_process(void)
     pilot_measure();
     evse_state_t next_state = state;
 
-    if (state == EVSE_STATE_E && xTaskGetTickCount() > error_wait_to) {
+    if (state == EVSE_STATE_E && (error_wait_to != 0 && xTaskGetTickCount() > error_wait_to)) {
         next_state = EVSE_STATE_A;
         error = EVSE_ERR_NONE;
-    // TODO hotfix :)
     } else if (pilot_state == PILOT_STATE_PWM && !pilot_is_down_voltage_n12()) {
         next_state = EVSE_STATE_E;
         error = EVSE_ERR_DIODE_SHORT;
@@ -398,6 +408,8 @@ void evse_init()
     nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &under_power_limit);
 
     pilot_set_level(true);
+
+    rcm_selftest();
 }
 
 evse_state_t evse_get_state(void)
@@ -495,10 +507,7 @@ esp_err_t evse_set_rcm(bool _rcm)
     nvs_set_u8(nvs, NVS_RCM, rcm);
     nvs_commit(nvs);
 
-    if (rcm && rcm_test() == false) {
-        set_state(EVSE_STATE_E);
-        error = EVSE_ERR_RCM_SELFTEST_FAULT;
-    }
+    rcm_selftest();
 
     return ESP_OK;
 }
