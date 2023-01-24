@@ -5,7 +5,7 @@
 #include "driver/gpio.h"
 #include "nvs.h"
 
-#include "aux.h"
+#include "aux_io.h"
 #include "board_config.h"
 #include "evse.h"
 

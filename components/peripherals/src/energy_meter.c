@@ -11,7 +11,7 @@
 #include "energy_meter.h"
 #include "evse.h"
 #include "board_config.h"
-#include "aux.h"
+#include "aux_io.h"
 #include "adc.h"
 
 #define NVS_NAMESPACE           "evse_emeter"

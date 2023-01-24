@@ -7,7 +7,7 @@
 #include "socket_lock.h"
 #include "rcm.h"
 #include "energy_meter.h"
-#include "aux.h"
+#include "aux_io.h"
 #include "temp_sensor.h"
 
 void peripherals_init(void)

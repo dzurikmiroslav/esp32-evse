@@ -8,7 +8,7 @@ set(srcs
     "src/energy_meter.c"
     "src/socket_lock.c"
     "src/rcm.c"
-    "src/aux.c"
+    "src/aux_io.c"
     "src/onewire.c"
     "src/temp_sensor.c")
 

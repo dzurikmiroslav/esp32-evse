@@ -16,7 +16,7 @@
 #include "board_config.h"
 #include "energy_meter.h"
 #include "socket_lock.h"
-#include "aux.h"
+#include "aux_io.h"
 #include "serial.h"
 #include "proximity.h"
 #include "modbus.h"
