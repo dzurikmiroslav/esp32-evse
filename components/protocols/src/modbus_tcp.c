@@ -256,7 +256,7 @@ void tcp_server_start(void)
 {
     if (tcp_server_task == NULL) {
         ESP_LOGI(TAG, "Starting server");
-        xTaskCreate(tcp_server_task_func, "modbus_tcp_server", 4096, NULL, 5, &tcp_server_task);
+        xTaskCreate(tcp_server_task_func, "modbus_tcp_server", 4 * 1024, NULL, 5, &tcp_server_task);
     }
 }
 

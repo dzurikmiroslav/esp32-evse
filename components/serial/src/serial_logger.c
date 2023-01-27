@@ -35,7 +35,7 @@ void serial_logger_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
         return;
     }
 
-    err = uart_driver_install(uart_num, BUF_SIZE, 0, 0, NULL, 0);
+    err = uart_driver_install(uart_num, BUF_SIZE, BUF_SIZE, 0, NULL, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_driver_install() returned 0x%x", err);
         return;

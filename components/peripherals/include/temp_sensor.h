@@ -17,13 +17,32 @@ void temp_sensor_init(void);
  */
 uint8_t temp_sensor_count(void);
 
+// /**
+//  * @brief Measure temperature on sensor bus
+//  *
+//  * @return esp_err_t 
+//  */
+// esp_err_t temp_sensor_measure(void);
+
 /**
- * @brief Measure lower and higher temperature on sensor bus
- *
- * @param low 
- * @param high 
+ * @brief Return lowest temperature after temp_sensor_measure
+ * 
+ * @return int16_t 
+ */
+int16_t temp_sensor_get_low(void);
+
+/**
+ * @brief Return highest temperature after temp_sensor_measure
+ * 
+ * @return int16_t 
+ */
+int16_t temp_sensor_get_high(void);
+
+/**
+ * @brief Return last measurement error if occurred
+ * 
  * @return esp_err_t 
  */
-esp_err_t temp_sensor_measure(int16_t *low, int16_t *high);
+esp_err_t temp_sensor_get_error(void);
 
 #endif /* TEMP_SENSOR_H_ */

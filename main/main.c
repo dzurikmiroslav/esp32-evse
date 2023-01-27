@@ -95,7 +95,7 @@ static void user_input_task_func(void* param)
             if (notification & RELEASED_BIT) {
                 if (pressed) { // sometimes after connect debug UART emit RELEASED_BIT without preceding PRESS_BIT
                     if (xTaskGetTickCount() - press_tick >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
-                        evse_set_avalable(false);
+                        evse_set_available(false);
                         reset_and_reboot();
                     } else {
                         if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {

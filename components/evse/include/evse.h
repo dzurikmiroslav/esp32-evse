@@ -8,6 +8,17 @@
 #define evse_state_is_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
 #define evse_state_is_charging(state)       (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
 
+#define EVSE_ERR_PILOT_FAULT_BIT            BIT0
+#define EVSE_ERR_DIODE_SHORT_BIT            BIT1
+#define EVSE_ERR_LOCK_FAULT_BIT             BIT2
+#define EVSE_ERR_UNLOCK_FAULT_BIT           BIT3
+#define EVSE_ERR_RCM_TRIGGERED_BIT          BIT4
+#define EVSE_ERR_RCM_SELFTEST_FAULT_BIT     BIT5
+#define EVSE_ERR_TEMPERATURE_HIGH_BIT       BIT6
+#define EVSE_ERR_TEMPERATURE_FAULT_BIT      BIT7
+
+#define EVSE_ERR_AUTO_CLEAR_BITS            (EVSE_ERR_PILOT_FAULT_BIT | EVSE_ERR_DIODE_SHORT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT)
+
 /**
  * @brief States of evse controller
  *
@@ -22,20 +33,6 @@ typedef enum
     EVSE_STATE_F
 } evse_state_t;
 
-/**
- * @brief Error codes when state is EVSE_STATE_E
- *
- */
-typedef enum
-{
-    EVSE_ERR_NONE,
-    EVSE_ERR_PILOT_FAULT,
-    EVSE_ERR_DIODE_SHORT,
-    EVSE_ERR_LOCK_FAULT,
-    EVSE_ERR_UNLOCK_FAULT,
-    EVSE_ERR_RCM_TRIGGERED,
-    EVSE_ERR_RCM_SELFTEST_FAULT
-} evse_err_t;
 
 /**
  * @brief Initialize evse
@@ -44,11 +41,11 @@ typedef enum
 void evse_init(void);
 
 /**
- * @brief Set evse controller to avalable state or F
+ * @brief Set evse controller to available state or F
  * 
- * @param avalable 
+ * @param available 
  */
-void evse_set_avalable(bool avalable);
+void evse_set_available(bool available);
 
 /**
  * @brief Main loop of evse
@@ -64,11 +61,11 @@ void evse_process(void);
 evse_state_t evse_get_state(void);
 
 /**
- * @brief Return detailed error code when state is EVSE_STATE_E
+ * @brief Return error bits when state is EVSE_STATE_E
  *
- * @return evse_err_t
+ * @return uint32_t
  */
-evse_err_t evse_get_error(void);
+uint32_t evse_get_error(void);
 
 /**
  * @brief Get charging current

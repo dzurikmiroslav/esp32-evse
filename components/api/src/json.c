@@ -367,10 +367,8 @@ cJSON* json_get_info(void)
     esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
     cJSON_AddStringToObject(root, "ipAp", str);
     cJSON_AddNumberToObject(root, "temperatureSensorCount", temp_sensor_count());
-    int16_t temp_lo, temp_hi = 0;
-    temp_sensor_measure(&temp_lo, &temp_hi);
-    cJSON_AddNumberToObject(root, "temperatureLow", temp_lo / 100.0);
-    cJSON_AddNumberToObject(root, "temperatureHigh", temp_hi / 100.0);
+    cJSON_AddNumberToObject(root, "temperatureLow", temp_sensor_get_low() / 100.0);
+    cJSON_AddNumberToObject(root, "temperatureHigh", temp_sensor_get_high() / 100.0);
     return root;
 }
 

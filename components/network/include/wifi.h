@@ -71,7 +71,7 @@ bool wifi_get_enabled(void);
  * @brief Scan for AP
  * 
  * @param scan_aps array with length WIFI_SCAN_SCAN_LIST_SIZE 
- * @return uint16_t number of avalable AP
+ * @return uint16_t number of available AP
  */
 uint16_t wifi_scan(wifi_scan_ap_t *scan_aps);
 
