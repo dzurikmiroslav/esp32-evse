@@ -26,13 +26,13 @@
 #define NVS_SOCKET_OUTLET               "socket_outlet"
 #define NVS_RCM                         "rcm"
 #define NVS_REQUIRE_AUTH                "require_auth"
-#define NVS_DEFAULT_CONSUMPTION_LIMIT    "def_cons_lim"
+#define NVS_DEFAULT_CONSUMPTION_LIMIT   "def_cons_lim"
 #define NVS_DEFAULT_ELAPSED_LIMIT       "def_elap_lim"
 #define NVS_DEFAULT_UNDER_POWER_LIMIT   "def_un_pwr_lim"
 
-#define LIMIT_CONSUMPTION_BIT           (1 << 0)
-#define LIMIT_ELAPSED_BIT               (1 << 1)
-#define LIMIT_UNDER_POWER_BIT           (1 << 2)
+#define LIMIT_CONSUMPTION_BIT           BIT0
+#define LIMIT_ELAPSED_BIT               BIT1
+#define LIMIT_UNDER_POWER_BIT           BIT2
 
 static const char* TAG = "evse";
 
@@ -40,9 +40,11 @@ static nvs_handle nvs;
 
 static SemaphoreHandle_t mutex;
 
-static evse_state_t state = EVSE_STATE_A;
+static evse_state_t state = EVSE_STATE_A;   // not hold error state
 
 static uint32_t error = 0;
+
+static bool error_cleared = false;
 
 static uint16_t charging_current;
 
@@ -82,6 +84,8 @@ static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 
 static bool socket_lock_locked = false;
 
+static evse_state_t prev_state = EVSE_STATE_A;
+
 static void set_pilot(enum pilot_state_e state)
 {
     if (pilot_state != state) {
@@ -109,8 +113,6 @@ static void set_socket_lock(bool locked)
     }
 }
 
-static evse_state_t prev_state = EVSE_STATE_A;
-
 static void apply_state(void)
 {
     evse_state_t new_state = evse_get_state(); // getter method detec error state
@@ -118,7 +120,7 @@ static void apply_state(void)
     if (prev_state != new_state) {
         ESP_LOGI(TAG, "Enter %c state", 'A' + new_state);
         if (error) {
-            ESP_LOGI(TAG, "Error %"PRIu32"", error);
+            ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
         }
 
         switch (new_state)
@@ -136,6 +138,11 @@ static void apply_state(void)
                 if (board_config.socket_lock) {
                     set_socket_lock(true);
                 }
+            }
+            if (!enabled || !authorized || reached_limit > 0) {
+                set_pilot(PILOT_STATE_12V);
+            } else {
+                set_pilot(PILOT_STATE_PWM);
             }
             ac_relay_set_state(false);
             break;
@@ -158,61 +165,8 @@ static void apply_state(void)
     }
 }
 
-// static void set_state(evse_state_t next_state)
-// {
-//     if (error) {
-//         goto err_state;
-//     }
-
-//     switch (next_state)
-//     {
-//     case EVSE_STATE_A:
-//         if (board_config.socket_lock && socket_outlet) {
-//             set_socket_lock(false);
-//         }
-//         set_pilot(PILOT_STATE_12V);
-//         ac_relay_set_state(false);
-//         break;
-//     case EVSE_STATE_B:
-//         if (socket_outlet) {
-//             cable_max_current = proximity_get_max_current();
-//             if (board_config.socket_lock) {
-//                 set_socket_lock(true);
-//             }
-//         }
-//         ac_relay_set_state(false);
-//         break;
-//     case EVSE_STATE_C:
-//     case EVSE_STATE_D:
-//         ac_relay_set_state(true);
-//         break;
-//     case EVSE_STATE_E:
-//     case EVSE_STATE_F:
-//     err_state:
-//         ac_relay_set_state(false);
-//         if (board_config.socket_lock && socket_outlet) {
-//             set_socket_lock(false);
-//         }
-
-//         pilot_set_level(false);
-//         set_pilot(PILOT_STATE_N12V);
-//         break;
-//     }
-
-//     if (error) {
-//         ESP_LOGE(TAG, "Enter %c state", 'E');
-//         ESP_LOGE(TAG, "Error number %"PRIu32"", error);
-//     } else {
-//         ESP_LOGI(TAG, "Enter %c state", 'A' + next_state);
-//     }
-
-//     state = next_state;
-// }
-
-
 static void set_error_bits(uint32_t bits)
 {
-    //ESP_LOGI(TAG, "set_error_bits %"PRIu32, bits);
     error |= bits;
     if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
         error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
@@ -221,8 +175,10 @@ static void set_error_bits(uint32_t bits)
 
 static void clear_error_bits(uint32_t bits)
 {
-    //ESP_LOGI(TAG, "clear_error_bits %"PRIu32, bits);
+    bool has_error = error != 0;
     error &= ~bits;
+
+    error_cleared |= has_error && error == 0;
 }
 
 static void state_update(void)
@@ -239,11 +195,15 @@ static void state_update(void)
         under_power_start_time = 0;
         break;
     case EVSE_STATE_B:
-        if (!authorized && require_auth) {
-            authorized = auth_grant_to >= xTaskGetTickCount();
-            auth_grant_to = 0;
+        if (!authorized) {
+            if (require_auth) {
+                authorized = auth_grant_to >= xTaskGetTickCount();
+                auth_grant_to = 0;
+            } else {
+                authorized = true;
+            }
         }
-        if (!enabled || (require_auth && !authorized) || reached_limit > 0) {
+        if (!enabled || !authorized || reached_limit > 0) {
             set_pilot(PILOT_STATE_12V);
         } else {
             set_pilot(PILOT_STATE_PWM);
@@ -255,8 +215,8 @@ static void state_update(void)
     case EVSE_STATE_E:
     case EVSE_STATE_F:
     err_state:
-        authorized = false;
-        reached_limit = 0;
+        // authorized = false;
+        // reached_limit = 0;
         break;
     }
 }
@@ -267,7 +227,7 @@ static bool can_goto_state_c(void)
         return false;
     }
 
-    if (require_auth && !authorized) {
+    if (!authorized) {
         return false;
     }
 
@@ -287,7 +247,7 @@ static void rcm_selftest(void)
     if (rcm && rcm_test() == false) {
         set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
     } else {
-        clear_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
+        clear_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT);
     }
 }
 
@@ -299,12 +259,10 @@ void evse_process(void)
     bool pilot_down_voltage_n12;
     pilot_measure(&pilot_voltage, &pilot_down_voltage_n12);
 
-    bool error_cleared = false;
     if (error_wait_to != 0 && xTaskGetTickCount() >= error_wait_to) {
         clear_error_bits(EVSE_ERR_AUTO_CLEAR_BITS);
         state = EVSE_STATE_A;
         error_wait_to = 0;
-        error_cleared = true;
     }
 
     if (pilot_state == PILOT_STATE_PWM && !pilot_down_voltage_n12) {
@@ -325,8 +283,14 @@ void evse_process(void)
         }
     }
 
-    if (rcm && rcm_was_triggered()) {
-        set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
+    if (board_config.rcm && rcm) {
+        if ((error & EVSE_ERR_RCM_TRIGGERED_BIT) && rcm_is_triggered()) {
+            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+        }
+
+        if (rcm_was_triggered()) {
+            set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
+        }
     }
 
     if (board_config.temp_sensor) {
@@ -353,6 +317,10 @@ void evse_process(void)
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
+                //
+                authorized = false;
+                reached_limit = 0;
+                under_power_start_time = 0;
                 // stay in current state
                 break;
             case PILOT_VOLTAGE_9:
@@ -364,6 +332,14 @@ void evse_process(void)
             }
             break;
         case EVSE_STATE_B:
+            if (!authorized) {
+                if (require_auth) {
+                    authorized = auth_grant_to >= xTaskGetTickCount();
+                    auth_grant_to = 0;
+                } else {
+                    authorized = true;
+                }
+            }
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
@@ -463,9 +439,11 @@ void evse_process(void)
     //     set_state(next_state);
     // }
 
+   // state_update();
+
     apply_state();
 
-    state_update();
+    error_cleared = false;
 
     xSemaphoreGive(mutex);
 
@@ -610,12 +588,16 @@ esp_err_t evse_set_rcm(bool _rcm)
         return ESP_ERR_INVALID_ARG;
     }
 
+    xSemaphoreTake(mutex, portMAX_DELAY);
+
     rcm = _rcm;
 
     nvs_set_u8(nvs, NVS_RCM, rcm);
     nvs_commit(nvs);
 
     rcm_selftest();
+
+    xSemaphoreGive(mutex);
 
     return ESP_OK;
 }
@@ -649,7 +631,7 @@ void evse_authorize(void)
 
 bool evse_is_pending_auth(void)
 {
-    return evse_state_is_session(state) && require_auth && !authorized;
+    return evse_state_is_session(state) && !authorized;
 }
 
 bool evse_is_enabled(void)
