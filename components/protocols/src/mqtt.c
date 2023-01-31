@@ -207,7 +207,7 @@ void mqtt_init(void)
 
     esp_register_shutdown_handler(&client_stop);
 
-    xTaskCreate(client_task_func, "mqtt_client_task", 2 * 1024, NULL, 5, &client_task);
+    xTaskCreate(client_task_func, "mqtt_client_task", 3 * 1024, NULL, 5, &client_task);
 
     if (mqtt_get_enabled()) {
         client_start();
