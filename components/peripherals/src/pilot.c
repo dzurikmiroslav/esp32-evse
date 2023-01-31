@@ -16,10 +16,6 @@
 
 static const char* TAG = "pilot";
 
-static pilot_voltage_t up_voltage;
-
-static bool down_voltage_n12;
-
 void pilot_init(void)
 {
     ledc_timer_config_t ledc_timer = {
@@ -80,7 +76,7 @@ void pilot_set_amps(uint16_t amps)
     ledc_update_duty(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL);
 }
 
-void pilot_measure(void)
+void pilot_measure(pilot_voltage_t* up_voltage, bool* down_voltage_n12)
 {
     int high = 0;
     int low = 3300;
@@ -103,29 +99,19 @@ void pilot_measure(void)
     ESP_LOGV(TAG, "Measure: %dmV - %dmV", low, high);
 
     if (high >= board_config.pilot_down_treshold_12) {
-        up_voltage = PILOT_VOLTAGE_12;
+        *up_voltage = PILOT_VOLTAGE_12;
     } else if (high >= board_config.pilot_down_treshold_9) {
-        up_voltage = PILOT_VOLTAGE_9;
+        *up_voltage = PILOT_VOLTAGE_9;
     } else if (high >= board_config.pilot_down_treshold_6) {
-        up_voltage = PILOT_VOLTAGE_6;
+        *up_voltage = PILOT_VOLTAGE_6;
     } else if (high >= board_config.pilot_down_treshold_3) {
-        up_voltage = PILOT_VOLTAGE_3;
+        *up_voltage = PILOT_VOLTAGE_3;
     } else {
-        up_voltage = PILOT_VOLTAGE_1;
+        *up_voltage = PILOT_VOLTAGE_1;
     }
 
-    down_voltage_n12 = low <= board_config.pilot_down_treshold_n12;
+    *down_voltage_n12 = low <= board_config.pilot_down_treshold_n12;
 
-    ESP_LOGV(TAG, "Up volate %d", up_voltage);
-    ESP_LOGV(TAG, "Down volate belov 12V %d", down_voltage_n12);
-}
-
-pilot_voltage_t pilot_get_up_voltage(void)
-{
-    return up_voltage;
-}
-
-bool pilot_is_down_voltage_n12(void)
-{
-    return down_voltage_n12;
+    ESP_LOGV(TAG, "Up volate %d", *up_voltage);
+    ESP_LOGV(TAG, "Down volate belov 12V %d", *down_voltage_n12);
 }

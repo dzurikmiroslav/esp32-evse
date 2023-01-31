@@ -98,6 +98,29 @@
             return value === 0 ? 'none' : `${value / 1000} kW`;
         }
 
+        const errorNames = {
+            pilot_fault: 'Pilot fault',
+            diode_short: 'Diode short',
+            lock_fault: 'Lock fault',
+            unlock_fault: 'Unlock fault',
+            rcm_triggered: 'RCM triggered',
+            rcm_selftest_fault: 'RCM selftest fault',
+            temperature_high: 'High temperature',
+            temperature_fault: 'Temperature sensor fault'
+        };
+
+        function formatErrors(value) {
+            if (value) {
+                return value.map(err => errorNames[err]).join(', ');
+            } else {
+                return '';
+            }
+        }
+
+        function formatVA(voltage, current) {
+            return `${Math.round(voltage * 100) / 100}V  ${Math.round(current * 100) / 100}A`;
+        }
+
         let state;
 
         function refresh() {
@@ -105,16 +128,16 @@
 
             if (state.state === 'E') {
                 document.getElementById('status').innerText = 'Error';
-                document.getElementById('authrorize').classList.add('d-none');
+                document.getElementById('authorize').classList.add('d-none');
             } else if (state.state === 'F') {
                 document.getElementById('status').innerText = 'Not available';
-                document.getElementById('authrorize').classList.add('d-none');
+                document.getElementById('authorize').classList.add('d-none');
             } else {
                 if (state.pendingAuth) {
                     document.getElementById('status').innerText = 'Pending authorization';
-                    document.getElementById('authrorize').classList.remove('d-none');
+                    document.getElementById('authorize').classList.remove('d-none');
                 } else {
-                    document.getElementById('authrorize').classList.add('d-none');
+                    document.getElementById('authorize').classList.add('d-none');
                     if (state.limitReached) {
                         document.getElementById('status').innerText = 'Charging limit reached';
                     } else if (state.state === 'C' || state.state === 'D') {
@@ -128,8 +151,12 @@
                     }
                 }
             }
+            document.getElementById('errors').innerText = formatErrors(state.errors);
             document.getElementById('elapsed').innerText = formatElapsed(state.elapsed);
             document.getElementById('actualPower').innerText = state.actualPower / 1000;
+            document.getElementById('actualPowerL1').innerHTML = formatVA(state.voltage[0], state.current[0]);
+            document.getElementById('actualPowerL2').innerHTML = formatVA(state.voltage[1], state.current[1]);
+            document.getElementById('actualPowerL3').innerHTML = formatVA(state.voltage[2], state.current[2]);
             document.getElementById('consumption').innerText = Math.round(state.consumption / 3600) / 1000;
             document.getElementById('session').classList.toggle('d-none', state.state !== 'B' && state.state !== 'C' && state.state !== 'D');
         }
@@ -209,6 +236,10 @@
                     .then(jsonResponse)
                     .then(data => {
                         document.getElementById('chargingCurrent').max = data.maxChargingCurrent;
+                        if (data.energyMeterThreePhases) {
+                            document.getElementById('actualPowerL2').classList.remove('d-none');
+                            document.getElementById('actualPowerL3').classList.remove('d-none');
+                        }
                     }),
                 fetch('/api/v1/config/evse')
                     .then(jsonResponse)
@@ -309,9 +340,18 @@
         <div class="container">
             <div class="jumbotron">
                 <h1 id="status">EV not connected</h1>
+
+                <p id="errors" class="lead"></p>
+
                 <div id="session" class="my-3 d-none">
                     <p class="lead">Elapsed time <strong id="elapsed"></strong></p>
-                    <p class="lead">Power <strong><span id="actualPower"></span>kW</strong></p>
+                    <p class="lead">
+                        Power <strong><span id="actualPower"></span>kW</strong>
+                        <br class="d-md-none" />
+                        <span id="actualPowerL1" class="badge bg-primary">250V 16A</span>
+                        <span id="actualPowerL2" class="badge bg-primary d-none">250V 16A</span>
+                        <span id="actualPowerL3" class="badge bg-primary d-none">250V 16A</span>
+                    </p>
                     <p class="lead">Consumption <strong><span id="consumption"></span>kWh</strong></p>
                 </div>
 
@@ -333,7 +373,7 @@
                     </div>
                 </div>
 
-                <div id="authrorize" class="mt-y d-none">
+                <div id="authorize" class="mt-y d-none">
                     <button type="button" class="btn btn-success" onclick="authorize()">Authorize</button>
                 </div>
 

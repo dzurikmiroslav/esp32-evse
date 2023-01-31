@@ -99,7 +99,7 @@
                     .then(data => {
                         document.getElementById('uptime').innerText = formatUptime(data.uptime);
                         if (data.temperatureSensorCount > 1) {
-                            document.getElementById('temperature').innerText = `${data.temperatureLow}/${data.temperatureHigh} °C`;
+                            document.getElementById('temperature').innerText = `[${data.temperatureLow}, ${data.temperatureHigh}] °C`;
                         } else {
                             document.getElementById('temperature').innerText = `${data.temperatureHigh} °C`;
                         }

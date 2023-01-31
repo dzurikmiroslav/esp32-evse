@@ -10,6 +10,7 @@ set(srcs
     "src/rcm.c"
     "src/aux_io.c"
     "src/onewire.c"
+    "src/ds18x20.c"
     "src/temp_sensor.c")
 
 idf_component_register(SRCS "${srcs}"

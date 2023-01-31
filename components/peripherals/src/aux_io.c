@@ -153,7 +153,7 @@ void aux_init(void)
         }
     }
 
-    xTaskCreate(process_task_func, "aux_process_task", 4096, NULL, 5, NULL);
+    xTaskCreate(process_task_func, "aux_process_task", 2 * 1024, NULL, 5, NULL);
 }
 
 aux_mode_t aux_get_mode(aux_id_t id)

@@ -99,6 +99,7 @@
                     document.getElementById('evseRequireAuth').checked = data.evse.requireAuth;
                     document.getElementById('evseSocketOutlet').checked = data.evse.socketOutlet;
                     document.getElementById('evseRcm').checked = data.evse.rcm;
+                    document.getElementById('evseTemperatureThreshold').value = data.evse.temperatureThreshold;
                     document.getElementById('evseDefaultConsumptionLimit').value = data.evse.defaultConsumptionLimit;
                     document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(data.evse.defaultConsumptionLimit);
                     document.getElementById('evseDefaultElapsedLimit').value = data.evse.defaultElapsedLimit;
@@ -161,6 +162,7 @@
                     document.getElementById('evseRequireAuth').checked = data.requireAuth;
                     document.getElementById('evseSocketOutlet').checked = data.socketOutlet;
                     document.getElementById('evseRcm').checked = data.rcm;
+                    document.getElementById('evseTemperatureThreshold').value = data.temperatureThreshold;
                     document.getElementById('evseDefaultConsumptionLimit').value = data.defaultConsumptionLimit;
                     document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(data.defaultConsumptionLimit);
                     document.getElementById('evseDefaultElapsedLimit').value = data.defaultElapsedLimit;
@@ -326,6 +328,7 @@
                     requireAuth: document.getElementById('evseRequireAuth').checked,
                     socketOutlet: document.getElementById('evseSocketOutlet').checked,
                     rcm: document.getElementById('evseRcm').checked,
+                    temperatureThreshold: document.getElementById('evseTemperatureThreshold').valueAsNumber,
                     defaultConsumptionLimit: document.getElementById('evseDefaultConsumptionLimit').valueAsNumber,
                     defaultElapsedLimit: document.getElementById('evseDefaultElapsedLimit').valueAsNumber,
                     defaultUnderPowerLimit: document.getElementById('evseDefaultUnderPowerLimit').valueAsNumber,
@@ -657,6 +660,10 @@
                         document.getElementById('evseRcmField').classList.remove('d-none');
                         document.getElementById('evseRcm').disabled = false;
                     }
+                    if (data.temperatureSensor) {
+                        document.getElementById('evseTemperatureThresholdField').classList.remove('d-none');
+                        document.getElementById('evseTemperatureThreshold').disabled = false;
+                    }
                     if (data.aux1) {
                         document.getElementById('evseAux1Field').classList.remove('d-none');
                         document.getElementById('evseAux1').disabled = false;
@@ -889,6 +896,13 @@
                                         <input class="form-check-input" type="checkbox" id="evseSocketOutlet" disabled>
                                         <label class="form-check-label" for="evseSocketOutlet">Socket outlet</label>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="row d-none" id="evseTemperatureThresholdField">
+                                <div class="col-6 col-md-4 mb-3">
+                                    <label class="form-label" for="evseTemperatureThreshold">Temperature threshold °C</label>
+                                    <input type="number" class="form-control" id="evseTemperatureThreshold" min="40" max="80"
+                                        disabled step="1" required>
                                 </div>
                             </div>
                             <div class="row d-none" id="evseSocketLockFields">

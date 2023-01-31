@@ -53,20 +53,20 @@ static float vlt_sens_zero[3] = { 0, 0, 0 };
 
 static int64_t prev_time = 0;
 
-static uint32_t detla_ms = 0;
+static uint32_t delta_ms = 0;
 
 static void (*measure_fn)(void);
 
 static void set_calc_power(float p)
 {
-    session_consumption += roundf((p * detla_ms) / 1000.0f);
+    session_consumption += roundf((p * delta_ms) / 1000.0f);
     power = roundf(p);
 }
 
 static void measure_none(void)
 {
     vlt[0] = ac_voltage;
-    cur[0] = evse_get_chaging_current() / 10.0f;
+    cur[0] = evse_get_charging_current() / 10.0f;
     float va = vlt[0] * cur[0];
     if (board_config.energy_meter_three_phases) {
         vlt[1] = vlt[2] = vlt[0];
@@ -255,11 +255,11 @@ static void measure_pulse(void)
         count++;
     }
 
-    uint16_t delta_consumtion = count * pulse_amount;
-    session_consumption += delta_consumtion;
+    uint16_t delta_consumption = count * pulse_amount;
+    session_consumption += delta_consumption;
 
-    if (delta_consumtion > 0) {
-        power = (delta_consumtion / detla_ms) * 1000.0f;
+    if (delta_consumption > 0) {
+        power = (delta_consumption / delta_ms) * 1000.0f;
     }
 }
 
@@ -423,7 +423,7 @@ void energy_meter_process(void)
         has_session = false;
     }
 
-    detla_ms = (now - prev_time) / 1000;
+    delta_ms = (now - prev_time) / 1000;
 
     if (evse_state_is_charging(state)) {
         (*measure_fn)();

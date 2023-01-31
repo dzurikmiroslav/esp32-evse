@@ -6,8 +6,6 @@
 
 static const char* TAG = "rcm";
 
-SemaphoreHandle_t rcm_semhr;
-
 static bool do_test = false;
 
 static bool triggered = false;
@@ -32,8 +30,6 @@ static void IRAM_ATTR rcm_isr_handler(void* arg)
 void rcm_init(void)
 {
     if (board_config.rcm) {
-        rcm_semhr = xSemaphoreCreateBinary();
-
         gpio_config_t io_conf = {};
 
         io_conf.mode = GPIO_MODE_OUTPUT;
@@ -51,7 +47,9 @@ void rcm_init(void)
 bool rcm_test(void)
 {
     do_test = true;
+
     test_triggered = false;
+
     gpio_set_level(board_config.rcm_test_gpio, 1);
     vTaskDelay(pdMS_TO_TICKS(100));
     gpio_set_level(board_config.rcm_test_gpio, 0);
@@ -66,4 +64,13 @@ bool rcm_was_triggered(void)
     bool _triggered = triggered;
     triggered = false;
     return _triggered;
+}
+
+bool rcm_is_triggered(void)
+{
+    if (board_config.rcm) {
+        return gpio_get_level(board_config.rcm_gpio);
+    } else {
+        return false;
+    }
 }

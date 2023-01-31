@@ -7,7 +7,7 @@
 #include "wifi.h"
 #include "rest.h"
 
-static void restart_fucn(void* arg)
+static void restart_func(void* arg)
 {
     vTaskDelay(pdMS_TO_TICKS(5000));
 
@@ -18,7 +18,7 @@ static void restart_fucn(void* arg)
 
 void timeout_restart()
 {
-    xTaskCreate(restart_fucn, "restart_task", 2 * 1024, NULL, 10, NULL);
+    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
 }
 
 typedef struct

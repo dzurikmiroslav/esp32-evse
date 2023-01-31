@@ -37,25 +37,13 @@ void pilot_set_level(bool level);
  */
 void pilot_set_amps(uint16_t amps);
 
+
 /**
  * @brief Measure pilot up and down voltage
  * 
+ * @param up_voltage 
+ * @param down_voltage_n12 true when down volage is -12V tolerant otherwise false
  */
-void pilot_measure(void);
-
-/**
- * @brief After pilot_measure, return up measured value
- * 
- * @return pilot_voltage_t 
- */
-pilot_voltage_t pilot_get_up_voltage(void);
-
-/**
- * @brief After pilot_measure, return down voltage is -12V tollerant
- * 
- * @return true when down volage is -12V tolerant
- * @return false when down volage are greater than -12V tolerant
- */
-bool pilot_is_down_voltage_n12(void);
+void pilot_measure(pilot_voltage_t *up_voltage, bool *down_voltage_n12);
 
 #endif /* PILOT_H_ */
