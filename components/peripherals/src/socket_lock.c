@@ -13,7 +13,7 @@
 #define NVS_NAMESPACE           "socket_lock"
 #define NVS_OPERATING_TIME      "op_time"
 #define NVS_BREAK_TIME          "break_time"
-#define NVS_RETRUY_COUNT        "retry_count"
+#define NVS_RETRY_COUNT         "retry_count"
 #define NVS_DETECTION_HIGH      "detect_hi"
 
 #define OPERATING_TIME_MIN      100
@@ -21,8 +21,8 @@
 
 #define LOCK_BIT                BIT0
 #define UNLOCK_BIT              BIT1
-#define REPEATE_LOCK_BIT        BIT2
-#define REPEATE_UNLOCK_BIT      BIT3
+#define REPEAT_LOCK_BIT         BIT2
+#define REPEAT_UNLOCK_BIT       BIT3
 
 static const char* TAG = "socket_lock";
 
@@ -63,7 +63,7 @@ static void socket_lock_task_func(void* param)
                 attempt = retry_count;
             }
 
-            if (notification & (LOCK_BIT | REPEATE_LOCK_BIT)) {
+            if (notification & (LOCK_BIT | REPEAT_LOCK_BIT)) {
                 gpio_set_level(board_config.socket_lock_a_gpio, 1);
                 gpio_set_level(board_config.socket_lock_b_gpio, 0);
                 vTaskDelay(pdMS_TO_TICKS(operating_time));
@@ -75,7 +75,7 @@ static void socket_lock_task_func(void* param)
                     if (attempt > 1) {
                         ESP_LOGW(TAG, "Not locked yet, repeating...");
                         attempt--;
-                        xTaskNotify(socket_lock_task, REPEATE_LOCK_BIT, eSetBits);
+                        xTaskNotify(socket_lock_task, REPEAT_LOCK_BIT, eSetBits);
                     } else {
                         ESP_LOGE(TAG, "Not locked");
                         status = SOCKED_LOCK_STATUS_LOCKING_FAIL;
@@ -86,7 +86,7 @@ static void socket_lock_task_func(void* param)
                 gpio_set_level(board_config.socket_lock_b_gpio, 0);
             }
 
-            if (notification & (UNLOCK_BIT | REPEATE_UNLOCK_BIT)) {
+            if (notification & (UNLOCK_BIT | REPEAT_UNLOCK_BIT)) {
                 gpio_set_level(board_config.socket_lock_a_gpio, 0);
                 gpio_set_level(board_config.socket_lock_b_gpio, 1);
                 vTaskDelay(pdMS_TO_TICKS(operating_time));
@@ -98,7 +98,7 @@ static void socket_lock_task_func(void* param)
                     if (attempt > 1) {
                         ESP_LOGW(TAG, "Not unlocked yet, repeating...");
                         attempt--;
-                        xTaskNotify(socket_lock_task, REPEATE_UNLOCK_BIT, eSetBits);
+                        xTaskNotify(socket_lock_task, REPEAT_UNLOCK_BIT, eSetBits);
                     } else {
                         ESP_LOGE(TAG, "Not unlocked");
                         status = SOCKED_LOCK_STATUS_UNLOCKING_FAIL;
@@ -127,7 +127,7 @@ void socket_lock_init(void)
 
         nvs_get_u16(nvs, NVS_BREAK_TIME, &break_time);
 
-        nvs_get_u8(nvs, NVS_RETRUY_COUNT, &retry_count);
+        nvs_get_u8(nvs, NVS_RETRY_COUNT, &retry_count);
 
         uint8_t u8;
         if (nvs_get_u8(nvs, NVS_DETECTION_HIGH, &u8) == ESP_OK) {
@@ -188,7 +188,7 @@ uint8_t socket_lock_get_retry_count(void)
 void socket_lock_set_retry_count(uint8_t _retry_count)
 {
     retry_count = _retry_count;
-    nvs_set_u8(nvs, NVS_RETRUY_COUNT, retry_count);
+    nvs_set_u8(nvs, NVS_RETRY_COUNT, retry_count);
     nvs_commit(nvs);
 }
 

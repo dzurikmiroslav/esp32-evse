@@ -33,7 +33,6 @@ typedef enum
     EVSE_STATE_F
 } evse_state_t;
 
-
 /**
  * @brief Initialize evse
  *
@@ -72,7 +71,7 @@ uint32_t evse_get_error(void);
  *
  * @return current in A*10
  */
-uint16_t evse_get_chaging_current(void);
+uint16_t evse_get_charging_current(void);
 
 /**
  * @brief Set charging current
@@ -80,14 +79,14 @@ uint16_t evse_get_chaging_current(void);
  * @param charging_current current in A*10
  * @return esp_err_t 
  */
-esp_err_t evse_set_chaging_current(uint16_t charging_current);
+esp_err_t evse_set_charging_current(uint16_t charging_current);
 
 /**
  * @brief Get default charging current, stored in NVS
  *
  * @return current in A*10
  */
-uint16_t evse_get_default_chaging_current(void);
+uint16_t evse_get_default_charging_current(void);
 
 /**
  * @brief Set default charging current, stored in NVS
@@ -95,7 +94,7 @@ uint16_t evse_get_default_chaging_current(void);
  * @param charging_current current in A*10
  * @return esp_err_t 
  */
-esp_err_t evse_set_default_chaging_current(uint16_t charging_current);
+esp_err_t evse_set_default_charging_current(uint16_t charging_current);
 
 /**
  * @brief Is required authorization to start charging, stored in NVS
@@ -173,7 +172,7 @@ esp_err_t evse_set_socket_outlet(bool socket_outlet);
 bool evse_get_socket_outlet(void);
 
 /**
- * @brief Set residaul current monitoring, stored in NVS
+ * @brief Set residual current monitoring, stored in NVS
  * 
  * @param rcm 
  * @return esp_err_t 
@@ -181,12 +180,27 @@ bool evse_get_socket_outlet(void);
 esp_err_t evse_set_rcm(bool rcm);
 
 /**
- * @brief Get residaul current monitoring, stored in NVS
+ * @brief Get residual current monitoring, stored in NVS
  * 
  * @return true 
  * @return false 
  */
 bool evse_is_rcm(void);
+
+/**
+ * @brief Set temperature threshold, stored in NVS
+ * 
+ * @param rcm temperature in dg. C
+ * @return esp_err_t 
+ */
+esp_err_t evse_set_temp_threshold(uint8_t temp_threshold);
+
+/**
+ * @brief Get temperature threshold, stored in NVS
+ * 
+ * @return temperature in dg.C
+ */
+uint8_t evse_get_temp_threshold(void);
 
 /**
  * @brief Set consumption limit

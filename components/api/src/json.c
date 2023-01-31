@@ -35,11 +35,12 @@ cJSON* json_get_evse_config(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_chaging_current() / 10.0);
-    cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_chaging_current() / 10.0);
+    cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_charging_current() / 10.0);
+    cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_charging_current() / 10.0);
     cJSON_AddBoolToObject(root, "requireAuth", evse_is_require_auth());
     cJSON_AddBoolToObject(root, "socketOutlet", evse_get_socket_outlet());
     cJSON_AddBoolToObject(root, "rcm", evse_is_rcm());
+    cJSON_AddNumberToObject(root, "temperatureThreshold", evse_get_temp_threshold());
     cJSON_AddNumberToObject(root, "consumptionLimit", evse_get_consumption_limit());
     cJSON_AddNumberToObject(root, "defaultConsumptionLimit", evse_get_default_consumption_limit());
     cJSON_AddNumberToObject(root, "elapsedLimit", evse_get_elapsed_limit());
@@ -66,10 +67,10 @@ cJSON* json_get_evse_config(void)
 esp_err_t json_set_evse_config(cJSON* root)
 {
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
-        RETURN_ON_ERROR(evse_set_chaging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10));
+        RETURN_ON_ERROR(evse_set_charging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10));
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultChargingCurrent"))) {
-        RETURN_ON_ERROR(evse_set_default_chaging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble * 10));
+        RETURN_ON_ERROR(evse_set_default_charging_current(cJSON_GetObjectItem(root, "defaultChargingCurrent")->valuedouble * 10));
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(root, "requireAuth"))) {
         evse_set_require_auth(cJSON_IsTrue(cJSON_GetObjectItem(root, "requireAuth")));
@@ -79,6 +80,9 @@ esp_err_t json_set_evse_config(cJSON* root)
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(root, "rcm"))) {
         RETURN_ON_ERROR(evse_set_rcm(cJSON_IsTrue(cJSON_GetObjectItem(root, "rcm"))));
+    }
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "temperatureThreshold"))) {
+        RETURN_ON_ERROR(evse_set_temp_threshold(cJSON_GetObjectItem(root, "temperatureThreshold")->valuedouble));
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "consumptionLimit"))) {
         evse_set_consumption_limit(cJSON_GetObjectItem(root, "consumptionLimit")->valuedouble);
@@ -318,7 +322,39 @@ cJSON* json_get_state(void)
     cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
     cJSON_AddBoolToObject(root, "limitReached", evse_is_limit_reached());
-    cJSON_AddNumberToObject(root, "error", evse_get_error()); // TODO format
+
+    uint32_t error = evse_get_error();
+    if (error == 0) {
+        cJSON_AddNullToObject(root, "errors");
+    } else {
+        cJSON* errors = cJSON_CreateArray();
+        if (error & EVSE_ERR_PILOT_FAULT_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("pilot_fault"));
+        }
+        if (error & EVSE_ERR_DIODE_SHORT_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("diode_short"));
+        }
+        if (error & EVSE_ERR_LOCK_FAULT_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("lock_fault"));
+        }
+        if (error & EVSE_ERR_UNLOCK_FAULT_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("unlock_fault"));
+        }
+        if (error & EVSE_ERR_RCM_TRIGGERED_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("rcm_triggered"));
+        }
+        if (error & EVSE_ERR_RCM_SELFTEST_FAULT_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("rcm_selftest_fault"));
+        }
+        if (error & EVSE_ERR_TEMPERATURE_HIGH_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("temperature_high"));
+        }
+        if (error & EVSE_ERR_TEMPERATURE_FAULT_BIT) {
+            cJSON_AddItemToArray(errors, cJSON_CreateString("temperature_fault"));
+        }
+        cJSON_AddItemToObject(root, "errors", errors);
+    }
+
     cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
     cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
     cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());
@@ -395,6 +431,7 @@ cJSON* json_get_board_config(void)
     cJSON_AddBoolToObject(root, "proximity", board_config.proximity);
     cJSON_AddNumberToObject(root, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
     cJSON_AddBoolToObject(root, "rcm", board_config.rcm);
+    cJSON_AddBoolToObject(root, "temperatureSensor", board_config.temp_sensor);
     switch (board_config.energy_meter) {
     case BOARD_CONFIG_ENERGY_METER_CUR:
         cJSON_AddStringToObject(root, "energyMeter", "cur");

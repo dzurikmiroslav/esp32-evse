@@ -19,14 +19,14 @@
 #define MODBUS_REG_ENABLED              102
 #define MODBUS_REG_PENDING_AUTH         103
 #define MODBUS_REG_CHR_CURRENT          104
-#define MODBUS_REG_CONSUMTION_LIM       105 // 2 word
+#define MODBUS_REG_CONSUMPTION_LIM      105 // 2 word
 #define MODBUS_REG_ELAPSED_LIM          107 // 2 word
 #define MODBUS_REG_UNDER_POWER_LIM      109
 #define MODBUS_REG_AUTHORISE            110
 
 #define MODBUS_REG_EMETER_POWER         200
 #define MODBUS_REG_EMETER_ELAPSED       201 // 2 word
-#define MODBUS_REG_EMETER_CONSUMTION    203 // 2 word
+#define MODBUS_REG_EMETER_CONSUMPTION   203 // 2 word
 #define MODBUS_REG_EMETER_L1_VTL        205 // 2 word
 #define MODBUS_REG_EMETER_L2_VTL        207 // 2 word
 #define MODBUS_REG_EMETER_L3_VTL        209 // 2 word
@@ -36,18 +36,19 @@
 
 #define MODBUS_REG_SOCKET_OUTLET        300
 #define MODBUS_REG_RCM                  301
-#define MODBUS_REG_REQ_AUTH             302
-#define MODBUS_REG_DEF_CHR_CURRENT      303
-#define MODBUS_REG_DEF_CONSUMTION_LIM   304 //2 word
-#define MODBUS_REG_DEF_ELAPSED_LIM      306 //2 word
-#define MODBUS_REG_DEF_UNDER_POWER_LIM  308 
-#define MODBUS_REG_LOCK_OPERATING_TIME  309 
-#define MODBUS_REG_LOCK_BRAKE_TIME      310
-#define MODBUS_REG_LOCK_DET_HI          311
-#define MODBUS_REG_LOCK_RET_COUNT       312
-#define MODBUS_REG_EMETER_MODE          313
-#define MODBUS_REG_EMETER_AC_VLT        314
-#define MODBUS_REG_EMETER_PULSE_AMOUNT  315
+#define MODBUS_REG_TEMP_THRESHOLD       302
+#define MODBUS_REG_REQ_AUTH             303
+#define MODBUS_REG_DEF_CHR_CURRENT      304
+#define MODBUS_REG_DEF_CONSUMPTION_LIM   305 //2 word
+#define MODBUS_REG_DEF_ELAPSED_LIM      307 //2 word
+#define MODBUS_REG_DEF_UNDER_POWER_LIM  309 
+#define MODBUS_REG_LOCK_OPERATING_TIME  310 
+#define MODBUS_REG_LOCK_BRAKE_TIME      311
+#define MODBUS_REG_LOCK_DET_HI          312
+#define MODBUS_REG_LOCK_RET_COUNT       313
+#define MODBUS_REG_EMETER_MODE          314
+#define MODBUS_REG_EMETER_AC_VLT        315
+#define MODBUS_REG_EMETER_PULSE_AMOUNT  316
 
 #define MODBUS_REG_UPTIME               400 //2 word
 #define MODBUS_REG_APP_VERSION          402 //16 word  
@@ -103,12 +104,12 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         *value = evse_is_pending_auth();
         break;
     case MODBUS_REG_CHR_CURRENT:
-        *value = evse_get_chaging_current();
+        *value = evse_get_charging_current();
         break;
-    case MODBUS_REG_CONSUMTION_LIM:
+    case MODBUS_REG_CONSUMPTION_LIM:
         *value = UINT32_GET_HI(evse_get_consumption_limit());
         break;
-    case MODBUS_REG_CONSUMTION_LIM + 1:
+    case MODBUS_REG_CONSUMPTION_LIM + 1:
         *value = UINT32_GET_LO(evse_get_consumption_limit());
         break;
     case MODBUS_REG_ELAPSED_LIM:
@@ -129,10 +130,10 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
     case MODBUS_REG_EMETER_ELAPSED + 1:
         *value = UINT32_GET_LO(energy_meter_get_session_elapsed());
         break;
-    case MODBUS_REG_EMETER_CONSUMTION:
+    case MODBUS_REG_EMETER_CONSUMPTION:
         *value = UINT32_GET_HI(energy_meter_get_session_consumption());
         break;
-    case MODBUS_REG_EMETER_CONSUMTION + 1:
+    case MODBUS_REG_EMETER_CONSUMPTION + 1:
         *value = UINT32_GET_LO(energy_meter_get_session_consumption());
         break;
     case MODBUS_REG_EMETER_L1_VTL:
@@ -177,16 +178,19 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
     case MODBUS_REG_RCM:
         *value = evse_is_rcm();
         break;
+    case MODBUS_REG_TEMP_THRESHOLD:
+        *value = evse_get_temp_threshold();
+        break;
     case MODBUS_REG_REQ_AUTH:
         *value = evse_is_require_auth();
         break;
     case MODBUS_REG_DEF_CHR_CURRENT:
-        *value = evse_get_default_chaging_current();
+        *value = evse_get_default_charging_current();
         break;
-    case MODBUS_REG_DEF_CONSUMTION_LIM:
+    case MODBUS_REG_DEF_CONSUMPTION_LIM:
         *value = UINT32_GET_HI(evse_get_default_consumption_limit());
         break;
-    case MODBUS_REG_DEF_CONSUMTION_LIM + 1:
+    case MODBUS_REG_DEF_CONSUMPTION_LIM + 1:
         *value = UINT32_GET_LO(evse_get_default_consumption_limit());
         break;
     case MODBUS_REG_DEF_ELAPSED_LIM:
@@ -249,23 +253,18 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         evse_set_enabled(value);
         break;
     case MODBUS_REG_CHR_CURRENT:
-        if (evse_set_chaging_current(value) != ESP_OK) {
+        if (evse_set_charging_current(value) != ESP_OK) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         break;
-    case MODBUS_REG_DEF_CHR_CURRENT:
-        if (evse_set_default_chaging_current(value) != ESP_OK) {
-            return MODBUS_EX_ILLEGAL_DATA_VALUE;
-        }
-        break;
-    case MODBUS_REG_CONSUMTION_LIM:
+    case MODBUS_REG_CONSUMPTION_LIM:
         if (left > 0) {
             evse_set_consumption_limit(value << 16 | MODBUS_READ_UINT16(buffer, 2));
         } else {
             return MODBUS_EX_ILLEGAL_DATA_ADDRESS;
         }
         break;
-    case MODBUS_REG_CONSUMTION_LIM + 1:
+    case MODBUS_REG_CONSUMPTION_LIM + 1:
         break;
     case MODBUS_REG_ELAPSED_LIM:
         if (left > 0) {
@@ -284,6 +283,96 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         evse_authorize();
+        break;
+    case MODBUS_REG_SOCKET_OUTLET:
+        if (value != 0 || value != 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        if (evse_set_socket_outlet(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_RCM:
+        if (value != 0 || value != 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        if (evse_set_rcm(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_TEMP_THRESHOLD:
+        if (evse_set_temp_threshold(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_REQ_AUTH:
+        if (value != 0 || value != 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        evse_set_require_auth(value);
+        break;
+    case MODBUS_REG_DEF_CHR_CURRENT:
+        if (evse_set_default_charging_current(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_DEF_CONSUMPTION_LIM:
+        if (left > 0) {
+            evse_set_default_consumption_limit(value << 16 | MODBUS_READ_UINT16(buffer, 2));
+        } else {
+            return MODBUS_EX_ILLEGAL_DATA_ADDRESS;
+        }
+        break;
+    case MODBUS_REG_DEF_CONSUMPTION_LIM + 1:
+        break;
+    case MODBUS_REG_DEF_ELAPSED_LIM:
+        if (left > 0) {
+            evse_set_default_elapsed_limit(value << 16 | MODBUS_READ_UINT16(buffer, 2));
+        } else {
+            return MODBUS_EX_ILLEGAL_DATA_ADDRESS;
+        }
+        break;
+    case MODBUS_REG_DEF_ELAPSED_LIM + 1:
+        break;
+    case MODBUS_REG_DEF_UNDER_POWER_LIM:
+        evse_set_default_under_power_limit(value);
+        break;
+    case MODBUS_REG_LOCK_OPERATING_TIME:
+        if (socket_lock_set_operating_time(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_LOCK_BRAKE_TIME:
+        if (socket_lock_set_break_time(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_LOCK_DET_HI:
+        if (value != 0 || value != 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        socket_lock_set_detection_high(value);
+        break;
+    case MODBUS_REG_LOCK_RET_COUNT:
+        if (value > UINT8_MAX) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        socket_lock_set_retry_count(value);
+        break;
+    case MODBUS_REG_EMETER_MODE:
+        if (energy_meter_set_mode(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_EMETER_AC_VLT:
+        if (energy_meter_set_ac_voltage(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        break;
+    case MODBUS_REG_EMETER_PULSE_AMOUNT:
+        if (energy_meter_set_pulse_amount(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
         break;
     case MODBUS_REG_RESTART:
         if (value != 1) {

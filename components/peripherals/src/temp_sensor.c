@@ -73,33 +73,6 @@ uint8_t temp_sensor_count(void)
     return sensor_count;
 }
 
-// esp_err_t temp_sensor_measure()
-// {
-//     if (sensor_count == 0) {
-//         return ESP_ERR_NOT_SUPPORTED;
-//     }
-
-//     int16_t temps[MAX_SENSORS];
-
-//     esp_err_t ret = ds18x20_measure_and_read_multi(board_config.temp_sensor_gpio, sensor_addrs, sensor_count, temps);
-//     if (ret != ESP_OK) {
-//         return ret;
-//     }
-
-//     int16_t low = INT16_MAX;
-//     int16_t high = INT16_MIN;
-
-//     for (int i = 0; i < sensor_count; i++) {
-//         low = MIN(low, temps[i]);
-//         high = MAX(high, temps[i]);
-//     }
-
-//     low_temp = low;
-//     high_temp = high;
-
-//     return ret;
-// }
-
 int16_t temp_sensor_get_low(void)
 {
     return low_temp;

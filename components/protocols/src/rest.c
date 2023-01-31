@@ -678,7 +678,7 @@ void rest_init(void)
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.max_uri_handlers = 10;
     config.max_open_sockets = 3;
-    //config.lru_purge_enable = true;
+    config.lru_purge_enable = true;
 
     ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
     ESP_ERROR_CHECK(httpd_start(&server, &config));

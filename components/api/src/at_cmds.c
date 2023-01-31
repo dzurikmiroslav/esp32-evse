@@ -12,7 +12,7 @@
 #include "proximity.h"
 
 
-bool at_echo = true;
+bool at_echo = false;
 
 static uint8_t var_u8_1;
 static uint8_t var_u8_2;
@@ -23,9 +23,6 @@ static int32_t var_i32_1;
 static char var_str32_1[32];
 static char var_str32_2[32];
 
-//static struct cat_object at;
-
-
 static cat_return_state cmd_cmd_run(const struct cat_command* cmd)
 {
     return CAT_RETURN_STATE_PRINT_CMD_LIST_OK;
@@ -33,7 +30,7 @@ static cat_return_state cmd_cmd_run(const struct cat_command* cmd)
 
 static cat_return_state cmd_echo_run(const struct cat_command* cmd)
 {
-    at_echo = (cmd->name[strlen(cmd->name) - 1] == '1') ? 1 : 0;
+    at_echo = cmd->name[strlen(cmd->name) - 1] == '1';
 
     return CAT_RETURN_STATE_OK;
 }
@@ -274,14 +271,14 @@ static struct cat_variable vars_serial_config[] = {
 
 static int var_charging_current_read(const struct cat_variable* var, const struct cat_command* cmd)
 {
-    var_u16_1 = evse_get_chaging_current();
+    var_u16_1 = evse_get_charging_current();
 
     return 0;
 }
 
 static int var_charging_current_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
 {
-    return evse_set_chaging_current(var_u16_1) != ESP_OK;
+    return evse_set_charging_current(var_u16_1) != ESP_OK;
 }
 
 static struct cat_variable vars_charging_current[] = {
@@ -298,14 +295,14 @@ static struct cat_variable vars_charging_current[] = {
 
 static int var_default_charging_current_read(const struct cat_variable* var, const struct cat_command* cmd)
 {
-    var_u16_1 = evse_get_default_chaging_current();
+    var_u16_1 = evse_get_default_charging_current();
 
     return 0;
 }
 
 static int var_default_charging_current_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
 {
-    return evse_set_default_chaging_current(var_u16_1) != ESP_OK;
+    return evse_set_default_charging_current(var_u16_1) != ESP_OK;
 }
 
 static struct cat_variable vars_default_charging_current[] = {

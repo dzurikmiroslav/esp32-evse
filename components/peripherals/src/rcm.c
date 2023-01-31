@@ -6,8 +6,6 @@
 
 static const char* TAG = "rcm";
 
-SemaphoreHandle_t rcm_semhr;
-
 static bool do_test = false;
 
 static bool triggered = false;
@@ -32,8 +30,6 @@ static void IRAM_ATTR rcm_isr_handler(void* arg)
 void rcm_init(void)
 {
     if (board_config.rcm) {
-        rcm_semhr = xSemaphoreCreateBinary();
-
         gpio_config_t io_conf = {};
 
         io_conf.mode = GPIO_MODE_OUTPUT;

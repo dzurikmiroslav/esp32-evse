@@ -18,13 +18,16 @@
 
 #define CHARGING_CURRENT_MIN            60
 #define AUTHORIZED_TIME                 60000  // 60sec
-#define ERROR_WAIT_TIME                 6000  // 60sec
+#define ERROR_WAIT_TIME                 60000  // 60sec
 #define UNDER_POWER_TIME                60000  // 60sec
+#define TEMP_THRESHOLD_MIN              40
+#define TEMP_THRESHOLD_MAX              80
 
 #define NVS_NAMESPACE                   "evse"
 #define NVS_DEFAULT_CHARGING_CURRENT    "def_chrg_curr"
 #define NVS_SOCKET_OUTLET               "socket_outlet"
 #define NVS_RCM                         "rcm"
+#define NVS_TEMP_THRESHOLD              "temp_threshold"
 #define NVS_REQUIRE_AUTH                "require_auth"
 #define NVS_DEFAULT_CONSUMPTION_LIMIT   "def_cons_lim"
 #define NVS_DEFAULT_ELAPSED_LIMIT       "def_elap_lim"
@@ -59,6 +62,8 @@ static uint8_t reached_limit = 0;
 static bool socket_outlet = false;
 
 static bool rcm = false;
+
+static uint8_t temp_threshold = 60;
 
 static bool enabled = true;
 
@@ -181,46 +186,6 @@ static void clear_error_bits(uint32_t bits)
     error_cleared |= has_error && error == 0;
 }
 
-static void state_update(void)
-{
-    if (error) {
-        goto err_state;
-    }
-
-    switch (state)
-    {
-    case EVSE_STATE_A:
-        authorized = false;
-        reached_limit = 0;
-        under_power_start_time = 0;
-        break;
-    case EVSE_STATE_B:
-        if (!authorized) {
-            if (require_auth) {
-                authorized = auth_grant_to >= xTaskGetTickCount();
-                auth_grant_to = 0;
-            } else {
-                authorized = true;
-            }
-        }
-        if (!enabled || !authorized || reached_limit > 0) {
-            set_pilot(PILOT_STATE_12V);
-        } else {
-            set_pilot(PILOT_STATE_PWM);
-        }
-        break;
-    case EVSE_STATE_C:
-    case EVSE_STATE_D:
-        break;
-    case EVSE_STATE_E:
-    case EVSE_STATE_F:
-    err_state:
-        // authorized = false;
-        // reached_limit = 0;
-        break;
-    }
-}
-
 static bool can_goto_state_c(void)
 {
     if (!enabled) {
@@ -294,7 +259,7 @@ void evse_process(void)
     }
 
     if (board_config.temp_sensor) {
-        if (temp_sensor_get_high() > 2900) {
+        if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
         } else {
             clear_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
@@ -434,13 +399,6 @@ void evse_process(void)
         }
     }
 
-
-    // if (next_state != state || next_error != error) {
-    //     set_state(next_state);
-    // }
-
-   // state_update();
-
     apply_state();
 
     error_cleared = false;
@@ -487,6 +445,8 @@ void evse_init()
         rcm = u8;
     }
 
+    nvs_get_u8(nvs, NVS_TEMP_THRESHOLD, &temp_threshold);
+
     nvs_get_u32(nvs, NVS_DEFAULT_CONSUMPTION_LIMIT, &consumption_limit);
 
     nvs_get_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, &elapsed_limit);
@@ -508,12 +468,12 @@ uint32_t evse_get_error(void)
     return error;
 }
 
-uint16_t evse_get_chaging_current(void)
+uint16_t evse_get_charging_current(void)
 {
     return charging_current;
 }
 
-esp_err_t evse_set_chaging_current(uint16_t value)
+esp_err_t evse_set_charging_current(uint16_t value)
 {
     ESP_LOGI(TAG, "Set charging current %dA*10", value);
 
@@ -535,14 +495,14 @@ esp_err_t evse_set_chaging_current(uint16_t value)
     return ESP_OK;
 }
 
-uint16_t evse_get_default_chaging_current(void)
+uint16_t evse_get_default_charging_current(void)
 {
     uint16_t value = board_config.max_charging_current * 10;
     nvs_get_u16(nvs, NVS_DEFAULT_CHARGING_CURRENT, &value);
     return value;
 }
 
-esp_err_t evse_set_default_chaging_current(uint16_t value)
+esp_err_t evse_set_default_charging_current(uint16_t value)
 {
     ESP_LOGI(TAG, "Set default charging current %dA*10", value);
 
@@ -584,7 +544,7 @@ esp_err_t evse_set_rcm(bool _rcm)
     ESP_LOGI(TAG, "Set rcm %d", _rcm);
 
     if (_rcm && !board_config.rcm) {
-        ESP_LOGE(TAG, "Cant residual current minitor not available");
+        ESP_LOGE(TAG, "Cant residual current monitor not available");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -605,6 +565,28 @@ esp_err_t evse_set_rcm(bool _rcm)
 bool evse_is_rcm(void)
 {
     return rcm;
+}
+
+esp_err_t evse_set_temp_threshold(uint8_t _temp_threshold)
+{
+    ESP_LOGI(TAG, "Set temperature threshold %ddg.C", _temp_threshold);
+
+    if (_temp_threshold < TEMP_THRESHOLD_MIN || _temp_threshold > TEMP_THRESHOLD_MAX) {
+        ESP_LOGE(TAG, "Temperature threshold out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    temp_threshold = _temp_threshold;
+
+    nvs_set_u8(nvs, NVS_TEMP_THRESHOLD, temp_threshold);
+    nvs_commit(nvs);
+
+    return ESP_OK;
+}
+
+uint8_t evse_get_temp_threshold(void)
+{
+    return temp_threshold;
 }
 
 bool evse_is_require_auth(void)
