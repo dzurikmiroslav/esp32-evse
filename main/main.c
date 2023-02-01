@@ -259,8 +259,9 @@ void app_main(void)
     protocols_init();
     evse_init();
     button_init();
-
+#ifndef CONFIG_ESP_CONSOLE_UART
     esp_log_set_vprintf(log_vprintf);
+#endif
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 5, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 5, &user_input_task);
