@@ -32,17 +32,17 @@ typedef struct
 
     gpio_num_t pilot_pwm_gpio;
     adc_channel_t pilot_adc_channel;
-    uint16_t pilot_down_treshold_12;
-    uint16_t pilot_down_treshold_9;
-    uint16_t pilot_down_treshold_6;
-    uint16_t pilot_down_treshold_3;
-    uint16_t pilot_down_treshold_n12;
+    uint16_t pilot_down_threshold_12;
+    uint16_t pilot_down_threshold_9;
+    uint16_t pilot_down_threshold_6;
+    uint16_t pilot_down_threshold_3;
+    uint16_t pilot_down_threshold_n12;
 
     bool proximity : 1;
     adc_channel_t proximity_adc_channel;
-    uint16_t proximity_down_treshold_13;
-    uint16_t proximity_down_treshold_20;
-    uint16_t proximity_down_treshold_32;
+    uint16_t proximity_down_threshold_13;
+    uint16_t proximity_down_threshold_20;
+    uint16_t proximity_down_threshold_32;
 
     uint8_t max_charging_current;
 
@@ -94,10 +94,11 @@ typedef struct
     gpio_num_t serial_3_rxd_gpio;
     gpio_num_t serial_3_txd_gpio;
     gpio_num_t serial_3_rts_gpio;
-#endif
+#endif /* SOC_UART_NUM > 2 */
 
-    bool temp_sensor : 1;
-    gpio_num_t temp_sensor_gpio;
+    bool onewire : 1;
+    gpio_num_t onewire_gpio;
+    bool onewire_temp_sensor : 1;
 } board_config_t;
 
 extern board_config_t board_config;

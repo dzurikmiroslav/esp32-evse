@@ -87,19 +87,19 @@ void board_config_load()
                     SET_CONFIG_VALUE("LED_ERROR_GPIO", led_error_gpio, atoi);
                     SET_CONFIG_VALUE("LED_WIFI", led_wifi, atob);
                     SET_CONFIG_VALUE("LED_WIFI_GPIO", led_wifi_gpio, atoi);
-                    SET_CONFIG_VALUE("BUTTION_WIFI_GPIO", button_wifi_gpio, atoi);
+                    SET_CONFIG_VALUE("BUTTON_WIFI_GPIO", button_wifi_gpio, atoi);
                     SET_CONFIG_VALUE("PILOT_PWM_GPIO", pilot_pwm_gpio, atoi);
                     SET_CONFIG_VALUE("PILOT_ADC_CHANNEL", pilot_adc_channel, atoi);
-                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_12", pilot_down_treshold_12, atoi);
-                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_9", pilot_down_treshold_9, atoi);
-                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_6", pilot_down_treshold_6, atoi);
-                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_3", pilot_down_treshold_3, atoi);
-                    SET_CONFIG_VALUE("PILOT_DOWN_TRESHOLD_N12", pilot_down_treshold_n12, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_THRESHOLD_12", pilot_down_threshold_12, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_THRESHOLD_9", pilot_down_threshold_9, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_THRESHOLD_6", pilot_down_threshold_6, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_THRESHOLD_3", pilot_down_threshold_3, atoi);
+                    SET_CONFIG_VALUE("PILOT_DOWN_THRESHOLD_N12", pilot_down_threshold_n12, atoi);
                     SET_CONFIG_VALUE("PROXIMITY", proximity, atob);
                     SET_CONFIG_VALUE("PROXIMITY_ADC_CHANNEL", proximity_adc_channel, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_DOWN_TRESHOLD_13", proximity_down_treshold_13, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_DOWN_TRESHOLD_20", proximity_down_treshold_20, atoi);
-                    SET_CONFIG_VALUE("PROXIMITY_DOWN_TRESHOLD_32", proximity_down_treshold_32, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_DOWN_THRESHOLD_13", proximity_down_threshold_13, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_DOWN_THRESHOLD_20", proximity_down_threshold_20, atoi);
+                    SET_CONFIG_VALUE("PROXIMITY_DOWN_THRESHOLD_32", proximity_down_threshold_32, atoi);
                     SET_CONFIG_VALUE("MAX_CHARGING_CURRENT", max_charging_current, atoi);
                     SET_CONFIG_VALUE("AC_RELAY_GPIO", ac_relay_gpio, atoi);
                     SET_CONFIG_VALUE("SOCKET_LOCK", socket_lock, atob);
@@ -150,8 +150,9 @@ void board_config_load()
                     SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);
 #endif /* CONFIG_ESP_CONSOLE_UART_NUM != 2 */
 #endif /* SOC_UART_NUM > 2 */
-                    SET_CONFIG_VALUE("TEMP_SENSOR", temp_sensor, atob);
-                    SET_CONFIG_VALUE("TEMP_SENSOR_GPIO", temp_sensor_gpio, atoi);
+                    SET_CONFIG_VALUE("ONEWIRE", onewire, atob);
+                    SET_CONFIG_VALUE("ONEWIRE_GPIO", onewire_gpio, atoi);
+                    SET_CONFIG_VALUE("ONEWIRE_TEMP_SENSOR", onewire_temp_sensor, atob);
 
                     ESP_LOGE(TAG, "Unknown config value %s=%s", key, value);
                 }

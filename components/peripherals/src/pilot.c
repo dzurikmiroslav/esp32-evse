@@ -98,20 +98,20 @@ void pilot_measure(pilot_voltage_t* up_voltage, bool* down_voltage_n12)
 
     ESP_LOGV(TAG, "Measure: %dmV - %dmV", low, high);
 
-    if (high >= board_config.pilot_down_treshold_12) {
+    if (high >= board_config.pilot_down_threshold_12) {
         *up_voltage = PILOT_VOLTAGE_12;
-    } else if (high >= board_config.pilot_down_treshold_9) {
+    } else if (high >= board_config.pilot_down_threshold_9) {
         *up_voltage = PILOT_VOLTAGE_9;
-    } else if (high >= board_config.pilot_down_treshold_6) {
+    } else if (high >= board_config.pilot_down_threshold_6) {
         *up_voltage = PILOT_VOLTAGE_6;
-    } else if (high >= board_config.pilot_down_treshold_3) {
+    } else if (high >= board_config.pilot_down_threshold_3) {
         *up_voltage = PILOT_VOLTAGE_3;
     } else {
         *up_voltage = PILOT_VOLTAGE_1;
     }
 
-    *down_voltage_n12 = low <= board_config.pilot_down_treshold_n12;
+    *down_voltage_n12 = low <= board_config.pilot_down_threshold_n12;
 
-    ESP_LOGV(TAG, "Up volate %d", *up_voltage);
-    ESP_LOGV(TAG, "Down volate belov 12V %d", *down_voltage_n12);
+    ESP_LOGV(TAG, "Up voltage %d", *up_voltage);
+    ESP_LOGV(TAG, "Down voltage below 12V %d", *down_voltage_n12);
 }

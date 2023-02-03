@@ -28,7 +28,7 @@ static void temp_sensor_task_func(void* param)
     while (true) {
         int16_t temps[MAX_SENSORS];
 
-        error = ds18x20_measure_and_read_multi(board_config.temp_sensor_gpio, sensor_addrs, sensor_count, temps);
+        error = ds18x20_measure_and_read_multi(board_config.onewire_gpio, sensor_addrs, sensor_count, temps);
         if (error == ESP_OK) {
             int16_t low = INT16_MAX;
             int16_t high = INT16_MIN;
@@ -47,11 +47,11 @@ static void temp_sensor_task_func(void* param)
 
 void temp_sensor_init(void)
 {
-    if (board_config.temp_sensor) {
-        gpio_reset_pin(board_config.temp_sensor_gpio);
+    if (board_config.onewire && board_config.onewire_temp_sensor) {
+        gpio_reset_pin(board_config.onewire_gpio);
 
         size_t found = 0;
-        ESP_ERROR_CHECK(ds18x20_scan_devices(board_config.temp_sensor_gpio, sensor_addrs, MAX_SENSORS, &found));
+        ESP_ERROR_CHECK(ds18x20_scan_devices(board_config.onewire_gpio, sensor_addrs, MAX_SENSORS, &found));
 
         if (found == 0) {
             error = ESP_ERR_NOT_FOUND;

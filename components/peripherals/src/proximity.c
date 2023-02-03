@@ -26,11 +26,11 @@ uint8_t proximity_get_max_current(void)
     ESP_LOGD(TAG, "Measured: %dmV", voltage);
 
     uint8_t current;
-    if (voltage >= board_config.proximity_down_treshold_13) {
+    if (voltage >= board_config.proximity_down_threshold_13) {
         current = 13;
-    } else if (voltage >= board_config.proximity_down_treshold_20) {
+    } else if (voltage >= board_config.proximity_down_threshold_20) {
         current = 20;
-    } else if (voltage >= board_config.proximity_down_treshold_32) {
+    } else if (voltage >= board_config.proximity_down_threshold_32) {
         current = 32;
     } else {
         current = 63;

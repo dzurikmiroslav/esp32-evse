@@ -17,40 +17,40 @@ J1772 EVSE firmware for ESP32 based devices.
 
 ### Device definition method
 
-_One firmware to rull them all._ Not really :-) one per device platform (ESP32, ESP32-S2...).
+_One firmware to rule them all._ Not really :-) one per device platform (ESP32, ESP32-S2...).
 
 There is no need to compile the firmware for your EVSE design.
-Source code ist not hardcoded to GPIOs or other harware design features.
-All code is writen in ESP-IDF without additional mapping layer like Arduino.
+Source code ist not hardcoded to GPIOs or other hardware design features.
+All code is written in ESP-IDF without additional mapping layer like Arduino.
 
-All configuration is writen outside firmware in configuration file named _board.cfg_ on dedicated parition.
-For example, on following sheme is minimal EVSE circuit with ESP32 devkit.
+All configuration is written outside firmware in configuration file named _board.cfg_ on dedicated partition.
+For example, on following scheme is minimal EVSE circuit with ESP32 devkit.
 
 ![Minimal circuit](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/minimal-circuit.png)
 
-For this circuit there is _board.cfg_, for more informations see [Wiki](https://github.com/dzurikmiroslav/esp32-evse/wiki/Board-config).
+For this circuit there is _board.cfg_, for more information's see [Wiki](https://github.com/dzurikmiroslav/esp32-evse/wiki/Board-config).
 
 
 ```bash
 #Device name
 DEVICE_NAME=ESP32 minimal EVSE
 #Button
-BUTTION_WIFI_GPIO=0
+BUTTON_WIFI_GPIO=0
 #Pilot  
 PILOT_PWM_GPIO=33
 PILOT_ADC_CHANNEL=7
-PILOT_DOWN_TRESHOLD_12=2410
-PILOT_DOWN_TRESHOLD_9=2104
-PILOT_DOWN_TRESHOLD_6=1797
-PILOT_DOWN_TRESHOLD_3=1491
-PILOT_DOWN_TRESHOLD_N12=265
+PILOT_DOWN_THRESHOLD_12=2410
+PILOT_DOWN_THRESHOLD_9=2104
+PILOT_DOWN_THRESHOLD_6=1797
+PILOT_DOWN_THRESHOLD_3=1491
+PILOT_DOWN_THRESHOLD_N12=265
 #AC relay
 AC_RELAY_GPIO=32
 ```
 
 ### Web interface
 
-Fully responsive web interface is accesible local network IP address on port 80.
+Fully responsive web interface is accessible local network IP address on port 80.
 
 Dashboard page
 
@@ -78,7 +78,7 @@ Dev board with basic functionality, single phase energy meter, RS485. One side p
 
 ESP32-S2 based EVSE with advanced functionality, three phase energy meter, RS485, UART, 1WIRE, RCM, socket lock.
 
-**Currenlty in development not tested!**
+**Currently in development not tested!**
 
 [EasyEDA project](https://oshwlab.com/dzurik.miroslav/esp32s2-diy-evse)
 

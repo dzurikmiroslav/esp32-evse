@@ -431,7 +431,7 @@ cJSON* json_get_board_config(void)
     cJSON_AddBoolToObject(root, "proximity", board_config.proximity);
     cJSON_AddNumberToObject(root, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
     cJSON_AddBoolToObject(root, "rcm", board_config.rcm);
-    cJSON_AddBoolToObject(root, "temperatureSensor", board_config.temp_sensor);
+    cJSON_AddBoolToObject(root, "temperatureSensor", board_config.onewire && board_config.onewire_temp_sensor);
     switch (board_config.energy_meter) {
     case BOARD_CONFIG_ENERGY_METER_CUR:
         cJSON_AddStringToObject(root, "energyMeter", "cur");

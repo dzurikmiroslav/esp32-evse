@@ -258,7 +258,7 @@ void evse_process(void)
         }
     }
 
-    if (board_config.temp_sensor) {
+    if (board_config.onewire && board_config.onewire_temp_sensor) {
         if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
         } else {
