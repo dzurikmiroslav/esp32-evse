@@ -48,7 +48,7 @@ static char password[32];
 
 static httpd_handle_t server = NULL;
 
-static bool autorize_req(httpd_req_t* req)
+static bool authorize_req(httpd_req_t* req)
 {
     if (!strlen(user) && !strlen(password)) {
         //no authentication
@@ -196,7 +196,7 @@ static esp_err_t root_get_handler(httpd_req_t* req)
 
 static esp_err_t web_get_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         const char* type;
         const char* buf_start;
         const char* buf_end;
@@ -254,14 +254,11 @@ static esp_err_t web_get_handler(httpd_req_t* req)
 
 static esp_err_t json_get_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         cJSON* root = NULL;
 
         if (strcmp(req->uri, "/api/v1/info") == 0) {
             root = json_get_info();
-        }
-        if (strcmp(req->uri, "/api/v1/state") == 0) {
-            root = json_get_state();
         }
         if (strcmp(req->uri, "/api/v1/boardConfig") == 0) {
             root = json_get_board_config();
@@ -328,7 +325,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
 
 static esp_err_t json_post_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         cJSON* root = read_request_json(req);
         const char* res_msg;
         esp_err_t ret = ESP_OK;
@@ -386,7 +383,7 @@ static esp_err_t json_post_handler(httpd_req_t* req)
 
 static esp_err_t restart_post_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
 
         evse_set_available(false);
@@ -401,7 +398,7 @@ static esp_err_t restart_post_handler(httpd_req_t* req)
 
 static esp_err_t state_post_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
         const char* res_msg;
 
@@ -429,7 +426,7 @@ static esp_err_t state_post_handler(httpd_req_t* req)
 
 static esp_err_t firmware_update_post_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         evse_set_available(false);
 
         httpd_resp_set_type(req, "text/plain");
@@ -477,7 +474,7 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
 
 static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         evse_set_available(false);
 
         httpd_resp_set_type(req, "text/plain");
@@ -580,7 +577,7 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 
 static esp_err_t board_config_raw_get_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         FILE* fd = fopen("/cfg/board.cfg", "r");
         if (!fd) {
             ESP_LOGE(TAG, "Failed to open board config");
@@ -618,7 +615,7 @@ static esp_err_t board_config_raw_get_handler(httpd_req_t* req)
 
 static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
 {
-    if (autorize_req(req)) {
+    if (authorize_req(req)) {
         FILE* fd = fopen("/cfg/board.cfg", "w");
         if (!fd) {
             ESP_LOGE(TAG, "Failed to open board config");
@@ -662,6 +659,20 @@ static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
     }
 }
 
+// static int sess_count = 0;
+
+// static void sess_on_close(httpd_handle_t hd, int sockfd)
+// {
+//     ESP_LOGW(TAG, "close %d (%d)", sockfd, --sess_count);
+//     close(sockfd);
+// }
+
+// static esp_err_t sess_n_open(httpd_handle_t hd, int sockfd)
+// {
+//     ESP_LOGW(TAG, "open %d (%d)", sockfd, ++sess_count);
+//     return ESP_OK;
+// }
+
 void rest_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
@@ -679,6 +690,8 @@ void rest_init(void)
     config.max_uri_handlers = 10;
     config.max_open_sockets = 3;
     config.lru_purge_enable = true;
+    // config.open_fn = sess_on_open;
+    // config.close_fn = sess_on_close;
 
     ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
     ESP_ERROR_CHECK(httpd_start(&server, &config));

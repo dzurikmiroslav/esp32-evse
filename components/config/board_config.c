@@ -140,7 +140,7 @@ void board_config_load()
                     SET_CONFIG_VALUE("SERIAL_2_RXD_GPIO", serial_2_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2_TXD_GPIO", serial_2_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2_RTS_GPIO", serial_2_rts_gpio, atoi);
-#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 0 */
+#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 1 */
 #if SOC_UART_NUM > 2
 #if CONFIG_ESP_CONSOLE_UART_NUM != 2
                     SET_CONFIG_VALUE("SERIAL_3", serial_3, atoser);
@@ -148,7 +148,7 @@ void board_config_load()
                     SET_CONFIG_VALUE("SERIAL_3_RXD_GPIO", serial_3_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_TXD_GPIO", serial_3_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);
-#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 0 */
+#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 2 */
 #endif /* SOC_UART_NUM > 2 */
                     SET_CONFIG_VALUE("TEMP_SENSOR", temp_sensor, atob);
                     SET_CONFIG_VALUE("TEMP_SENSOR_GPIO", temp_sensor_gpio, atoi);
