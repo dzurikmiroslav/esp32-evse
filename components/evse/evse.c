@@ -144,11 +144,6 @@ static void apply_state(void)
                     set_socket_lock(true);
                 }
             }
-            if (!enabled || !authorized || reached_limit > 0) {
-                set_pilot(PILOT_STATE_12V);
-            } else {
-                set_pilot(PILOT_STATE_PWM);
-            }
             ac_relay_set_state(false);
             break;
         case EVSE_STATE_C:
@@ -304,6 +299,11 @@ void evse_process(void)
                 } else {
                     authorized = true;
                 }
+            }
+            if (!enabled || !authorized || reached_limit > 0) {
+                set_pilot(PILOT_STATE_12V);
+            } else {
+                set_pilot(PILOT_STATE_PWM);
             }
             switch (pilot_voltage)
             {
@@ -638,7 +638,6 @@ void evse_set_enabled(bool _enabled)
         }
 
         apply_state();
-        //state_update();
     }
 
     xSemaphoreGive(mutex);
