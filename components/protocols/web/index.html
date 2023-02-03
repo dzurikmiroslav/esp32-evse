@@ -230,6 +230,14 @@
                 .catch(showError);
         }
 
+        function loadStateVisible() {
+            if (!document.hidden) {
+                loadState();
+            }
+        }
+
+        document.addEventListener('visibilitychange', loadStateVisible);
+
         document.addEventListener('DOMContentLoaded', () => {
             Promise.all([
                 fetch('/api/v1/boardConfig')
@@ -269,7 +277,7 @@
                 .catch(showError);
 
             loadState();
-            setInterval(loadState, 10000);
+            setInterval(loadStateVisible, 10000);
 
             const setChargingCurrent = debounce((value) => sendEvseSettings({ chargingCurrent: value }), 500);
             document.getElementById('chargingCurrent').addEventListener('input', event => {
