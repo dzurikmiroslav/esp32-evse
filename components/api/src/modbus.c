@@ -15,14 +15,14 @@
 #include "timeout_utils.h"
 
 #define MODBUS_REG_STATE                100
-#define MODBUS_REG_ERROR                101
-#define MODBUS_REG_ENABLED              102
-#define MODBUS_REG_PENDING_AUTH         103
-#define MODBUS_REG_CHR_CURRENT          104
-#define MODBUS_REG_CONSUMPTION_LIM      105 // 2 word
-#define MODBUS_REG_ELAPSED_LIM          107 // 2 word
-#define MODBUS_REG_UNDER_POWER_LIM      109
-#define MODBUS_REG_AUTHORISE            110
+#define MODBUS_REG_ERROR                101 // 2 word
+#define MODBUS_REG_ENABLED              103
+#define MODBUS_REG_PENDING_AUTH         104
+#define MODBUS_REG_CHR_CURRENT          105
+#define MODBUS_REG_CONSUMPTION_LIM      106 // 2 word
+#define MODBUS_REG_ELAPSED_LIM          108 // 2 word
+#define MODBUS_REG_UNDER_POWER_LIM      110
+#define MODBUS_REG_AUTHORISE            111
 
 #define MODBUS_REG_EMETER_POWER         200
 #define MODBUS_REG_EMETER_ELAPSED       201 // 2 word
@@ -95,7 +95,10 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         *value = evse_get_state();
         break;
     case MODBUS_REG_ERROR:
-        *value = evse_get_error();
+        *value = UINT32_GET_HI(evse_get_error());
+        break;
+    case MODBUS_REG_ERROR + 1:
+        *value = UINT32_GET_LO(evse_get_error());
         break;
     case MODBUS_REG_ENABLED:
         *value = evse_is_enabled();
