@@ -13,6 +13,7 @@
 #include "energy_meter.h"
 #include "socket_lock.h"
 #include "timeout_utils.h"
+#include "temp_sensor.h"
 
 #define MODBUS_REG_STATE                100
 #define MODBUS_REG_ERROR                101 // 2 word
@@ -51,8 +52,11 @@
 #define MODBUS_REG_EMETER_PULSE_AMOUNT  316
 
 #define MODBUS_REG_UPTIME               400 //2 word
-#define MODBUS_REG_APP_VERSION          402 //16 word  
-#define MODBUS_REG_RESTART              418
+#define MODBUS_REG_TEMP_LOW             402
+#define MODBUS_REG_TEMP_HIGH            403
+#define MODBUS_REG_TEMP_SENSOR_COUNT    404
+#define MODBUS_REG_APP_VERSION          405 //16 word
+#define MODBUS_REG_RESTART              421
 
 #define MODBUS_EX_NONE                  0x00
 #define MODBUS_EX_ILLEGAL_FUNCTION      0x01
@@ -231,6 +235,15 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         break;
     case MODBUS_REG_UPTIME + 1:
         *value = UINT32_GET_LO(get_uptime());
+        break;
+    case MODBUS_REG_TEMP_LOW:
+        *value = temp_sensor_get_low();
+        break;
+    case MODBUS_REG_TEMP_HIGH:
+        *value = temp_sensor_get_high();
+        break;
+    case MODBUS_REG_TEMP_SENSOR_COUNT:
+        *value = temp_sensor_get_count();
         break;
     default:
         //string registers

@@ -15,14 +15,7 @@ void temp_sensor_init(void);
  * 
  * @return uint8_t 
  */
-uint8_t temp_sensor_count(void);
-
-// /**
-//  * @brief Measure temperature on sensor bus
-//  *
-//  * @return esp_err_t 
-//  */
-// esp_err_t temp_sensor_measure(void);
+uint8_t temp_sensor_get_count(void);
 
 /**
  * @brief Return lowest temperature after temp_sensor_measure

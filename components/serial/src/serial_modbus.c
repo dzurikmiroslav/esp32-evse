@@ -6,7 +6,7 @@
 #define BUF_SIZE            256
 #define EVENT_QUEUE_SIZE    20
 
-#define LOG_LVL_DATA        ESP_LOG_VERBOSE
+#define LOG_LVL_DATA        ESP_LOG_INFO
 
 static const char* TAG = "serial_modbus";
 

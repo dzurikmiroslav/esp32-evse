@@ -68,7 +68,7 @@ void temp_sensor_init(void)
     }
 }
 
-uint8_t temp_sensor_count(void)
+uint8_t temp_sensor_get_count(void)
 {
     return sensor_count;
 }

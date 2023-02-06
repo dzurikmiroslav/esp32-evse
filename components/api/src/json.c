@@ -402,7 +402,7 @@ cJSON* json_get_info(void)
     esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
     esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
     cJSON_AddStringToObject(root, "ipAp", str);
-    cJSON_AddNumberToObject(root, "temperatureSensorCount", temp_sensor_count());
+    cJSON_AddNumberToObject(root, "temperatureSensorCount", temp_sensor_get_count());
     cJSON_AddNumberToObject(root, "temperatureLow", temp_sensor_get_low() / 100.0);
     cJSON_AddNumberToObject(root, "temperatureHigh", temp_sensor_get_high() / 100.0);
     return root;
