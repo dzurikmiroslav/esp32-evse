@@ -9,7 +9,6 @@
 #include "nvs.h"
 
 #include "energy_meter.h"
-#include "evse.h"
 #include "board_config.h"
 #include "aux_io.h"
 #include "adc.h"
@@ -17,7 +16,6 @@
 #define NVS_NAMESPACE           "evse_emeter"
 #define NVS_MODE                "mode"
 #define NVS_AC_VOLTAGE          "ac_voltage"
-#define NVS_PULSE_AMOUNT        "pluse_amount"
 
 #define ZERO_FIX                5000
 #define MEASURE_US              40000   //2 periods at 50Hz
@@ -27,21 +25,19 @@ static const char* TAG = "energy_meter";
 
 static nvs_handle nvs;
 
-static energy_meter_mode_t mode = ENERGY_METER_MODE_NONE;
+static energy_meter_mode_t mode = ENERGY_METER_MODE_DUMMY_SINGLE_PHASE;
 
 static uint16_t ac_voltage = 250;
-
-static uint16_t pulse_amount = 1000;
 
 static uint16_t power = 0;
 
 static bool has_session = false;
 
-static int64_t session_start_time = 0;
+static int64_t start_time = 0;
 
-static int64_t session_end_time = 0;
+static uint32_t charging_time = 0;  // ms
 
-static uint32_t session_consumption = 0;
+static uint32_t consumption = 0;
 
 static float cur[3] = { 0, 0, 0 };
 
@@ -53,29 +49,36 @@ static float vlt_sens_zero[3] = { 0, 0, 0 };
 
 static int64_t prev_time = 0;
 
-static uint32_t delta_ms = 0;
+static void (*measure_fn)(uint32_t delta_ms, uint16_t charging_current);
 
-static void (*measure_fn)(void);
-
-static void set_calc_power(float p)
+static void set_calc_power(float p, uint32_t delta_ms)
 {
-    session_consumption += roundf((p * delta_ms) / 1000.0f);
+    consumption += roundf((p * delta_ms) / 1000.0f);
     power = roundf(p);
 }
 
-static void measure_none(void)
+static void measure_single_phase_dummy(uint32_t delta_ms, uint16_t charging_current)
 {
     vlt[0] = ac_voltage;
-    cur[0] = evse_get_charging_current() / 10.0f;
-    float va = vlt[0] * cur[0];
-    if (board_config.energy_meter_three_phases) {
-        vlt[1] = vlt[2] = vlt[0];
-        cur[1] = cur[2] = cur[0];
-        va *= 3;
-    }
+    cur[0] = charging_current / 10.0f;
+    vlt[1] = vlt[2] = 0;
+    cur[1] = cur[2] = 0;
 
-    set_calc_power(va);
+    float va = vlt[0] * cur[0];
+
+    set_calc_power(va, delta_ms);
 }
+
+static void measure_three_phase_dummy(uint32_t delta_ms, uint16_t charging_current)
+{
+    vlt[0] = vlt[1] = vlt[2] = ac_voltage;
+    cur[0] = cur[1] = cur[2] = charging_current / 10.0f;
+
+    float va = (vlt[0] * cur[0]) * 3;
+
+    set_calc_power(va, delta_ms);
+}
+
 
 static uint32_t read_adc(adc_channel_t channel)
 {
@@ -97,7 +100,7 @@ static float get_zero(adc_channel_t channel)
     return sum / samples;
 }
 
-static void measure_single_phase_cur(void)
+static void measure_single_phase_cur(uint32_t delta_ms, uint16_t charging_current)
 {
     float cur_sum = 0;
     uint16_t samples = 0;
@@ -115,10 +118,10 @@ static void measure_single_phase_cur(void)
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
     ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
 
-    set_calc_power(vlt[0] * cur[0]);
+    set_calc_power(vlt[0] * cur[0], delta_ms);
 }
 
-static void measure_single_phase_cur_vlt(void)
+static void measure_single_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_current)
 {
     float cur_sum = 0;
     float vlt_sum = 0;
@@ -147,10 +150,10 @@ static void measure_single_phase_cur_vlt(void)
     vlt[0] = sqrt(vlt_sum / samples) * board_config.energy_meter_vlt_scale;
     ESP_LOGD(TAG, "Voltage %f (samples %d)", vlt[0], samples);
 
-    set_calc_power(cur[0] * vlt[0]);
+    set_calc_power(cur[0] * vlt[0], delta_ms);
 }
 
-static void measure_three_phase_cur(void)
+static void measure_three_phase_cur(uint32_t delta_ms, uint16_t charging_current)
 {
     float cur_sum[3] = { 0, 0, 0 };
     uint32_t sample_cur;
@@ -185,10 +188,10 @@ static void measure_three_phase_cur(void)
     cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
     ESP_LOGD(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
 
-    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
+    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2], delta_ms);
 }
 
-static void measure_three_phase_cur_vlt(void)
+static void measure_three_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_current)
 {
     float cur_sum[3] = { 0, 0, 0 };
     float vlt_sum[3] = { 0, 0, 0 };
@@ -245,22 +248,7 @@ static void measure_three_phase_cur_vlt(void)
     vlt[2] = sqrt(vlt_sum[2] / samples) * board_config.energy_meter_vlt_scale;
     ESP_LOGD(TAG, "Voltages %fV %fV %fV (samples %d)", vlt[0], vlt[1], vlt[2], samples);
 
-    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2]);
-}
-
-static void measure_pulse(void)
-{
-    uint8_t count = 0;
-    while (xSemaphoreTake(aux_pulse_energy_meter_semhr, 0)) {
-        count++;
-    }
-
-    uint16_t delta_consumption = count * pulse_amount;
-    session_consumption += delta_consumption;
-
-    if (delta_consumption > 0) {
-        power = (delta_consumption / delta_ms) * 1000.0f;
-    }
+    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2], delta_ms);
 }
 
 static void* get_measure_fn(energy_meter_mode_t mode)
@@ -270,10 +258,10 @@ static void* get_measure_fn(energy_meter_mode_t mode)
         return board_config.energy_meter_three_phases ? measure_three_phase_cur : measure_single_phase_cur;
     case ENERGY_METER_MODE_CUR_VLT:
         return board_config.energy_meter_three_phases ? measure_three_phase_cur_vlt : measure_single_phase_cur_vlt;
-    case ENERGY_METER_MODE_PULSE:
-        return measure_pulse;
+    case ENERGY_METER_MODE_DUMMY_THREE_PHASE:
+        return measure_three_phase_dummy;
     default:
-        return measure_none;
+        return measure_single_phase_dummy;
     }
 }
 
@@ -281,13 +269,12 @@ void energy_meter_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    uint8_t u8 = ENERGY_METER_MODE_NONE;
+    uint8_t u8 = ENERGY_METER_MODE_DUMMY_SINGLE_PHASE;
     nvs_get_u8(nvs, NVS_MODE, &u8);
     mode = u8;
     measure_fn = get_measure_fn(mode);
 
     nvs_get_u16(nvs, NVS_AC_VOLTAGE, &ac_voltage);
-    nvs_get_u16(nvs, NVS_PULSE_AMOUNT, &pulse_amount);
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
         .atten = ADC_ATTEN_DB_11
@@ -368,25 +355,6 @@ esp_err_t energy_meter_set_mode(energy_meter_mode_t _mode)
     return ESP_OK;
 }
 
-uint16_t energy_meter_get_pulse_amount(void)
-{
-    return pulse_amount;
-}
-
-esp_err_t energy_meter_set_pulse_amount(uint16_t _pulse_amount)
-{
-    if (_pulse_amount == 0) {
-        ESP_LOGI(TAG, "Pulse amount cant be zero");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    pulse_amount = _pulse_amount;
-    nvs_set_u16(nvs, NVS_PULSE_AMOUNT, pulse_amount);
-    nvs_commit(nvs);
-
-    return ESP_OK;
-}
-
 uint16_t energy_meter_get_ac_voltage(void)
 {
     return ac_voltage;
@@ -406,27 +374,34 @@ esp_err_t energy_meter_set_ac_voltage(uint16_t _ac_voltage)
     return ESP_OK;
 }
 
-void energy_meter_process(void)
+void energy_meter_start_session(void)
 {
-    evse_state_t state = evse_get_state();
-    int64_t now = esp_timer_get_time();
-
-    if (!has_session && evse_state_is_session(state)) {
+    if (!has_session) {
         ESP_LOGI(TAG, "Start session");
-        session_start_time = now;
-        session_end_time = 0;
-        session_consumption = 0;
+        start_time = esp_timer_get_time();
         has_session = true;
-    } else if (!evse_state_is_session(state) && has_session) {
-        ESP_LOGI(TAG, "End session");
-        session_end_time = now;
+    }
+}
+
+void energy_meter_stop_session(void)
+{
+    if (has_session) {
+        ESP_LOGI(TAG, "Stop session");
+        start_time = 0;
+        consumption = 0;
+        charging_time = 0;
         has_session = false;
     }
+}
 
-    delta_ms = (now - prev_time) / 1000;
+void energy_meter_process(bool charging, uint16_t charging_current)
+{
+    int64_t now = esp_timer_get_time();
+    uint32_t delta_ms = (now - prev_time) / 1000;
 
-    if (evse_state_is_charging(state)) {
-        (*measure_fn)();
+    if (charging) {
+        (*measure_fn)(delta_ms, charging_current);
+        charging_time += delta_ms;
     } else {
         vlt[0] = vlt[1] = vlt[2] = 0;
         cur[0] = cur[1] = cur[2] = 0;
@@ -441,22 +416,23 @@ uint16_t energy_meter_get_power(void)
     return power;
 }
 
-uint32_t energy_meter_get_session_elapsed(void)
+uint32_t energy_meter_get_session_time(void)
 {
-    int64_t elapsed = 0;
-
     if (has_session) {
-        elapsed = esp_timer_get_time() - session_start_time;
+        return  (esp_timer_get_time() - start_time) / 1000000;
     } else {
-        elapsed = session_end_time - session_start_time;
+        return 0;
     }
-
-    return elapsed / 1000000;
 }
 
-uint32_t energy_meter_get_session_consumption(void)
+uint32_t energy_meter_get_charging_time(void)
 {
-    return session_consumption;
+    return charging_time / 1000;
+}
+
+uint32_t energy_meter_get_consumption(void)
+{
+    return consumption;
 }
 
 void energy_meter_get_voltage(float* voltage)
@@ -507,10 +483,10 @@ const char* energy_meter_mode_to_str(energy_meter_mode_t mode)
         return "cur";
     case ENERGY_METER_MODE_CUR_VLT:
         return "cur_vlt";
-    case ENERGY_METER_MODE_PULSE:
-        return "pulse";
+    case ENERGY_METER_MODE_DUMMY_THREE_PHASE:
+        return "dummy_3p";
     default:
-        return "none";
+        return "dummy_1p";
     }
 }
 
@@ -522,8 +498,8 @@ energy_meter_mode_t energy_meter_str_to_mode(const char* str)
     if (!strcmp(str, "cur_vlt")) {
         return ENERGY_METER_MODE_CUR_VLT;
     }
-    if (!strcmp(str, "pulse")) {
-        return ENERGY_METER_MODE_PULSE;
+    if (!strcmp(str, "dummy_3p")) {
+        return ENERGY_METER_MODE_DUMMY_THREE_PHASE;
     }
-    return ENERGY_METER_MODE_NONE;
+    return ENERGY_METER_MODE_DUMMY_SINGLE_PHASE;
 }

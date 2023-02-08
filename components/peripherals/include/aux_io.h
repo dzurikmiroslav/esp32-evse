@@ -1,8 +1,6 @@
 #ifndef AUX_H_
 #define AUX_H_
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include "esp_err.h"
 
 /**
@@ -28,15 +26,8 @@ typedef enum
     AUX_MODE_ENABLE_BUTTON,
     AUX_MODE_ENABLE_SWITCH,
     AUX_MODE_AUTHORIZE_BUTTON,
-    AUX_MODE_PULSE_ENERGY_METER,
     AUX_MODE_MAX
 } aux_mode_t;
-
-/**
- * @brief Output of pulse energy meter in mode AUX_MODE_PULSE_ENERGY_METER
- * 
- */
-extern SemaphoreHandle_t aux_pulse_energy_meter_semhr;
 
 /**
  * @brief Initialize aux

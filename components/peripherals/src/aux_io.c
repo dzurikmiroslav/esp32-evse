@@ -1,5 +1,6 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
@@ -20,8 +21,6 @@ static const char* TAG = "aux";
 static nvs_handle_t nvs;
 
 static SemaphoreHandle_t mutex;
-
-SemaphoreHandle_t aux_pulse_energy_meter_semhr;
 
 static struct aux_s
 {
@@ -46,9 +45,6 @@ static void IRAM_ATTR aux_isr_handler(void* arg)
             aux->tick = tick;
             aux->pressed = true;
         }
-        break;
-    case AUX_MODE_PULSE_ENERGY_METER:
-        xSemaphoreGiveFromISR(aux_pulse_energy_meter_semhr, &higher_task_woken);
         break;
     default:
         break;
@@ -103,7 +99,6 @@ static void process_task_func(void* param)
 void aux_init(void)
 {
     mutex = xSemaphoreCreateMutex();
-    aux_pulse_energy_meter_semhr = xSemaphoreCreateCounting(10, 0);
 
     for (int i = 0; i < AUX_ID_MAX; i++) {
         auxs[i].gpio = GPIO_NUM_NC;
@@ -197,8 +192,6 @@ const char* aux_mode_to_str(aux_mode_t mode)
         return "enable_switch";
     case AUX_MODE_AUTHORIZE_BUTTON:
         return "authorize_button";
-    case AUX_MODE_PULSE_ENERGY_METER:
-        return "pulse_energy_meter";
     default:
         return "none";
     }
@@ -214,9 +207,6 @@ aux_mode_t aux_str_to_mode(const char* str)
     }
     if (!strcmp(str, "authorize_button")) {
         return AUX_MODE_AUTHORIZE_BUTTON;
-    }
-    if (!strcmp(str, "pulse_energy_meter")) {
-        return AUX_MODE_PULSE_ENERGY_METER;
     }
     return AUX_MODE_NONE;
 }

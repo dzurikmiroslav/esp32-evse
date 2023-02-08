@@ -10,10 +10,10 @@
  *
  */
 typedef enum {
-    ENERGY_METER_MODE_NONE,
+    ENERGY_METER_MODE_DUMMY_SINGLE_PHASE,
+    ENERGY_METER_MODE_DUMMY_THREE_PHASE,
     ENERGY_METER_MODE_CUR,
     ENERGY_METER_MODE_CUR_VLT,
-    ENERGY_METER_MODE_PULSE,
     //TODO ENERGY_METER_MODE_MODBUS
     ENERGY_METER_MODE_MAX
 } energy_meter_mode_t;
@@ -40,21 +40,6 @@ energy_meter_mode_t energy_meter_get_mode(void);
 esp_err_t energy_meter_set_mode(energy_meter_mode_t mode);
 
 /**
- * @brief Get amount Wh one pulse of pusle energy meter, stored in NVS
- * 
- * @return Wh of one pulse 
- */
-uint16_t energy_meter_get_pulse_amount(void);
-
-/**
- * @brief Set amount Wh one pulse of pusle energy meter, stored in NVS
- * 
- * @param pulse_amount Wh of one pulse
- * @return esp_err_t 
- */
-esp_err_t energy_meter_set_pulse_amount(uint16_t pulse_amount);
-
-/**
  * @brief Get AC voltage, stored in NVS
  *
  * @note AC voltage is used when using internal meter and board config has not voltage sensing (BOARD_CONFIG_ENERGY_METER_NONE, BOARD_CONFIG_ENERGY_METER_CUR)
@@ -74,10 +59,24 @@ uint16_t energy_meter_get_ac_voltage(void);
 esp_err_t energy_meter_set_ac_voltage(uint16_t ac_voltage);
 
 /**
- * @brief Main loop of energy meter
- *
+ * @brief Start energy meter session, if not started
+ * 
  */
-void energy_meter_process(void);
+void energy_meter_start_session(void);
+
+/**
+ * @brief Stop energy meter session, if not stopped
+ * 
+ */
+void energy_meter_stop_session(void);
+
+/**
+ * @brief Process energy meter
+ * 
+ * @param charging 
+ * @param charging_current 
+ */
+void energy_meter_process(bool charging, uint16_t charging_current);
 
 /**
  * @brief Get session actual power
@@ -87,73 +86,79 @@ void energy_meter_process(void);
 uint16_t energy_meter_get_power(void);
 
 /**
- * @brief Get session elapsed time
+ * @brief Get session time
  *
  * @return Time in s
  */
-uint32_t energy_meter_get_session_elapsed(void);
+uint32_t energy_meter_get_session_time(void);
+
+/**
+ * @brief Get charging time
+ * 
+ * @return Time in s 
+ */
+uint32_t energy_meter_get_charging_time(void);
 
 /**
  * @brief Get session consumption
  *
- * @return consumption in 1Ws
+ * @return Consumption in 1Ws
  */
-uint32_t energy_meter_get_session_consumption(void);
+uint32_t energy_meter_get_consumption(void);
 
 /**
  * @brief After energy_meter_process, get current measured voltage
  *
- * @param voltage output array of 3 items, values in V
+ * @param voltage Output array of 3 items, values in V
  */
 void energy_meter_get_voltage(float* voltage);
 
 /**
  * @brief Cet current measured voltage on L1
  * 
- * @return voltage in V 
+ * @return Voltage in V 
  */
 float energy_meter_get_l1_voltage(void);
 
 /**
  * @brief Cet current measured voltage on L2
  * 
- * @return voltage in V 
+ * @return Voltage in V 
  */
 float energy_meter_get_l2_voltage(void);
-
 
 /**
  * @brief Cet current measured voltage on L3
  * 
- * @return voltage in V 
+ * @return Voltage in V 
  */
 float energy_meter_get_l3_voltage(void);
 
 /**
  * @brief After energy_meter_process, get current measured current
  *
- * @param voltage output array of 3 items, values in A
+ * @param voltage Output array of 3 items, values in A
  */
 void energy_meter_get_current(float* current);
 
 /**
  * @brief Cet current measured current on L1
  * 
- * @return voltage in V 
+ * @return Voltage in V 
  */
 float energy_meter_get_l1_current(void);
 
 /**
  * @brief Cet current measured current on L2
  * 
- * @return voltage in V 
+ * @return Voltage in V 
  */
 float energy_meter_get_l2_current(void);
 
 /**
  * @brief Cet current measured current on L3
  * 
- * @return voltage in V 
+ * @return Voltage in V 
  */
 float energy_meter_get_l3_current(void);
 

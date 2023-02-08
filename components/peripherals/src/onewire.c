@@ -49,8 +49,7 @@ static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 static inline bool _onewire_wait_for_bus(gpio_num_t pin, int max_wait)
 {
     bool state;
-    for (int i = 0; i < ((max_wait + 4) / 5); i++)
-    {
+    for (int i = 0; i < ((max_wait + 4) / 5); i++) {
         if (gpio_get_level(pin))
             break;
         ets_delay_us(5);

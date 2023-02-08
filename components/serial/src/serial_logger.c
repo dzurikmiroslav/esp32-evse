@@ -11,8 +11,8 @@ static uart_port_t port = -1;
 void serial_logger_print(const char* str, int len)
 {
     if (port != -1) {
-        uart_write_bytes(port, str, len);
-        uart_write_bytes(port, "\r", 1);
+        uart_tx_chars(port, str, len);
+        uart_tx_chars(port, "\r", 1);
     }
 }
 

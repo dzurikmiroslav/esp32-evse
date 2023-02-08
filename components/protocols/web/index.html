@@ -70,7 +70,7 @@
             };
         }
 
-        function formatElapsed(sec) {
+        function formatTime(sec) {
             const hour = Math.floor(sec / 3600);
             sec %= 3600;
             const min = Math.floor(sec / 60);
@@ -91,7 +91,7 @@
         }
 
         function formatLimitSec(value) {
-            return value === 0 ? 'none' : formatElapsed(value);
+            return value === 0 ? 'none' : formatTime(value);
         }
 
         function formatLimitW(value) {
@@ -152,11 +152,22 @@
                 }
             }
             document.getElementById('errors').innerText = formatErrors(state.errors);
-            document.getElementById('elapsed').innerText = formatElapsed(state.elapsed);
-            document.getElementById('actualPower').innerText = state.actualPower / 1000;
-            document.getElementById('actualPowerL1').innerHTML = formatVA(state.voltage[0], state.current[0]);
-            document.getElementById('actualPowerL2').innerHTML = formatVA(state.voltage[1], state.current[1]);
-            document.getElementById('actualPowerL3').innerHTML = formatVA(state.voltage[2], state.current[2]);
+            document.getElementById('chargingTime').innerText = formatTime(state.chargingTime);
+            document.getElementById('sessionTime').innerText = formatTime(state.sessionTime);
+            document.getElementById('power').innerText = state.power / 1000;
+
+            document.getElementById('powerL1').classList.toggle('d-none', !state.power);
+            if (state.power) {
+                document.getElementById('powerL1').innerHTML = formatVA(state.voltage[0], state.current[0]);
+            }
+            document.getElementById('powerL2').classList.toggle('d-none', !state.power || !state.voltage[1]);
+            if (state.voltage[1] && state.power) {
+                document.getElementById('powerL2').innerHTML = formatVA(state.voltage[1], state.current[1]);
+            }
+            document.getElementById('powerL3').classList.toggle('d-none', !state.power || !state.voltage[2]);
+            if (state.voltage[2] && state.power) {
+                document.getElementById('powerL3').innerHTML = formatVA(state.voltage[2], state.current[2]);
+            }
             document.getElementById('consumption').innerText = Math.round(state.consumption / 3600) / 1000;
             document.getElementById('session').classList.toggle('d-none', state.state !== 'B' && state.state !== 'C' && state.state !== 'D');
         }
@@ -245,8 +256,8 @@
                     .then(data => {
                         document.getElementById('chargingCurrent').max = data.maxChargingCurrent;
                         if (data.energyMeterThreePhases) {
-                            document.getElementById('actualPowerL2').classList.remove('d-none');
-                            document.getElementById('actualPowerL3').classList.remove('d-none');
+                            document.getElementById('powerL2').classList.remove('d-none');
+                            document.getElementById('powerL3').classList.remove('d-none');
                         }
                     }),
                 fetch('/api/v1/config/evse')
@@ -260,13 +271,13 @@
                         document.getElementById('consumptionLimit').value = data.consumptionLimit;
                         document.getElementById('consumptionLimitValue').innerText = formatLimitWs(data.consumptionLimit);
 
-                        document.getElementById('elapsedLimit').value = data.elapsedLimit;
-                        document.getElementById('elapsedLimitValue').innerText = formatLimitSec(data.elapsedLimit);
+                        document.getElementById('chargingTimeLimit').value = data.chargingTimeLimit;
+                        document.getElementById('chargingTimeLimitValue').innerText = formatLimitSec(data.chargingTimeLimit);
 
                         document.getElementById('underPowerLimit').value = data.underPowerLimit;
                         document.getElementById('underPowerLimitValue').innerText = formatLimitW(data.underPowerLimit);
 
-                        if (data.consumptionLimit || data.elapsedLimit || data.underPowerLimit) {
+                        if (data.consumptionLimit || data.chargingTimeLimit || data.underPowerLimit) {
                             document.getElementById('sessionLimitAccordionButton').ariaExpanded = true;
                             document.getElementById('sessionLimitAccordionButton').classList.remove('collapsed');
                             document.getElementById('sessionLimitCollapse').classList.add('show');
@@ -291,10 +302,10 @@
                 setConsumptionLimit(event.target.valueAsNumber);
             });
 
-            const setElapsedLimit = debounce((value) => sendEvseSettings({ elapsedLimit: value }), 500);
-            document.getElementById('elapsedLimit').addEventListener('input', event => {
-                document.getElementById('elapsedLimitValue').innerText = formatLimitSec(event.target.valueAsNumber);
-                setElapsedLimit(event.target.valueAsNumber);
+            const setchargingTimeLimit = debounce((value) => sendEvseSettings({ chargingTimeLimit: value }), 500);
+            document.getElementById('chargingTimeLimit').addEventListener('input', event => {
+                document.getElementById('chargingTimeLimitValue').innerText = formatLimitSec(event.target.valueAsNumber);
+                setchargingTimeLimit(event.target.valueAsNumber);
             });
 
             const setUnderPowerLimit = debounce((value) => sendEvseSettings({ underPowerLimit: value }), 500);
@@ -352,13 +363,14 @@
                 <p id="errors" class="lead"></p>
 
                 <div id="session" class="my-3 d-none">
-                    <p class="lead">Elapsed time <strong id="elapsed"></strong></p>
+                    <p class="lead">Session time <strong id="sessionTime"></strong></p>
+                    <p class="lead">Charging time <strong id="chargingTime"></strong></p>
                     <p class="lead">
-                        Power <strong><span id="actualPower"></span>kW</strong>
+                        Power <strong><span id="power"></span>kW</strong>
                         <br class="d-md-none" />
-                        <span id="actualPowerL1" class="badge bg-primary">250V 16A</span>
-                        <span id="actualPowerL2" class="badge bg-primary d-none">250V 16A</span>
-                        <span id="actualPowerL3" class="badge bg-primary d-none">250V 16A</span>
+                        <span id="powerL1" class="badge bg-primary"></span>
+                        <span id="powerL2" class="badge bg-primary"></span>
+                        <span id="powerL3" class="badge bg-primary"></span>
                     </p>
                     <p class="lead">Consumption <strong><span id="consumption"></span>kWh</strong></p>
                 </div>
@@ -406,11 +418,11 @@
                                             id="consumptionLimit">
                                     </div>
                                     <div class="col-12 col-md-6 col-xl-4">
-                                        <label for="elapsedLimit" class="form-label">
-                                            Elapsed <span id="elapsedLimitValue" class="fw-bolder"></span>
+                                        <label for="chargingTimeLimit" class="form-label">
+                                            Charging time <span id="chargingTimeLimitValue" class="fw-bolder"></span>
                                         </label>
                                         <input type="range" class="form-range" min="0" max="18000" step="300"
-                                            id="elapsedLimit">
+                                            id="chargingTimeLimit">
                                     </div>
                                     <div class="col-12 col-md-6 col-xl-4">
                                         <label for="underPowerLimit" class="form-label">

@@ -43,8 +43,8 @@ cJSON* json_get_evse_config(void)
     cJSON_AddNumberToObject(root, "temperatureThreshold", evse_get_temp_threshold());
     cJSON_AddNumberToObject(root, "consumptionLimit", evse_get_consumption_limit());
     cJSON_AddNumberToObject(root, "defaultConsumptionLimit", evse_get_default_consumption_limit());
-    cJSON_AddNumberToObject(root, "elapsedLimit", evse_get_elapsed_limit());
-    cJSON_AddNumberToObject(root, "defaultElapsedLimit", evse_get_default_elapsed_limit());
+    cJSON_AddNumberToObject(root, "chargingTimeLimit", evse_get_charging_time_limit());
+    cJSON_AddNumberToObject(root, "defaultChargingTimeLimit", evse_get_default_charging_time_limit());
     cJSON_AddNumberToObject(root, "underPowerLimit", evse_get_under_power_limit());
     cJSON_AddNumberToObject(root, "defaultUnderPowerLimit", evse_get_default_under_power_limit());
 
@@ -55,7 +55,6 @@ cJSON* json_get_evse_config(void)
 
     cJSON_AddStringToObject(root, "energyMeter", energy_meter_mode_to_str(energy_meter_get_mode()));
     cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
-    cJSON_AddNumberToObject(root, "pulseAmount", energy_meter_get_pulse_amount());
 
     cJSON_AddStringToObject(root, "aux1", aux_mode_to_str(aux_get_mode(AUX_ID_1)));
     cJSON_AddStringToObject(root, "aux2", aux_mode_to_str(aux_get_mode(AUX_ID_2)));
@@ -90,11 +89,11 @@ esp_err_t json_set_evse_config(cJSON* root)
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultConsumptionLimit"))) {
         evse_set_default_consumption_limit(cJSON_GetObjectItem(root, "defaultConsumptionLimit")->valuedouble);
     }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "elapsedLimit"))) {
-        evse_set_elapsed_limit(cJSON_GetObjectItem(root, "elapsedLimit")->valuedouble);
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingTimeLimit"))) {
+        evse_set_charging_time_limit(cJSON_GetObjectItem(root, "chargingTimeLimit")->valuedouble);
     }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultElapsedLimit"))) {
-        evse_set_default_elapsed_limit(cJSON_GetObjectItem(root, "defaultElapsedLimit")->valuedouble);
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "defaultChargingTimeLimit"))) {
+        evse_set_default_charging_time_limit(cJSON_GetObjectItem(root, "defaultChargingTimeLimit")->valuedouble);
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "underPowerLimit"))) {
         evse_set_under_power_limit(cJSON_GetObjectItem(root, "underPowerLimit")->valuedouble);
@@ -121,9 +120,6 @@ esp_err_t json_set_evse_config(cJSON* root)
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "acVoltage"))) {
         RETURN_ON_ERROR(energy_meter_set_ac_voltage(cJSON_GetObjectItem(root, "acVoltage")->valuedouble));
-    }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "pulseAmount"))) {
-        RETURN_ON_ERROR(energy_meter_set_pulse_amount(cJSON_GetObjectItem(root, "pulseAmount")->valuedouble));
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "aux1"))) {
@@ -355,9 +351,10 @@ cJSON* json_get_state(void)
         cJSON_AddItemToObject(root, "errors", errors);
     }
 
-    cJSON_AddNumberToObject(root, "elapsed", energy_meter_get_session_elapsed());
-    cJSON_AddNumberToObject(root, "consumption", energy_meter_get_session_consumption());
-    cJSON_AddNumberToObject(root, "actualPower", energy_meter_get_power());
+    cJSON_AddNumberToObject(root, "sessionTime", energy_meter_get_session_time());
+    cJSON_AddNumberToObject(root, "chargingTime", energy_meter_get_charging_time());
+    cJSON_AddNumberToObject(root, "consumption", energy_meter_get_consumption());
+    cJSON_AddNumberToObject(root, "power", energy_meter_get_power());
     float values[3];
     energy_meter_get_voltage(values);
     cJSON_AddItemToObject(root, "voltage", cJSON_CreateFloatArray(values, 3));

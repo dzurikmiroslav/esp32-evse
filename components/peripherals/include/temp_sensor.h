@@ -32,10 +32,10 @@ int16_t temp_sensor_get_low(void);
 int16_t temp_sensor_get_high(void);
 
 /**
- * @brief Return last measurement error if occurred
+ * @brief Return temperature sensor error
  * 
- * @return esp_err_t 
+ * @return bool 
  */
-esp_err_t temp_sensor_get_error(void);
+bool temp_sensor_is_error(void);
 
 #endif /* TEMP_SENSOR_H_ */
