@@ -37,6 +37,9 @@ void adc_init(void)
             .unit_id = ADC_UNIT_1,
             .atten = ADC_ATTEN_DB_11,
             .bitwidth = ADC_BITWIDTH_DEFAULT,
+#if CONFIG_IDF_TARGET_ESP32
+            .default_vref = 1100
+#endif
         };
         if (adc_cali_create_scheme_line_fitting(&cali_config, &adc_cali_handle) == ESP_OK) {
             calibrated = true;
