@@ -30,11 +30,11 @@
 #define NVS_TEMP_THRESHOLD              "temp_threshold"
 #define NVS_REQUIRE_AUTH                "require_auth"
 #define NVS_DEFAULT_CONSUMPTION_LIMIT   "def_cons_lim"
-#define NVS_DEFAULT_ELAPSED_LIMIT       "def_elap_lim"
+#define NVS_DEFAULT_CHARGING_TIME_LIMIT "def_ch_time_lim"
 #define NVS_DEFAULT_UNDER_POWER_LIMIT   "def_un_pwr_lim"
 
 #define LIMIT_CONSUMPTION_BIT           BIT0
-#define LIMIT_ELAPSED_BIT               BIT1
+#define LIMIT_CHARGING_TIME_BIT         BIT1
 #define LIMIT_UNDER_POWER_BIT           BIT2
 
 static const char* TAG = "evse";
@@ -53,7 +53,7 @@ static uint16_t charging_current;
 
 static uint32_t consumption_limit = 0;
 
-static uint32_t elapsed_limit = 0;
+static uint32_t charging_time_limit = 0;
 
 static uint16_t under_power_limit = 0;
 
@@ -131,11 +131,18 @@ static void apply_state(void)
         switch (new_state)
         {
         case EVSE_STATE_A:
+        case EVSE_STATE_E:
+        case EVSE_STATE_F:
+            ac_relay_set_state(false);
             if (board_config.socket_lock && socket_outlet) {
                 set_socket_lock(false);
             }
-            set_pilot(PILOT_STATE_12V);
-            ac_relay_set_state(false);
+            set_pilot(new_state == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
+
+            authorized = false;
+            reached_limit = 0;
+            under_power_start_time = 0;
+            energy_meter_stop_session();
             break;
         case EVSE_STATE_B:
             if (socket_outlet) {
@@ -145,19 +152,11 @@ static void apply_state(void)
                 }
             }
             ac_relay_set_state(false);
+            energy_meter_start_session();
             break;
         case EVSE_STATE_C:
         case EVSE_STATE_D:
             ac_relay_set_state(true);
-            break;
-        case EVSE_STATE_E:
-        case EVSE_STATE_F:
-            ac_relay_set_state(false);
-            if (board_config.socket_lock && socket_outlet) {
-                set_socket_lock(false);
-            }
-
-            set_pilot(PILOT_STATE_N12V);
             break;
         }
 
@@ -260,7 +259,7 @@ void evse_process(void)
             clear_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
         }
 
-        if (temp_sensor_get_error() != ESP_OK) {
+        if (temp_sensor_is_error()) {
             set_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
         } else {
             clear_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
@@ -277,17 +276,12 @@ void evse_process(void)
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
-                //
-                authorized = false;
-                reached_limit = 0;
-                under_power_start_time = 0;
                 // stay in current state
                 break;
             case PILOT_VOLTAGE_9:
                 state = EVSE_STATE_B;
                 break;
             default:
-                //next_state = EVSE_STATE_E;
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
@@ -319,7 +313,6 @@ void evse_process(void)
                 }
                 break;
             default:
-                //next_state = EVSE_STATE_E;
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
@@ -339,7 +332,6 @@ void evse_process(void)
                 state = EVSE_STATE_D;
                 break;
             default:
-                //next_state = EVSE_STATE_E;
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
@@ -353,7 +345,6 @@ void evse_process(void)
                 // stay in current state
                 break;
             default:
-                //next_state = EVSE_STATE_E;
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
@@ -363,17 +354,17 @@ void evse_process(void)
         }
 
         // check consumption limit
-        if (consumption_limit > 0 && energy_meter_get_session_consumption() > consumption_limit) {
+        if (consumption_limit > 0 && energy_meter_get_consumption() > consumption_limit) {
             reached_limit |= LIMIT_CONSUMPTION_BIT;
         } else {
             reached_limit &= ~LIMIT_CONSUMPTION_BIT;
         }
 
-        // check elapsed limit
-        if (elapsed_limit > 0 && energy_meter_get_session_elapsed() > elapsed_limit) {
-            reached_limit |= LIMIT_ELAPSED_BIT;
+        // check charging time limit
+        if (charging_time_limit > 0 && energy_meter_get_charging_time() > charging_time_limit) {
+            reached_limit |= LIMIT_CHARGING_TIME_BIT;
         } else {
-            reached_limit &= ~LIMIT_ELAPSED_BIT;
+            reached_limit &= ~LIMIT_CHARGING_TIME_BIT;
         }
 
         // check under power limit
@@ -405,7 +396,7 @@ void evse_process(void)
 
     xSemaphoreGive(mutex);
 
-    energy_meter_process();
+    energy_meter_process(evse_state_is_charging(evse_get_state()), charging_current);
 }
 
 void evse_set_available(bool available)
@@ -449,7 +440,7 @@ void evse_init()
 
     nvs_get_u32(nvs, NVS_DEFAULT_CONSUMPTION_LIMIT, &consumption_limit);
 
-    nvs_get_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, &elapsed_limit);
+    nvs_get_u32(nvs, NVS_DEFAULT_CHARGING_TIME_LIMIT, &charging_time_limit);
 
     nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &under_power_limit);
 
@@ -658,14 +649,14 @@ void evse_set_consumption_limit(uint32_t value)
     consumption_limit = value;
 }
 
-uint32_t evse_get_elapsed_limit(void)
+uint32_t evse_get_charging_time_limit(void)
 {
-    return elapsed_limit;
+    return charging_time_limit;
 }
 
-void evse_set_elapsed_limit(uint32_t value)
+void evse_set_charging_time_limit(uint32_t value)
 {
-    elapsed_limit = value;
+    charging_time_limit = value;
 }
 
 uint16_t evse_get_under_power_limit(void)
@@ -691,16 +682,16 @@ void evse_set_default_consumption_limit(uint32_t value)
     nvs_commit(nvs);
 }
 
-uint32_t evse_get_default_elapsed_limit(void)
+uint32_t evse_get_default_charging_time_limit(void)
 {
     uint32_t value = 0;
-    nvs_get_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, &value);
+    nvs_get_u32(nvs, NVS_DEFAULT_CHARGING_TIME_LIMIT, &value);
     return value;
 }
 
-void evse_set_default_elapsed_limit(uint32_t value)
+void evse_set_default_charging_time_limit(uint32_t value)
 {
-    nvs_set_u32(nvs, NVS_DEFAULT_ELAPSED_LIMIT, value);
+    nvs_set_u32(nvs, NVS_DEFAULT_CHARGING_TIME_LIMIT, value);
     nvs_commit(nvs);
 }
 

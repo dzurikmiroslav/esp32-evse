@@ -141,7 +141,7 @@ bool evse_is_enabled(void);
 void evse_set_enabled(bool enabled);
 
 /**
- * @brief Is session consumption, elapsed or under power limit reached
+ * @brief Is session consumption, charging time or under power limit reached
  * 
  * @return true 
  * @return false 
@@ -205,23 +205,23 @@ uint8_t evse_get_temp_threshold(void);
 /**
  * @brief Set consumption limit
  * 
- * @param consumption_limit consumption in Ws
+ * @param consumption_limit Consumption in Ws
  */
 void evse_set_consumption_limit(uint32_t consumption_limit);
 
 /**
- * @brief Get elapsed limit
+ * @brief Get charging time limit
  *
- * @return elapsed in s
+ * @return Time in s
  */
-uint32_t evse_get_elapsed_limit(void);
+uint32_t evse_get_charging_time_limit(void);
 
 /**
- * @brief Set elapsed limit
+ * @brief Set charging time limit
  * 
- * @param elapsed_limit elapsed in s
+ * @param charging_time_limit Time in s
  */
-void evse_set_elapsed_limit(uint32_t elapsed_limit);
+void evse_set_charging_time_limit(uint32_t charging_time_limit);
 
 /**
  * @brief Get under power limit
@@ -252,18 +252,18 @@ uint32_t evse_get_default_consumption_limit(void);
 void evse_set_default_consumption_limit(uint32_t consumption_limit);
 
 /**
- * @brief Get elapsed limit, stored in NVS
+ * @brief Get charging time limit, stored in NVS
  *
- * @return elapsed in s
+ * @return Time in s
  */
-uint32_t evse_get_default_elapsed_limit(void);
+uint32_t evse_get_default_charging_time_limit(void);
 
 /**
- * @brief Set elapsed limit, stored in NVS
+ * @brief Set charging time limit, stored in NVS
  * 
- * @param elapsed_limit elapsed in s
+ * @param charging_time_limit Time in s
  */
-void evse_set_default_elapsed_limit(uint32_t elapsed_limit);
+void evse_set_default_charging_time_limit(uint32_t charging_time_limit);
 
 /**
  * @brief Get under power limit, stored in NVS

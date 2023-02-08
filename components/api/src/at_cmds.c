@@ -415,30 +415,6 @@ static struct cat_variable vars_energy_meter_ac_voltage[] = {
     }
 };
 
-static int var_energy_meter_pulse_amount_read(const struct cat_variable* var, const struct cat_command* cmd)
-{
-    var_u16_1 = energy_meter_get_pulse_amount();
-
-    return 0;
-}
-
-static int var_energy_meter_pulse_amount_write(const struct cat_variable* var, const struct cat_command* cmd, const size_t write_size)
-{
-    return energy_meter_set_pulse_amount(var_u16_1) != ESP_OK;
-}
-
-static struct cat_variable vars_energy_meter_pulse_amount[] = {
-    {
-        .type = CAT_VAR_UINT_DEC,
-        .data = &var_u16_1,
-        .data_size = sizeof(var_u16_1),
-        .name = "pulse_amount",
-        .access = CAT_VAR_ACCESS_READ_WRITE,
-        .read_ex = var_energy_meter_pulse_amount_read,
-        .write_ex = var_energy_meter_pulse_amount_write
-    }
-};
-
 static cat_return_state cmd_authorize_run(const struct cat_command* cmd)
 {
     evse_authorize();
@@ -563,12 +539,6 @@ static struct cat_command cmds[] = {
         .name = "+EMACVLT",
         .var = vars_energy_meter_ac_voltage,
         .var_num = sizeof(vars_energy_meter_ac_voltage) / sizeof(vars_energy_meter_ac_voltage[0]),
-        .need_all_vars = true
-    },
-    {
-        .name = "+EMPLAM",
-        .var = vars_energy_meter_pulse_amount,
-        .var_num = sizeof(vars_energy_meter_pulse_amount) / sizeof(vars_energy_meter_pulse_amount[0]),
         .need_all_vars = true
     },
     {
