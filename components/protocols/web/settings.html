@@ -126,7 +126,7 @@
                     document.getElementById('mqttUser').value = data.mqtt.user;
                     document.getElementById('mqttPassword').value = '';
                     document.getElementById('mqttPeriodicity').value = data.mqtt.periodicity;
-                    document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;                   
+                    document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;
                     document.getElementById('serial1Mode').value = data.serial.serial1Mode;
                     document.getElementById('serial1BaudRate').value = data.serial.serial1BaudRate;
                     document.getElementById('serial1DataBits').value = data.serial.serial1DataBits;
@@ -739,16 +739,23 @@
 </head>
 
 <body class="d-flex flex-column h-100">
-
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
-            <div class="container-fluid">
+            <div class="container">
                 <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas"
                     data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar"
                     aria-label="Toggle settings navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <a class="navbar-brand" href="/">EVSE</a>
+                <a class="navbar-brand" href="/">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 0 38 40" class="align-bottom"
+                        role="img">
+                        <title>EVSE</title>
+                        <path fill="currentColor"
+                            d="M35.63 35.26h-3v2.31h3c1.08 0 1.08-2.31 0-2.31zm0-3.97h-3v2.31h3c1.08 0 1.08-2.31 0-2.31zm-8.6-1.36a.5.5 0 0 0-.07 0s-.75.1-1.5.52a2.97 2.97 0 0 0-1.58 2.62v3.31c0 .6.22 1.12.54 1.48.32.36.72.58 1.1.72.77.29 1.5.28 1.5.28h4.63l.44-.01a.8.8 0 0 0 .5-.22.78.78 0 0 0 .2-.49c.02-.14.02-.27.02-.44v-6.6c0-.17 0-.3-.02-.44a.79.79 0 0 0-.2-.5.79.79 0 0 0-.5-.2c-.14-.02-.27-.02-.44-.02zm2.05 1.3a.53.56 0 0 1 .2.04.53.56 0 0 1 .28.73l-.74 1.84h1.31a.53.56 0 0 1 .49.78l-1.06 2.61a.53.56 0 0 1-.7.3.53.56 0 0 1-.27-.74l.74-1.83H28a.53.56 0 0 1-.48-.78l1.06-2.62a.53.56 0 0 1 .49-.34zM18.52 3.88A16.08 16.08 0 0 0 2.57 19.84c0 8.04 6.56 15.95 15.95 15.95h5.3a1.4 1.4 0 0 0 1.4-1.4 1.4 1.4 0 0 0-1.4-1.4h-5.3c-7.8 0-13.15-6.63-13.15-13.15 0-7.16 6-13.15 13.15-13.15 7.16 0 13.15 6 13.15 13.15a1.4 1.4 0 0 0 1.4 1.4 1.4 1.4 0 0 0 1.4-1.4c0-8.71-7.23-15.95-15.95-15.95zM13.1 27.04a1.66 1.66 0 1 0 0 .06m14.74-1.77a17.44 17.44 0 0 0-14.8-14.77 9.6 9.6 0 0 0-2.47 1.75v1.66a13.8 13.8 0 0 1 13.88 13.79h1.67a7.08 7.08 0 0 0 1.72-2.5M17.03 9.32l-.26.77a19.05 19.05 0 0 1 11.58 11.49l.7-.26a11 11 0 0 0-12.03-12Zm.31 21.83a7.53 7.53 0 0 0-6.08-10.91.68.68 0 0 1 .2-1.34 8.94 8.94 0 0 1 7.67 11.3l1.99.57 1.7-.64a12.45 12.45 0 0 0-10.44-14.68 4.26 4.26 0 1 0-1.15 8.4c2.8.5 4.2 3.68 2.69 6.09l1.34.89z" />
+                    </svg>
+                    <span>EVSE</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
                     aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
@@ -858,7 +865,8 @@
 
                                 <div class="col-12 col-md-6 col-xl-4">
                                     <label for="evseDefaultChargingTimeLimit" class="form-label">
-                                        Charging time limit <span id="evseDefaultChargingTimeLimitValue" class="fw-bolder"></span>
+                                        Charging time limit <span id="evseDefaultChargingTimeLimitValue"
+                                            class="fw-bolder"></span>
                                     </label>
                                     <input type="range" class="form-range" min="0" max="18000" step="300"
                                         id="evseDefaultChargingTimeLimit">
@@ -896,10 +904,11 @@
                                 </div>
                             </div>
                             <div class="row d-none" id="evseTemperatureThresholdField">
-                                <div class="col-6 col-md-4 mb-3">
-                                    <label class="form-label" for="evseTemperatureThreshold">Temperature threshold °C</label>
-                                    <input type="number" class="form-control" id="evseTemperatureThreshold" min="40" max="80"
-                                        disabled step="1" required>
+                                <div class="col-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="evseTemperatureThreshold">Temperature threshold
+                                        °C</label>
+                                    <input type="number" class="form-control" id="evseTemperatureThreshold" min="40"
+                                        max="80" disabled step="1" required>
                                 </div>
                             </div>
                             <div class="row d-none" id="evseSocketLockFields">
@@ -942,11 +951,11 @@
                                             sensing</option>
                                     </select>
                                 </div>
-                                <div class="col-6 col-md-3 mb-3">
+                                <div class="col-6 col-xl-4 mb-3">
                                     <label class="form-label" for="evseAcVoltage">AC voltage</label>
                                     <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
                                         step="1" required>
-                                </div>                            
+                                </div>
                             </div>
                             <div class="row d-none" id="evseAuxFields">
                                 <h5>IO</h5>
@@ -978,13 +987,11 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-primary"
-                                        onclick="submitEvseSettings()">Submit</button>
-                                    <button type="button" class="btn btn-secondary"
-                                        onclick="loadEvseSettings()">Reset</button>
-                                </div>
+                            <div class="d-flex flex-column gap-2 flex-md-row">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitEvseSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadEvseSettings()">Reset</button>
                             </div>
                         </form>
                     </div>
@@ -1018,13 +1025,11 @@
                                     <input type="password" disabled class="form-control" id="wifiPassword">
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-primary"
-                                        onclick="submitWifiSettings()">Submit</button>
-                                    <button type="button" class="btn btn-secondary"
-                                        onclick="loadWifiSettings()">Reset</button>
-                                </div>
+                            <div class="d-flex flex-column gap-2 flex-md-row">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitWifiSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadWifiSettings()">Reset</button>
                             </div>
                         </form>
                     </div>
@@ -1065,12 +1070,12 @@
                                     <input type="number" disabled class="form-control" id="mqttPeriodicity" step="1"
                                         min="1" required>
                                 </div>
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-primary"
-                                        onclick="submitMqttSettings()">Submit</button>
-                                    <button type="button" class="btn btn-secondary"
-                                        onclick="loadMqttSettings()">Reset</button>
-                                </div>
+                            </div>
+                            <div class="d-flex flex-column gap-2 flex-md-row">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitMqttSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadMqttSettings()">Reset</button>
                             </div>
                         </form>
                     </div>
@@ -1085,12 +1090,12 @@
                                         <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
                                     </div>
                                 </div>
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-primary"
-                                        onclick="submitTcpLoggerSettings()">Submit</button>
-                                    <button type="button" class="btn btn-secondary"
-                                        onclick="loadTcpLoggerSettings()">Reset</button>
-                                </div>
+                            </div>
+                            <div class="d-flex flex-column gap-2 flex-md-row">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitTcpLoggerSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadTcpLoggerSettings()">Reset</button>
                             </div>
                         </form>
                     </div>
@@ -1222,14 +1227,11 @@
                                     </select>
                                 </div>
                             </div>
-
-                            <div class="row">
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-primary"
-                                        onclick="submitSerialSettings()">Submit</button>
-                                    <button type="button" class="btn btn-secondary"
-                                        onclick="loadSerialSettings()">Reset</button>
-                                </div>
+                            <div class="d-flex flex-column gap-2 flex-md-row">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitSerialSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadSerialSettings()">Reset</button>
                             </div>
                         </form>
                     </div>
@@ -1249,7 +1251,7 @@
                                     <input type="number" class="form-control" id="modbusUnitId" step="1" min="1"
                                         max="255" required>
                                 </div>
-                                <div class="col-12">
+                                <div class="d-flex flex-column gap-2 flex-md-row">
                                     <button type="button" class="btn btn-primary"
                                         onclick="submitModbusSettings()">Submit</button>
                                     <button type="button" class="btn btn-secondary"
@@ -1259,29 +1261,39 @@
                         </form>
                     </div>
                     <div class="tab-pane fade" id="system" role="tabpanel">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            Flashing incorrect firmware or uploading an incorrect board configuration can cause the device to malfunction!
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        
                         <h5>System</h5>
-                        <button type="button" class="btn btn-danger mb-3" onclick="restart()">Restart</button>
+
+                        <div class="d-flex flex-column gap-2 flex-md-row mb-3">
+                            <button type="button" class="btn btn-danger" onclick="restart()">Restart</button>
+                        </div>
 
                         <h5>Firmware</h5>
 
-                        <form id="updateFirmwareForm" novalidate class="d-flex mb-3">
+                        <form id="updateFirmwareForm" novalidate class="d-flex flex-column gap-2 flex-md-row mb-3">
                             <button type="button" class="btn btn-primary" onclick="checkUpdateFirmware()">Check for
                                 update</button>
-                            <button id="updateButton" type="button" class="btn btn-success ms-2 d-none"
+                            <button id="updateButton" type="button" class="btn btn-success d-none"
                                 onclick="updateFirmware()"></button>
                             <p id="noUpdateAvailable" class="m-0 p-2 d-none">No update is available</p>
                         </form>
 
-                        <form id="uploadFirmwareForm" novalidate class="row mb-3">
-                            <div class="col-12 col-md-6 mb-3">
-                                <label class="form-label" for="firmwareFile">
-                                    Upload firmware (use binaries from <a
-                                        href="https://github.com/dzurikmiroslav/esp32-evse/releases"
-                                        target="_blank">releases</a>)
-                                </label>
-                                <input type="file" class="form-control" id="firmwareFile" accept=".bin" required>
+                        <form id="uploadFirmwareForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label" for="firmwareFile">
+                                        Upload firmware (use binaries from <a
+                                            href="https://github.com/dzurikmiroslav/esp32-evse/releases"
+                                            target="_blank">releases</a>)
+                                    </label>
+                                    <input type="file" class="form-control" id="firmwareFile" accept=".bin" required>
+                                </div>
                             </div>
-                            <div class="col-12">
+                            <div class="d-flex flex-column gap-2 flex-md-row mb-3">
                                 <button type="button" class="btn btn-warning" onclick="uploadFirmware()">Flash</button>
                             </div>
                         </form>
@@ -1291,18 +1303,16 @@
                         <p>Download board configuration <a href="/api/v1/boardConfig/raw" target="_blank">board.cfg</a>
                         </p>
 
-                        <div class="alert alert-warning" role="alert">
-                            Uploading an incorrect board configuration can cause the device to malfunction!
-                        </div>
-
-                        <form id="uploadBoardConfigForm" novalidate class="row mb-3">
-                            <div class="col-12 col-md-6 mb-3">
-                                <label class="form-label" for="boardConfigFile">
-                                    Upload board config
-                                </label>
-                                <input type="file" class="form-control" id="boardConfigFile" accept=".cfg" required>
+                        <form id="uploadBoardConfigForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label" for="boardConfigFile">
+                                        Upload board config
+                                    </label>
+                                    <input type="file" class="form-control" id="boardConfigFile" accept=".cfg" required>
+                                </div>
                             </div>
-                            <div class="col-12">
+                            <div class="d-flex flex-column gap-2 flex-md-row">
                                 <button type="button" class="btn btn-warning"
                                     onclick="uploadBoardConfig()">Upload</button>
                             </div>
