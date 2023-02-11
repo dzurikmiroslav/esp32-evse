@@ -467,12 +467,12 @@ float energy_meter_get_l1_current(void)
 
 float energy_meter_get_l2_current(void)
 {
-    return cur[2];
+    return cur[1];
 }
 
 float energy_meter_get_l3_current(void)
 {
-    return cur[3];
+    return cur[2];
 }
 
 const char* energy_meter_mode_to_str(energy_meter_mode_t mode)
