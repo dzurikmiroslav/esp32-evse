@@ -318,12 +318,19 @@
 </head>
 
 <body class="d-flex flex-column h-100">
-
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
-            <div class="container-fluid">
+            <div class="container">
                 <div class="d-lg-none" style="width: 56px;"></div>
-                <a class="navbar-brand" href="/">EVSE</a>
+                <a class="navbar-brand" href="/">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 0 38 40" class="align-bottom"
+                        role="img">
+                        <title>EVSE</title>
+                        <path fill="currentColor"
+                            d="M35.63 35.26h-3v2.31h3c1.08 0 1.08-2.31 0-2.31zm0-3.97h-3v2.31h3c1.08 0 1.08-2.31 0-2.31zm-8.6-1.36a.5.5 0 0 0-.07 0s-.75.1-1.5.52a2.97 2.97 0 0 0-1.58 2.62v3.31c0 .6.22 1.12.54 1.48.32.36.72.58 1.1.72.77.29 1.5.28 1.5.28h4.63l.44-.01a.8.8 0 0 0 .5-.22.78.78 0 0 0 .2-.49c.02-.14.02-.27.02-.44v-6.6c0-.17 0-.3-.02-.44a.79.79 0 0 0-.2-.5.79.79 0 0 0-.5-.2c-.14-.02-.27-.02-.44-.02zm2.05 1.3a.53.56 0 0 1 .2.04.53.56 0 0 1 .28.73l-.74 1.84h1.31a.53.56 0 0 1 .49.78l-1.06 2.61a.53.56 0 0 1-.7.3.53.56 0 0 1-.27-.74l.74-1.83H28a.53.56 0 0 1-.48-.78l1.06-2.62a.53.56 0 0 1 .49-.34zM18.52 3.88A16.08 16.08 0 0 0 2.57 19.84c0 8.04 6.56 15.95 15.95 15.95h5.3a1.4 1.4 0 0 0 1.4-1.4 1.4 1.4 0 0 0-1.4-1.4h-5.3c-7.8 0-13.15-6.63-13.15-13.15 0-7.16 6-13.15 13.15-13.15 7.16 0 13.15 6 13.15 13.15a1.4 1.4 0 0 0 1.4 1.4 1.4 1.4 0 0 0 1.4-1.4c0-8.71-7.23-15.95-15.95-15.95zM13.1 27.04a1.66 1.66 0 1 0 0 .06m14.74-1.77a17.44 17.44 0 0 0-14.8-14.77 9.6 9.6 0 0 0-2.47 1.75v1.66a13.8 13.8 0 0 1 13.88 13.79h1.67a7.08 7.08 0 0 0 1.72-2.5M17.03 9.32l-.26.77a19.05 19.05 0 0 1 11.58 11.49l.7-.26a11 11 0 0 0-12.03-12Zm.31 21.83a7.53 7.53 0 0 0-6.08-10.91.68.68 0 0 1 .2-1.34 8.94 8.94 0 0 1 7.67 11.3l1.99.57 1.7-.64a12.45 12.45 0 0 0-10.44-14.68 4.26 4.26 0 1 0-1.15 8.4c2.8.5 4.2 3.68 2.69 6.09l1.34.89z" />
+                    </svg>
+                    <span>EVSE</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
                     aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
@@ -393,11 +400,11 @@
                     </div>
                 </div>
 
-                <div id="authorize" class="mt-y d-none">
+                <div id="authorize" class="d-flex d-none flex-column flex-md-row">
                     <button type="button" class="btn btn-success" onclick="authorize()">Authorize</button>
                 </div>
 
-                <div class="accordion my-3" id="accordionSessionLimit">
+                <div class="accordion mt-3" id="accordionSessionLimit">
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="sessionLimitHeading">
                             <button class="accordion-button collapsed" id="sessionLimitAccordionButton" type="button"
@@ -440,9 +447,9 @@
         </div>
     </main>
 
-    <footer class="footer mt-auto py-3 bg-light">
-        <div class="container">
-            <span class="text-muted">ESP32 electric vehicle supply equipment</span>
+    <footer class="footer mt-auto py-3 bg-body-tertiary">
+        <div class="container text-body-secondary d-flex justify-content-center justify-content-lg-between">
+            <span>ESP32 electric vehicle supply equipment</span>
         </div>
     </footer>
 
