@@ -18,6 +18,7 @@
 
 #define OPERATING_TIME_MIN      100
 #define OPERATING_TIME_MAX      1000
+#define LOCK_DELAY              500
 
 #define LOCK_BIT                BIT0
 #define UNLOCK_BIT              BIT1
@@ -63,29 +64,6 @@ static void socket_lock_task_func(void* param)
                 attempt = retry_count;
             }
 
-            if (notification & (LOCK_BIT | REPEAT_LOCK_BIT)) {
-                gpio_set_level(board_config.socket_lock_a_gpio, 1);
-                gpio_set_level(board_config.socket_lock_b_gpio, 0);
-                vTaskDelay(pdMS_TO_TICKS(operating_time));
-
-                if (is_locked()) {
-                    ESP_LOGI(TAG, "Lock OK");
-                    status = SOCKED_LOCK_STATUS_IDLE;
-                } else {                    
-                    if (attempt > 1) {
-                        ESP_LOGW(TAG, "Not locked yet, repeating...");
-                        attempt--;
-                        xTaskNotify(socket_lock_task, REPEAT_LOCK_BIT, eSetBits);
-                    } else {
-                        ESP_LOGE(TAG, "Not locked");
-                        status = SOCKED_LOCK_STATUS_LOCKING_FAIL;
-                    }
-                }
-
-                gpio_set_level(board_config.socket_lock_a_gpio, 0);
-                gpio_set_level(board_config.socket_lock_b_gpio, 0);
-            }
-
             if (notification & (UNLOCK_BIT | REPEAT_UNLOCK_BIT)) {
                 gpio_set_level(board_config.socket_lock_a_gpio, 0);
                 gpio_set_level(board_config.socket_lock_b_gpio, 1);
@@ -94,7 +72,7 @@ static void socket_lock_task_func(void* param)
                 if (!is_locked()) {
                     ESP_LOGI(TAG, "Unlock OK");
                     status = SOCKED_LOCK_STATUS_IDLE;
-                } else {                    
+                } else {
                     if (attempt > 1) {
                         ESP_LOGW(TAG, "Not unlocked yet, repeating...");
                         attempt--;
@@ -102,6 +80,30 @@ static void socket_lock_task_func(void* param)
                     } else {
                         ESP_LOGE(TAG, "Not unlocked");
                         status = SOCKED_LOCK_STATUS_UNLOCKING_FAIL;
+                    }
+                }
+
+                gpio_set_level(board_config.socket_lock_a_gpio, 0);
+                gpio_set_level(board_config.socket_lock_b_gpio, 0);
+            } else if (notification & (LOCK_BIT | REPEAT_LOCK_BIT)) {
+                if (notification & LOCK_BIT) {
+                    vTaskDelay(pdMS_TO_TICKS(LOCK_DELAY));  //delay before first lock attempt
+                }
+                gpio_set_level(board_config.socket_lock_a_gpio, 1);
+                gpio_set_level(board_config.socket_lock_b_gpio, 0);
+                vTaskDelay(pdMS_TO_TICKS(operating_time));
+
+                if (is_locked()) {
+                    ESP_LOGI(TAG, "Lock OK");
+                    status = SOCKED_LOCK_STATUS_IDLE;
+                } else {
+                    if (attempt > 1) {
+                        ESP_LOGW(TAG, "Not locked yet, repeating...");
+                        attempt--;
+                        xTaskNotify(socket_lock_task, REPEAT_LOCK_BIT, eSetBits);
+                    } else {
+                        ESP_LOGE(TAG, "Not locked");
+                        status = SOCKED_LOCK_STATUS_LOCKING_FAIL;
                     }
                 }
 
@@ -135,7 +137,7 @@ void socket_lock_init(void)
         }
 
         gpio_config_t io_conf = {};
-        
+
         io_conf.mode = GPIO_MODE_OUTPUT;
         io_conf.pin_bit_mask = (1ULL << board_config.socket_lock_a_gpio) | (1ULL << board_config.socket_lock_b_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
