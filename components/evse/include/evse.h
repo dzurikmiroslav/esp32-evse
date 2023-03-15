@@ -151,7 +151,7 @@ bool evse_is_limit_reached(void);
 /**
  * @brief Get consumption limit
  *
- * @return consumption in Ws
+ * @return consumption in Wh
  */
 uint32_t evse_get_consumption_limit(void);
 

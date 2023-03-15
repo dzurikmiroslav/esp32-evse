@@ -102,7 +102,7 @@ uint32_t energy_meter_get_charging_time(void);
 /**
  * @brief Get session consumption
  *
- * @return Consumption in 1Ws
+ * @return Consumption in Wh
  */
 uint32_t energy_meter_get_consumption(void);
 
