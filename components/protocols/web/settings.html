@@ -76,8 +76,8 @@
             return arr.join(' ');
         }
 
-        function formatLimitWs(value) {
-            return value === 0 ? 'none' : `${Math.round(value / 3600) / 1000} kWh`;
+        function formatLimitWh(value) {
+            return value === 0 ? 'none' : `${value / 1000} kWh`;
         }
 
         function formatLimitSec(value) {
@@ -101,7 +101,7 @@
                     document.getElementById('evseRcm').checked = data.evse.rcm;
                     document.getElementById('evseTemperatureThreshold').value = data.evse.temperatureThreshold;
                     document.getElementById('evseDefaultConsumptionLimit').value = data.evse.defaultConsumptionLimit;
-                    document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(data.evse.defaultConsumptionLimit);
+                    document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWh(data.evse.defaultConsumptionLimit);
                     document.getElementById('evseDefaultChargingTimeLimit').value = data.evse.defaultChargingTimeLimit;
                     document.getElementById('evseDefaultChargingTimeLimitValue').innerText = formatLimitSec(data.evse.defaultChargingTimeLimit);
                     document.getElementById('evseDefaultUnderPowerLimit').value = data.evse.defaultUnderPowerLimit;
@@ -163,7 +163,7 @@
                     document.getElementById('evseRcm').checked = data.rcm;
                     document.getElementById('evseTemperatureThreshold').value = data.temperatureThreshold;
                     document.getElementById('evseDefaultConsumptionLimit').value = data.defaultConsumptionLimit;
-                    document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(data.defaultConsumptionLimit);
+                    document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWh(data.defaultConsumptionLimit);
                     document.getElementById('evseDefaultChargingTimeLimit').value = data.defaultChargingTimeLimit;
                     document.getElementById('evseDefaultChargingTimeLimitValue').innerText = formatLimitSec(data.defaultChargingTimeLimit);
                     document.getElementById('evseDefaultUnderPowerLimit').value = data.defaultUnderPowerLimit;
@@ -705,7 +705,7 @@
                 document.getElementById('evseDefaultChargingCurrentValue').innerText = event.target.value;
             });
             document.getElementById('evseDefaultConsumptionLimit').addEventListener('input', event => {
-                document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWs(event.target.valueAsNumber);
+                document.getElementById('evseDefaultConsumptionLimitValue').innerText = formatLimitWh(event.target.valueAsNumber);
             });
             document.getElementById('evseDefaultChargingTimeLimit').addEventListener('input', event => {
                 document.getElementById('evseDefaultChargingTimeLimitValue').innerText = formatLimitSec(event.target.valueAsNumber);
@@ -859,7 +859,7 @@
                                         Consumption limit <span id="evseDefaultConsumptionLimitValue"
                                             class="fw-bolder"></span>
                                     </label>
-                                    <input type="range" class="form-range" min="0" max="180000000" step="360000"
+                                    <input type="range" class="form-range" min="0" max="50000" step="100"
                                         id="evseDefaultConsumptionLimit">
                                 </div>
 
@@ -1110,6 +1110,7 @@
                                         <option value="at">AT commander</option>
                                         <option value="log">System logs</option>
                                         <option value="modbus">Modbus</option>
+                                        <option value="nextion">Nextion display</option>
                                     </select>
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
@@ -1152,6 +1153,7 @@
                                         <option value="at">AT commander</option>
                                         <option value="log">System logs</option>
                                         <option value="modbus">Modbus</option>
+                                        <option value="nextion">Nextion display</option>
                                     </select>
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
@@ -1194,6 +1196,7 @@
                                         <option value="at">AT commander</option>
                                         <option value="log">System logs</option>
                                         <option value="modbus">Modbus</option>
+                                        <option value="nextion">Nextion display</option>
                                     </select>
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">

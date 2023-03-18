@@ -404,7 +404,7 @@ static esp_err_t state_post_handler(httpd_req_t* req)
 
         if (strcmp(req->uri, "/api/v1/state/authorize") == 0) {
             evse_authorize();
-            res_msg = "Auhtorized";
+            res_msg = "Authorized";
         }
         if (strcmp(req->uri, "/api/v1/state/enable") == 0) {
             evse_set_enabled(true);

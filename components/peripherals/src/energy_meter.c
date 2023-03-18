@@ -37,7 +37,7 @@ static int64_t start_time = 0;
 
 static uint32_t charging_time = 0;  // ms
 
-static uint32_t consumption = 0;
+static uint32_t consumption = 0;    // Ws
 
 static float cur[3] = { 0, 0, 0 };
 
@@ -432,7 +432,7 @@ uint32_t energy_meter_get_charging_time(void)
 
 uint32_t energy_meter_get_consumption(void)
 {
-    return consumption;
+    return consumption / 3600;
 }
 
 void energy_meter_get_voltage(float* voltage)

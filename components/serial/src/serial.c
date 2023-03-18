@@ -1,5 +1,6 @@
 #include <string.h>
 #include "driver/uart.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "nvs.h"
 
@@ -8,6 +9,7 @@
 #include "serial_logger.h"
 #include "serial_at.h"
 #include "serial_modbus.h"
+#include "serial_nextion.h"
 
 #define BAUD_RATE_MIN           2400
 #define BAUD_RATE_MAX           230400
@@ -26,6 +28,46 @@ static nvs_handle_t nvs;
 static serial_mode_t modes[SERIAL_ID_MAX];
 
 static board_config_serial_t serial_board_config[SERIAL_ID_MAX];
+
+static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
+{
+    switch (modes[id]) {
+    case SERIAL_MODE_LOG:
+        serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        break;
+    case SERIAL_MODE_AT:
+        serial_at_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        break;
+    case SERIAL_MODE_MODBUS:
+        serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        break;
+    case SERIAL_MODE_NEXTION:
+        serial_nextion_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        break;
+    default:
+        break;
+    }
+}
+
+static void serial_stop(serial_id_t id)
+{
+    switch (modes[id]) {
+    case SERIAL_MODE_LOG:
+        serial_logger_stop();
+        break;
+    case SERIAL_MODE_AT:
+        serial_at_stop();
+        break;
+    case SERIAL_MODE_MODBUS:
+        serial_modbus_stop();
+        break;
+    case SERIAL_MODE_NEXTION:
+        serial_nextion_stop();
+        break;
+    default:
+        break;
+    }
+}
 
 void serial_init(void)
 {
@@ -70,19 +112,7 @@ void serial_init(void)
             uart_stop_bits_t stop_bits = serial_get_stop_bits(id);
             uart_parity_t parity = serial_get_parity(id);
 
-            switch (modes[id]) {
-            case SERIAL_MODE_LOG:
-                serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-                break;
-            case SERIAL_MODE_AT:
-                serial_at_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-                break;
-            case SERIAL_MODE_MODBUS:
-                serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-                break;
-            default:
-                break;
-            }
+            serial_start(id, baud_rate, data_bits, stop_bits, parity);
         }
     }
 }
@@ -140,25 +170,13 @@ uart_parity_t serial_get_parity(serial_id_t id)
 void serial_reset_config(void)
 {
     for (serial_id_t i = 0; i < SERIAL_ID_MAX; i++) {
-        switch (modes[i]) {
-        case SERIAL_MODE_LOG:
-            serial_logger_stop();
-            break;
-        case SERIAL_MODE_AT:
-            serial_at_stop();
-            break;
-        case SERIAL_MODE_MODBUS:
-            serial_modbus_stop();
-            break;
-        default:
-            break;
-        }
+        serial_stop(i);
 
         modes[i] = SERIAL_MODE_NONE;
-        
+
         char key[12];
         sprintf(key, NVS_MODE, i);
-        nvs_set_u8(nvs, key,  modes[i]);
+        nvs_set_u8(nvs, key, modes[i]);
     }
 
     nvs_commit(nvs);
@@ -228,35 +246,11 @@ esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, u
 
     nvs_commit(nvs);
 
-    switch (modes[id]) {
-    case SERIAL_MODE_LOG:
-        serial_logger_stop();
-        break;
-    case SERIAL_MODE_AT:
-        serial_at_stop();
-        break;
-    case SERIAL_MODE_MODBUS:
-        serial_modbus_stop();
-        break;
-    default:
-        break;
-    }
+    serial_stop(id);
 
     modes[id] = mode;
 
-    switch (modes[id]) {
-    case SERIAL_MODE_LOG:
-        serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-        break;
-    case SERIAL_MODE_AT:
-        serial_at_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-        break;
-    case SERIAL_MODE_MODBUS:
-        serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-        break;
-    default:
-        break;
-    }
+    serial_start(id, baud_rate, data_bits, stop_bits, parity);
 
     return ESP_OK;
 }
@@ -271,6 +265,8 @@ const char* serial_mode_to_str(serial_mode_t mode)
         return "log";
     case SERIAL_MODE_MODBUS:
         return "modbus";
+    case SERIAL_MODE_NEXTION:
+        return "nextion";
     default:
         return "none";
     }
@@ -286,6 +282,9 @@ serial_mode_t serial_str_to_mode(const char* str)
     }
     if (!strcmp(str, "modbus")) {
         return SERIAL_MODE_MODBUS;
+    }
+    if (!strcmp(str, "nextion")) {
+        return SERIAL_MODE_NEXTION;
     }
     return SERIAL_MODE_NONE;
 }

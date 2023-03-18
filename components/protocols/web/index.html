@@ -86,8 +86,8 @@
             return arr.join(' ');
         }
 
-        function formatLimitWs(value) {
-            return value === 0 ? 'none' : `${Math.round(value / 3600) / 1000} kWh`;
+        function formatLimitWh(value) {
+            return value === 0 ? 'none' : `${value / 1000} kWh`;
         }
 
         function formatLimitSec(value) {
@@ -142,15 +142,14 @@
                         document.getElementById('status').innerText = 'Charging limit reached';
                     } else if (state.state === 'C' || state.state === 'D') {
                         document.getElementById('status').innerText = 'Charging';
+                    } else if (state.state === 'B') {
+                        document.getElementById('status').innerText = 'EV connected';
                     } else {
-                        if (state.state === 'B' || state.state === 'C' || state.state === 'D') {
-                            document.getElementById('status').innerText = 'EV connected';
-                        } else {
-                            document.getElementById('status').innerText = 'EV not connected';
-                        }
+                        document.getElementById('status').innerText = 'EV not connected';
                     }
                 }
             }
+
             document.getElementById('errors').innerText = formatErrors(state.errors);
             document.getElementById('chargingTime').innerText = formatTime(state.chargingTime);
             document.getElementById('sessionTime').innerText = formatTime(state.sessionTime);
@@ -168,7 +167,7 @@
             if (state.voltage[2] && state.power) {
                 document.getElementById('powerL3').innerHTML = formatVA(state.voltage[2], state.current[2]);
             }
-            document.getElementById('consumption').innerText = Math.round(state.consumption / 3600) / 1000;
+            document.getElementById('consumption').innerText = `${state.consumption / 1000}`;
             document.getElementById('session').classList.toggle('d-none', state.state !== 'B' && state.state !== 'C' && state.state !== 'D');
         }
 
@@ -269,7 +268,7 @@
                         document.getElementById('chargingCurrentValue').innerText = data.chargingCurrent;
 
                         document.getElementById('consumptionLimit').value = data.consumptionLimit;
-                        document.getElementById('consumptionLimitValue').innerText = formatLimitWs(data.consumptionLimit);
+                        document.getElementById('consumptionLimitValue').innerText = formatLimitWh(data.consumptionLimit);
 
                         document.getElementById('chargingTimeLimit').value = data.chargingTimeLimit;
                         document.getElementById('chargingTimeLimitValue').innerText = formatLimitSec(data.chargingTimeLimit);
@@ -298,14 +297,14 @@
 
             const setConsumptionLimit = debounce((value) => sendEvseSettings({ consumptionLimit: value }), 500);
             document.getElementById('consumptionLimit').addEventListener('input', event => {
-                document.getElementById('consumptionLimitValue').innerText = formatLimitWs(event.target.valueAsNumber);
+                document.getElementById('consumptionLimitValue').innerText = formatLimitWh(event.target.valueAsNumber);
                 setConsumptionLimit(event.target.valueAsNumber);
             });
 
-            const setchargingTimeLimit = debounce((value) => sendEvseSettings({ chargingTimeLimit: value }), 500);
+            const setChargingTimeLimit = debounce((value) => sendEvseSettings({ chargingTimeLimit: value }), 500);
             document.getElementById('chargingTimeLimit').addEventListener('input', event => {
                 document.getElementById('chargingTimeLimitValue').innerText = formatLimitSec(event.target.valueAsNumber);
-                setchargingTimeLimit(event.target.valueAsNumber);
+                setChargingTimeLimit(event.target.valueAsNumber);
             });
 
             const setUnderPowerLimit = debounce((value) => sendEvseSettings({ underPowerLimit: value }), 500);
@@ -421,7 +420,7 @@
                                         <label for="consumptionLimit" class="form-label">
                                             Consumption <span id="consumptionLimitValue" class="fw-bolder"></span>
                                         </label>
-                                        <input type="range" class="form-range" min="0" max="180000000" step="360000"
+                                        <input type="range" class="form-range" min="0" max="50000" step="100"
                                             id="consumptionLimit">
                                     </div>
                                     <div class="col-12 col-md-6 col-xl-4">
