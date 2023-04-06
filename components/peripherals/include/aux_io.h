@@ -1,33 +1,7 @@
-#ifndef AUX_H_
-#define AUX_H_
+#ifndef AUX_IO_H_
+#define AUX_IO_H_
 
 #include "esp_err.h"
-
-/**
- * @brief Aux identifiers
- * 
- */
-typedef enum
-{
-    AUX_ID_1,
-    AUX_ID_2,
-    AUX_ID_3,
-    AUX_ID_MAX
-} aux_id_t;
-
-
-/**
- * @brief Aux modes
- * 
- */
-typedef enum
-{
-    AUX_MODE_NONE,
-    AUX_MODE_ENABLE_BUTTON,
-    AUX_MODE_ENABLE_SWITCH,
-    AUX_MODE_AUTHORIZE_BUTTON,
-    AUX_MODE_MAX
-} aux_mode_t;
 
 /**
  * @brief Initialize aux
@@ -36,42 +10,30 @@ typedef enum
 void aux_init(void);
 
 /**
- * @brief Main loop of aux
+ * @brief Read digital input
  * 
+ * @param name 
+ * @param value 
+ * @return esp_err_t 
  */
-void aux_process(void);
+esp_err_t aux_read(const char *name, bool *value);
 
 /**
- * @brief Get aux mode, stored in NVS
+ * @brief Write digial output
  * 
- * @param id 
- * @return aux_mode_t 
+ * @param name 
+ * @param value 
+ * @return esp_err_t 
  */
-aux_mode_t aux_get_mode(aux_id_t id);
+esp_err_t aux_write(const char *name, bool value);
 
 /**
- * @brief Set aux mode, stored in NVS
+ * @brief Read analog input
  * 
- * @param id 
- * @param mode 
- * @return esp_err_t
+ * @param name 
+ * @param value 
+ * @return esp_err_t 
  */
-esp_err_t aux_set_mode(aux_id_t id, aux_mode_t mode);
+esp_err_t aux_analog_read(const char *name, int *value);
 
-/**
- * @brief Format to string
- * 
- * @param mode 
- * @return const char* 
- */
-const char* aux_mode_to_str(aux_mode_t mode);
-
-/**
- * @brief Parse from string
- * 
- * @param str 
- * @return aux_mode_t 
- */
-aux_mode_t aux_str_to_mode(const char* str);
-
-#endif /* AUX_H_ */
+#endif /* AUX_IO_H_ */

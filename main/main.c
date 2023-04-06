@@ -23,6 +23,7 @@
 #include "serial_logger.h"
 #include "board_config.h"
 #include "wifi.h"
+#include "script.h"
 
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
@@ -131,7 +132,7 @@ static void button_init(void)
         .mode = GPIO_MODE_INPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pull_up_en = GPIO_PULLUP_ENABLE,
-        .intr_type = GPIO_INTR_ANYEDGE        
+        .intr_type = GPIO_INTR_ANYEDGE
     };
     ESP_ERROR_CHECK(gpio_config(&conf));
     ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
@@ -166,6 +167,25 @@ static esp_err_t init_spiffs(void)
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
     return ESP_OK;
+}
+
+static void fs_init(void)
+{
+    esp_vfs_spiffs_conf_t cfg_conf = {
+        .base_path = "/cfg",
+        .partition_label = "cfg",
+        .max_files = 5,
+        .format_if_mount_failed = false
+    };
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
+
+    esp_vfs_spiffs_conf_t data_conf = {
+        .base_path = "/data",
+        .partition_label = "data",
+        .max_files = 5,
+        .format_if_mount_failed = true
+    };
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
 }
 
 static bool ota_diagnostic(void)
@@ -243,7 +263,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_ERROR_CHECK(init_spiffs());
+    fs_init();
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -259,6 +279,7 @@ void app_main(void)
     protocols_init();
     evse_init();
     button_init();
+    script_init();
 #ifndef CONFIG_ESP_CONSOLE_UART
     esp_log_set_vprintf(log_vprintf);
 #endif

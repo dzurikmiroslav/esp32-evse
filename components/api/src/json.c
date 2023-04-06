@@ -16,13 +16,13 @@
 #include "board_config.h"
 #include "energy_meter.h"
 #include "socket_lock.h"
-#include "aux_io.h"
 #include "serial.h"
 #include "proximity.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
 #include "rest.h"
 #include "temp_sensor.h"
+#include "script.h"
 
 #define RETURN_ON_ERROR(x) do {                 \
         esp_err_t err_rc_ = (x);                \
@@ -55,10 +55,6 @@ cJSON* json_get_evse_config(void)
 
     cJSON_AddStringToObject(root, "energyMeter", energy_meter_mode_to_str(energy_meter_get_mode()));
     cJSON_AddNumberToObject(root, "acVoltage", energy_meter_get_ac_voltage());
-
-    cJSON_AddStringToObject(root, "aux1", aux_mode_to_str(aux_get_mode(AUX_ID_1)));
-    cJSON_AddStringToObject(root, "aux2", aux_mode_to_str(aux_get_mode(AUX_ID_2)));
-    cJSON_AddStringToObject(root, "aux3", aux_mode_to_str(aux_get_mode(AUX_ID_3)));
 
     return root;
 }
@@ -120,16 +116,6 @@ esp_err_t json_set_evse_config(cJSON* root)
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "acVoltage"))) {
         RETURN_ON_ERROR(energy_meter_set_ac_voltage(cJSON_GetObjectItem(root, "acVoltage")->valuedouble));
-    }
-
-    if (cJSON_IsString(cJSON_GetObjectItem(root, "aux1"))) {
-        RETURN_ON_ERROR(aux_set_mode(AUX_ID_1, aux_str_to_mode(cJSON_GetObjectItem(root, "aux1")->valuestring)));
-    }
-    if (cJSON_IsString(cJSON_GetObjectItem(root, "aux2"))) {
-        RETURN_ON_ERROR(aux_set_mode(AUX_ID_2, aux_str_to_mode(cJSON_GetObjectItem(root, "aux2")->valuestring)));
-    }
-    if (cJSON_IsString(cJSON_GetObjectItem(root, "aux3"))) {
-        RETURN_ON_ERROR(aux_set_mode(AUX_ID_3, aux_str_to_mode(cJSON_GetObjectItem(root, "aux3")->valuestring)));
     }
 
     return ESP_OK;
@@ -309,6 +295,24 @@ esp_err_t json_set_tcp_logger_config(cJSON* root)
     return ESP_OK;
 }
 
+cJSON* json_get_script_config(void)
+{
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddBoolToObject(root, "enabled", script_is_enabled());
+
+    return root;
+}
+
+esp_err_t json_set_script_config(cJSON* root)
+{
+    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
+
+    script_set_enabled(enabled);
+
+    return ESP_OK;
+}
+
 cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -441,9 +445,9 @@ cJSON* json_get_board_config(void)
     }
     cJSON_AddBoolToObject(root, "energyMeterThreePhases", board_config.energy_meter_three_phases);
 
-    cJSON_AddBoolToObject(root, "aux1", board_config.aux_1);
-    cJSON_AddBoolToObject(root, "aux2", board_config.aux_2);
-    cJSON_AddBoolToObject(root, "aux3", board_config.aux_3);
+    // cJSON_AddBoolToObject(root, "aux1", board_config.aux_1);
+    // cJSON_AddBoolToObject(root, "aux2", board_config.aux_2);
+    // cJSON_AddBoolToObject(root, "aux3", board_config.aux_3);
 
     cJSON_AddStringToObject(root, "serial1", serial_to_str(board_config.serial_1));
     cJSON_AddStringToObject(root, "serial1Name", board_config.serial_1_name);
@@ -456,5 +460,45 @@ cJSON* json_get_board_config(void)
     cJSON_AddStringToObject(root, "serial3", serial_to_str(BOARD_CONFIG_SERIAL_NONE));
     cJSON_AddStringToObject(root, "serial3Name", "");
 #endif
+
+    cJSON* aux = cJSON_CreateArray();
+    if (board_config.aux_in_1) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_in_1_name));
+    }
+    if (board_config.aux_in_2) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_in_2_name));
+    }
+    if (board_config.aux_in_3) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_in_3_name));
+    }
+    if (board_config.aux_in_4) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_in_4_name));
+    }
+    cJSON_AddItemToObject(root, "auxIn", aux);
+
+    aux = cJSON_CreateArray();
+    if (board_config.aux_out_1) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_out_1_name));
+    }
+    if (board_config.aux_out_2) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_out_2_name));
+    }
+    if (board_config.aux_out_3) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_out_3_name));
+    }
+    if (board_config.aux_out_4) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_out_4_name));
+    }
+    cJSON_AddItemToObject(root, "auxOut", aux);
+
+    aux = cJSON_CreateArray();
+    if (board_config.aux_ain_1) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_ain_1_name));
+    }
+    if (board_config.aux_ain_2) {
+        cJSON_AddItemToArray(aux, cJSON_CreateString(board_config.aux_ain_2_name));
+    }
+    cJSON_AddItemToObject(root, "auxAin", aux);
+
     return root;
 }

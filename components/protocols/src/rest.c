@@ -1,10 +1,15 @@
+#include <string.h>
+#include <dirent.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_http_client.h"
 #include "esp_http_server.h"
 #include "esp_ota_ops.h"
 #include "esp_https_ota.h"
+#include "esp_vfs.h"
+#include "esp_spiffs.h"
 #include "nvs.h"
 #include "cJSON.h"
 #include "mbedtls/base64.h"
@@ -14,15 +19,17 @@
 #include "ota.h"
 #include "timeout_utils.h"
 #include "evse.h"
+#include "script.h"
 
-#define SCRATCH_BUFSIZE     1024
+#define SCRATCH_BUFSIZE         1024
 
-#define MAX_JSON_SIZE       (200*1024) // 200 KB
-#define MAX_JSON_SIZE_STR   "200KB"
+#define MAX_JSON_SIZE           (50*1024) // 50 KB
+#define MAX_JSON_SIZE_STR       "50KB"
+#define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
 
-#define NVS_NAMESPACE       "rest"
-#define NVS_USER            "user"
-#define NVS_PASSWORD        "password"
+#define NVS_NAMESPACE           "rest"
+#define NVS_USER                "user"
+#define NVS_PASSWORD            "password"
 
 static const char* TAG = "rest";
 
@@ -274,6 +281,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "tcpLogger", json_get_tcp_logger_config());
             cJSON_AddItemToObject(root, "serial", json_get_serial_config());
             cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
+            cJSON_AddItemToObject(root, "script", json_get_script_config());
         }
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             root = json_get_evse_config();
@@ -295,6 +303,9 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
             root = json_get_modbus_config();
+        }
+         if (strcmp(req->uri, "/api/v1/config/script") == 0) {
+            root = json_get_script_config();
         }
         if (strcmp(req->uri, "/api/v1/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
@@ -356,6 +367,10 @@ static esp_err_t json_post_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
             ret = json_set_modbus_config(root);
+            res_msg = "Config updated";
+        }
+        if (strcmp(req->uri, "/api/v1/config/script") == 0) {
+            ret = json_set_script_config(root);
             res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/credentials") == 0) {
@@ -575,18 +590,104 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t board_config_raw_get_handler(httpd_req_t* req)
+static esp_err_t script_reload_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        FILE* fd = fopen("/cfg/board.cfg", "r");
-        if (!fd) {
-            ESP_LOGE(TAG, "Failed to open board config");
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to open board config");
+        httpd_resp_set_type(req, "text/plain");
+
+        script_reload();
+
+        httpd_resp_sendstr(req, "Script reloaded");
+
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+static esp_err_t partition_get_handler(httpd_req_t* req)
+{
+    if (authorize_req(req)) {
+        char* partition = req->uri + strlen("/api/v1/partition/");
+
+        size_t total = 0, used = 0;
+        esp_err_t ret = esp_spiffs_info(partition, &total, &used);
+        if (ret != ESP_OK) {
+            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to get SPIFFS partition information");
             return ESP_FAIL;
         }
 
-        httpd_resp_set_type(req, "text/plain");
-        httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=\"board.cfg\"");
+        char path[ESP_VFS_PATH_MAX];
+        sprintf(path, "/%s/", partition);
+
+        DIR* dd = opendir(path);
+        if (dd == NULL) {
+            ESP_LOGE(TAG, "Failed to open directory %s", path);
+            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open directory");
+            return ESP_FAIL;
+        }
+
+        cJSON* root = cJSON_CreateObject();
+        cJSON_AddNumberToObject(root, "total", total);
+        cJSON_AddNumberToObject(root, "used", used);
+
+        char entrypath[FILE_PATH_MAX];
+        struct dirent* entry;
+        struct stat entry_stat;
+        const size_t path_len = strlen(path);
+
+        strlcpy(entrypath, path, sizeof(entrypath));
+
+        cJSON* files = cJSON_CreateArray();
+        while ((entry = readdir(dd)) != NULL) {
+            cJSON* item = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(item, "name", entry->d_name);
+
+            strlcpy(entrypath + path_len, entry->d_name, sizeof(entrypath) - path_len);
+
+            if (stat(entrypath, &entry_stat) == -1) {
+                ESP_LOGE(TAG, "Failed to stat %s ", entry->d_name);
+            } else {
+                cJSON_AddNumberToObject(item, "size", entry_stat.st_size);
+            }
+
+            cJSON_AddItemToArray(files, item);
+        }
+
+        cJSON_AddItemToObject(root, "files", files);
+
+        const char* json = cJSON_PrintUnformatted(root);
+        cJSON_Delete(root);
+
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_sendstr(req, json);
+
+        free((void*)json);
+
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+static esp_err_t fs_file_get_handler(httpd_req_t* req)
+{
+    if (authorize_req(req)) {
+        char* path = req->uri + strlen("/api/v1/fs");
+        char* file = strrchr(path, '/') + 1;
+
+        FILE* fd = fopen(path, "r");
+        if (fd == NULL) {
+            ESP_LOGE(TAG, "Failed to open file %s", path);
+            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
+            return ESP_FAIL;
+        }
+
+        httpd_resp_set_type(req, "application/octet-stream");
+        char content_disp[64];
+        sprintf(content_disp, "attachment; filename=\"%s\"", file);
+        httpd_resp_set_hdr(req, "Content-Disposition", content_disp);
 
         char buf[SCRATCH_BUFSIZE];
         size_t len;
@@ -595,7 +696,7 @@ static esp_err_t board_config_raw_get_handler(httpd_req_t* req)
             if (len > 0) {
                 if (httpd_resp_send_chunk(req, buf, len) != ESP_OK) {
                     fclose(fd);
-                    ESP_LOGE(TAG, "File sending failed!");
+                    ESP_LOGE(TAG, "File sending failed");
                     httpd_resp_sendstr_chunk(req, NULL);
                     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
                     return ESP_FAIL;
@@ -613,13 +714,16 @@ static esp_err_t board_config_raw_get_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
+static esp_err_t fs_file_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        FILE* fd = fopen("/cfg/board.cfg", "w");
-        if (!fd) {
-            ESP_LOGE(TAG, "Failed to open board config");
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to open board config");
+        char* path = req->uri + strlen("/api/v1/fs");
+        char* file = strrchr(path, '/') + 1;
+
+        FILE* fd = fopen(path, "w");
+        if (fd == NULL) {
+            ESP_LOGE(TAG, "Failed to open file %s", path);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to open file");
             return ESP_FAIL;
         }
 
@@ -628,8 +732,6 @@ static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
         char buf[SCRATCH_BUFSIZE];
 
         while (remaining > 0) {
-            ESP_LOGW(TAG, "write remain %d", remaining);
-
             if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
                 fclose(fd);
 
@@ -640,8 +742,9 @@ static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
 
             if (received != fwrite(buf, sizeof(char), received, fd)) {
                 fclose(fd);
+                unlink(path);
 
-                ESP_LOGE(TAG, "File write failed!");
+                ESP_LOGE(TAG, "File write failed");
                 httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
                 return ESP_FAIL;
             }
@@ -652,6 +755,21 @@ static esp_err_t board_config_raw_post_handler(httpd_req_t* req)
         fclose(fd);
 
         httpd_resp_sendstr(req, "File uploaded successfully");
+
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+static esp_err_t fs_file_delete_handler(httpd_req_t* req)
+{
+    if (authorize_req(req)) {
+        char* path = req->uri + strlen("/api/v1/fs");
+
+        unlink(path);
+
+        httpd_resp_sendstr(req, "File deleted successfully");
 
         return ESP_OK;
     } else {
@@ -687,7 +805,7 @@ void rest_init(void)
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 10;
+    config.max_uri_handlers = 13;
     config.max_open_sockets = 3;
     config.lru_purge_enable = true;
     // config.open_fn = sess_on_open;
@@ -696,19 +814,33 @@ void rest_init(void)
     ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
-    httpd_uri_t board_config_raw_get_uri = {
-        .uri = "/api/v1/boardConfig/raw",
+    httpd_uri_t partition_get_uri = {
+        .uri = "/api/v1/partition/*",
         .method = HTTP_GET,
-        .handler = board_config_raw_get_handler
+        .handler = partition_get_handler
     };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &board_config_raw_get_uri));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &partition_get_uri));
 
-    httpd_uri_t board_config_raw_post_uri = {
-        .uri = "/api/v1/boardConfig/raw",
-        .method = HTTP_POST,
-        .handler = board_config_raw_post_handler
+    httpd_uri_t fs_file_get_uri = {
+        .uri = "/api/v1/fs/*",
+        .method = HTTP_GET,
+        .handler = fs_file_get_handler
     };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &board_config_raw_post_uri));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_get_uri));
+
+    httpd_uri_t fs_file_post_uri = {
+        .uri = "/api/v1/fs/*",
+        .method = HTTP_POST,
+        .handler = fs_file_post_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_post_uri));
+
+    httpd_uri_t fs_file_delete_uri = {
+        .uri = "/api/v1/fs/*",
+        .method = HTTP_DELETE,
+        .handler = fs_file_delete_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_delete_uri));
 
     httpd_uri_t json_get_uri = {
        .uri = "/api/v1/*",
@@ -744,6 +876,13 @@ void rest_init(void)
         .handler = firmware_upload_post_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_upload_post_uri));
+
+    httpd_uri_t script_reload_post_uri = {
+        .uri = "/api/v1/script/reload",
+        .method = HTTP_POST,
+        .handler = script_reload_post_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &script_reload_post_uri));
 
     httpd_uri_t json_post_uri = {
        .uri = "/api/v1/*",

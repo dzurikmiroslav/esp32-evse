@@ -71,12 +71,46 @@ typedef struct
     adc_channel_t energy_meter_l3_vlt_adc_channel;
     float energy_meter_vlt_scale;
 
-    bool aux_1 : 1;
-    gpio_num_t aux_1_gpio;
-    bool aux_2 : 1;
-    gpio_num_t aux_2_gpio;
-    bool aux_3 : 1;
-    gpio_num_t aux_3_gpio;
+
+    bool aux_in_1 : 1;
+    char aux_in_1_name[8];
+    gpio_num_t aux_in_1_gpio;
+
+    bool aux_in_2 : 1;
+    char aux_in_2_name[8];
+    gpio_num_t aux_in_2_gpio;
+
+    bool aux_in_3 : 1;
+    char aux_in_3_name[8];
+    gpio_num_t aux_in_3_gpio;
+
+    bool aux_in_4 : 1;
+    char aux_in_4_name[8];
+    gpio_num_t aux_in_4_gpio;
+
+    bool aux_out_1 : 1;
+    char aux_out_1_name[8];
+    gpio_num_t aux_out_1_gpio;
+
+    bool aux_out_2 : 1;
+    char aux_out_2_name[8];
+    gpio_num_t aux_out_2_gpio;
+
+    bool aux_out_3 : 1;
+    char aux_out_3_name[8];
+    gpio_num_t aux_out_3_gpio;
+
+    bool aux_out_4 : 1;
+    char aux_out_4_name[8];
+    gpio_num_t aux_out_4_gpio;
+
+    bool aux_ain_1 : 1;
+    char aux_ain_1_name[8];
+    adc_channel_t aux_ain_1_adc;
+
+    bool aux_ain_2 : 1;
+    char aux_ain_2_name[8];
+    adc_channel_t aux_ain_2_adc;
 
     board_config_serial_t serial_1;
     char serial_1_name[16];
