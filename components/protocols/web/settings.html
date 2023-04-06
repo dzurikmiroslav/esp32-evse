@@ -374,7 +374,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -405,7 +405,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -439,7 +439,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -468,7 +468,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -511,7 +511,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -541,7 +541,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -570,7 +570,7 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -629,28 +629,19 @@
                 const name = document.getElementById('fileEditName').value;
                 const prevName = document.getElementById('fileEditPrevName').value;
 
-                let promise;
-                if (name === prevName) {
-                    //only update
-                    promise = fetch(`/api/v1/fs/data/${name}`, {
-                        method: 'POST',
-                        body: document.getElementById('fileEditContent').value
-                    });
-                } else {
-                    //create
-                    promise = fetch(`/api/v1/fs/data/${name}`, {
-                        method: 'POST',
-                        body: document.getElementById('fileEditContent').value
-                    });
-                    if (prevName) {
-                        //delete old
-                        promise = promise.then(() => fetch(`/api/v1/fs/data/${prevName}`, { method: 'DELETE' }))
-                    }
+                let promise = fetch(`/api/v1/fs/data/${name}`, {
+                    method: 'POST',
+                    body: document.getElementById('fileEditContent').value
+                });
+
+                if (name !== prevName && prevName) {
+                    //delete old
+                    promise = promise.then(() => fetch(`/api/v1/fs/data/${prevName}`, { method: 'DELETE' }))
                 }
 
                 promise
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('fileEditLoading').classList.remove('show');
                         form.classList.remove('was-validated');
@@ -775,7 +766,7 @@
             fetch('/api/v1/firmware/update', {
                 method: 'POST'
             })
-                .then(text => new bootstrap.Toast('#firmwareUpdatedToast').show())
+                .then(() => new bootstrap.Toast('#firmwareUpdatedToast').show())
                 .then(showReload)
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
@@ -797,7 +788,7 @@
                     },
                     body: file.files[0]
                 })
-                    .then(text => new bootstrap.Toast('#firmwareUpdatedToast').show())
+                    .then(() => new bootstrap.Toast('#firmwareUpdatedToast').show())
                     .then(showReload)
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
