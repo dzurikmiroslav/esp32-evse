@@ -16,7 +16,11 @@ static int m_read(bvm* vm)
     be_map_insert_bool(vm, "energy_meter_three_phases", board_config.energy_meter_three_phases);
     be_map_insert_int(vm, "serial_1", board_config.serial_1);
     be_map_insert_int(vm, "serial_2", board_config.serial_2);
+#if SOC_UART_NUM > 2
     be_map_insert_int(vm, "serial_3", board_config.serial_3);
+#else
+    be_map_insert_int(vm, "serial_3", BOARD_CONFIG_SERIAL_NONE);
+#endif
     be_map_insert_bool(vm, "onewire", board_config.onewire);
     be_map_insert_bool(vm, "onewire_temp_sensor", board_config.onewire_temp_sensor);
     be_pop(vm, 1);
