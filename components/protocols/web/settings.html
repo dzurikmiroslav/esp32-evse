@@ -95,6 +95,10 @@
             return value === 0 ? 'none' : `${value / 1000} kW`;
         }
 
+        function formatBytes(value) {
+            return value > 1000 ? `${value / 1000} KB` : `${value} B`;
+        }
+
         function loadSettings() {
             document.getElementById('loading').classList.add('show');
 
@@ -119,9 +123,6 @@
                     document.getElementById('evseSocketLockDetectionHigh').value = data.evse.socketLockDetectionHigh;
                     document.getElementById('evseEnergyMeter').value = data.evse.energyMeter;
                     document.getElementById('evseAcVoltage').value = data.evse.acVoltage;
-                    document.getElementById('evseAux1').value = data.evse.aux1;
-                    document.getElementById('evseAux2').value = data.evse.aux2;
-                    document.getElementById('evseAux3').value = data.evse.aux3;
                     document.getElementById('wifiEnabled').checked = data.wifi.enabled;
                     document.getElementById('wifiEnabled').dispatchEvent(new Event("change"));
                     document.getElementById('wifiSsid').value = data.wifi.ssid;
@@ -182,9 +183,6 @@
                     document.getElementById('evseSocketLockDetectionHigh').value = data.socketLockDetectionHigh;
                     document.getElementById('evseEnergyMeter').value = data.energyMeter;
                     document.getElementById('evseAcVoltage').value = data.acVoltage;
-                    document.getElementById('evseAux1').value = data.aux1;
-                    document.getElementById('evseAux2').value = data.aux2;
-                    document.getElementById('evseAux3').value = data.aux3;
                     document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !data.socketOutlet);
                 })
                 .finally(() => {
@@ -360,10 +358,7 @@
                     socketLockRetryCount: document.getElementById('evseSocketLockRetryCount').valueAsNumber,
                     socketLockDetectionHigh: document.getElementById('evseSocketLockDetectionHigh').value === 'true',
                     energyMeter: document.getElementById('evseEnergyMeter').value,
-                    acVoltage: document.getElementById('evseAcVoltage').valueAsNumber,
-                    aux1: document.getElementById('evseAux1').value,
-                    aux2: document.getElementById('evseAux2').value,
-                    aux3: document.getElementById('evseAux3').value
+                    acVoltage: document.getElementById('evseAcVoltage').valueAsNumber
                 };
 
                 fetch('/api/v1/config/evse', {
@@ -584,6 +579,7 @@
 
             fetch(`/api/v1/fs/data/${fileName}`, { method: 'DELETE' })
                 .then(checkResponse)
+                .then(() => new bootstrap.Toast('#updatedToast').show())
                 .finally(() => {
                     document.getElementById('loading').classList.remove('show');
                     reloadFileSystemTable();
@@ -661,7 +657,7 @@
             fetch('/api/v1/partition/data')
                 .then(jsonResponse)
                 .then(data => {
-                    document.getElementById('fileSystemSize').textContent = `${data.used / 1000} / ${data.total / 1000} KB`;
+                    document.getElementById('fileSystemSize').textContent = `${formatBytes(data.used)} / ${formatBytes(data.total)}`;
                     document.getElementById('fileSystemProgressBar').style.width = `${100 * (data.used / data.total)}%`;
                     document.getElementById('fileTableBody').innerHTML = data.files.map(file => `<tr>
                         <td>
@@ -671,9 +667,9 @@
                         </td>
                         <td>
                             <div class="d-flex justify-content-between">
-                                <span class="m-1">${file.size}</span>
+                                <span class="m-1">${formatBytes(file.size)}</span>
                                 <span>
-                                    <a href="/api/v1/fs/data/${file.name}" target="_blank" class="btn btn-primary btn-sm">Download</a>
+                                    <a href="/api/v1/fs/data/${file.name}" target="_blank" class="btn btn-secondary btn-sm">Download</a>
                                     <button type="button" class="btn btn-primary btn-sm" onclick="editFileSystemFile('${file.name}')">Edit</button>
                                     <button type="button" class="btn btn-danger btn-sm" onclick="deleteFileSystemFile('${file.name}')">Delete</button>
                                 </span>
@@ -686,28 +682,28 @@
         }
 
         function uploadFileSystemFile() {
-            const form = document.getElementById('fileSystemForm');
-            const file = document.getElementById('fileSystemFile');
+            const input = document.getElementById('fileSystemFile');
 
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-            } else {
+            if (input.files) {
                 document.getElementById('loading').classList.add('show');
-
-                fetch(`/api/v1/fs/data/${file.files[0].name}`, {
+                fetch(`/api/v1/fs/data/${input.files[0].name}`, {
                     method: 'POST',
-                    body: file.files[0]
+                    body: input.files[0]
                 })
                     .then(checkResponse)
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        form.classList.remove('was-validated');
-                        file.value = null;
+                        input.value = null;
                         reloadFileSystemTable();
                     })
                     .catch(showError);
-
             }
+        }
+
+        function selectFileSystemFile() {
+            const input = document.getElementById('fileSystemFile');
+            input.click();
         }
 
         function reloadScript() {
@@ -864,21 +860,6 @@
                     if (data.temperatureSensor) {
                         document.getElementById('evseTemperatureThresholdField').classList.remove('d-none');
                         document.getElementById('evseTemperatureThreshold').disabled = false;
-                    }
-                    if (data.aux1) {
-                        document.getElementById('evseAux1Field').classList.remove('d-none');
-                        document.getElementById('evseAux1').disabled = false;
-                    }
-                    if (data.aux2) {
-                        document.getElementById('evseAux2Field').classList.remove('d-none');
-                        document.getElementById('evseAux2').disabled = false;
-                    }
-                    if (data.aux3) {
-                        document.getElementById('evseAux3Field').classList.remove('d-none');
-                        document.getElementById('evseAux3').disabled = false;
-                    }
-                    if (data.aux1 || data.aux2 || data.aux3) {
-                        document.getElementById('evseAuxFields').classList.remove('d-none');
                     }
                     if (data.energyMeter === 'cur') {
                         document.getElementById('evseEnergyMeterCur').disabled = false;
@@ -1037,7 +1018,7 @@
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="fileSystem-tab" type="button" role="tab"
                                         data-bs-toggle="tab" data-bs-target="#fileSystem" aria-controls="fileSystem"
-                                        aria-selected="false">File system</button>
+                                        aria-selected="false">Files</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="script-tab" type="button" role="tab"
@@ -1170,36 +1151,6 @@
                                     <label class="form-label" for="evseAcVoltage">AC voltage</label>
                                     <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
                                         step="1" required>
-                                </div>
-                            </div>
-                            <div class="row d-none" id="evseAuxFields">
-                                <h5>IO</h5>
-                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux1Field">
-                                    <label class="form-label" for="evseAux1">AUX 1</label>
-                                    <select class="form-select" id="evseAux1" disabled>
-                                        <option value="none">None</option>
-                                        <option value="enable_button">Enable button</option>
-                                        <option value="enable_switch">Enable switch</option>
-                                        <option value="authorize_button">Authorize button</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux2Field">
-                                    <label class="form-label" for="evseAux2">AUX 2</label>
-                                    <select class="form-select" id="evseAux2" disabled>
-                                        <option value="none">None</option>
-                                        <option value="enable_button">Enable button</option>
-                                        <option value="enable_switch">Enable switch</option>
-                                        <option value="authorize_button">Authorize button</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux3Field">
-                                    <label class="form-label" for="evseAux3">AUX 3</label>
-                                    <select class="form-select" id="evseAux3" disabled>
-                                        <option value="none">None</option>
-                                        <option value="enable_button">Enable button</option>
-                                        <option value="enable_switch">Enable switch</option>
-                                        <option value="authorize_button">Authorize button</option>
-                                    </select>
                                 </div>
                             </div>
                             <div class="d-flex flex-column gap-2 flex-md-row">
@@ -1479,7 +1430,7 @@
                         </form>
                     </div>
                     <div class="tab-pane fade" id="fileSystem" role="tabpanel">
-                        <h5>File system</h5>
+                        <h5>Files</h5>
 
                         <div class="row">
                             <div class="col-12 col-md-6 mb-3 d-md-flex flex-row">
@@ -1491,36 +1442,21 @@
                             </div>
                         </div>
 
-
-                        <form id="fileSystemForm" class="mb-3" novalidate>
-                            <div class="row">
-                                <div class="col-12 col-md-6 mb-3">
-                                    <label class="form-label" for="fileSystemFile">
-                                        Upload file
-                                    </label>
-                                    <input type="file" class="form-control" id="fileSystemFile" required>
-                                </div>
-                            </div>
-                            <div class="d-flex flex-column gap-2 flex-md-row">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="uploadFileSystemFile()">Upload</button>
-                            </div>
-                        </form>
+                        <input type="file" class="form-control d-none" id="fileSystemFile" onchange="uploadFileSystemFile()">
 
                         <div class="d-flex flex-column gap-2 mb-3 flex-md-row">
-                            <button type="button" class="btn btn-success"
+                            <button type="button" class="btn btn-primary"
                                 onclick="createFileSystemFile()">Create</button>
+
+                            <button type="button" class="btn btn-success"
+                                onclick="selectFileSystemFile()">Upload</button>
                         </div>
 
                         <table class="table table-striped table-sm">
-                            <colgroup>
-                                <col style="width: 60%" />
-                                <col style="width: 40%" />
-                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Size</th>
+                                    <th scope="col">File name</th>
+                                    <th scope="col">File size</th>
                                 </tr>
                             </thead>
                             <tbody id="fileTableBody">
