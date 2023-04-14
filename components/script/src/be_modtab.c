@@ -27,7 +27,6 @@ be_extern_native_module(undefined);
 /* user-defined modules declare start */
 be_extern_native_module(evse);
 be_extern_native_module(board_config);
-be_extern_native_module(timer);
 be_extern_native_module(aux);
 /* user-defined modules declare end */
 
@@ -74,7 +73,6 @@ BERRY_LOCAL const bntvmodule* const be_module_table[] = {
     /* user-defined modules register start */
     &be_native_module(evse),
     &be_native_module(board_config),
-    &be_native_module(timer),
     &be_native_module(aux),
     /* user-defined modules register end */
     NULL /* do not remove */

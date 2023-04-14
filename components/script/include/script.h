@@ -1,6 +1,8 @@
 #ifndef SCRIPT_H_
 #define SCRIPT_H_
 
+#include "esp_err.h"
+
 /**
  * @brief Initialize script VM
  * 
@@ -10,15 +12,17 @@ void script_init(void);
 /**
  * @brief Reload script VM
  * 
+ * @return esp_err_t Return error if start failed
  */
-void script_reload(void);
+esp_err_t script_reload(void);
 
 /**
  * @brief Set enabled, stored in NVS 
  * 
  * @param enabled 
+ * @return esp_err_t Return error if start failed
  */
-void script_set_enabled(bool enabled);
+esp_err_t script_set_enabled(bool enabled);
 
 /**
  * @brief Get enabled, stored in NVS 

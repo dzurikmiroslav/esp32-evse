@@ -2,13 +2,19 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
 #include "nvs.h"
-#include "berry.h"
+#include "be_vm.h"
+#include "be_module.h"
+#include "be_debug.h"
 
 #include "script.h"
+#include "script_utils.h"
 
+#define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
+#define HEARTBEAT_THRESHOLD     5
 
 #define NVS_NAMESPACE           "script"
 #define NVS_ENABLED             "enabled"
@@ -21,34 +27,83 @@ static TaskHandle_t script_task = NULL;
 
 static SemaphoreHandle_t shutdown_sem = NULL;
 
+static QueueHandle_t start_queue = NULL;
+
 static bvm* vm = NULL;
+
+static int heartbeat_counter;
+
+void script_log_error(bvm* vm, int ret)
+{
+    if (ret == BE_EXEC_ERROR) {
+        ESP_LOGW(TAG, "Error: %s", be_tostring(vm, -1));
+        be_pop(vm, 1);
+    }
+    if (ret == BE_EXCEPTION) {
+        ESP_LOGW(TAG, "Exception: '%s' - %s", be_tostring(vm, -2), be_tostring(vm, -1));
+        be_pop(vm, 2);
+    }
+}
+
+void script_watchdog_reset(void)
+{
+    heartbeat_counter = 0;
+}
+
+void script_watchdog_disable(void)
+{
+    heartbeat_counter = -1;
+}
+
+static void obs_hook(bvm* vm, int event, ...)
+{
+    switch (event) {
+    case BE_OBS_VM_HEARTBEAT:
+        if (heartbeat_counter >= 0) {
+            if (heartbeat_counter++ > HEARTBEAT_THRESHOLD) {
+                be_raise(vm, "timeout_error", "code running for too long");
+            }
+        }
+        break;
+    default:
+        break;
+    }
+}
 
 static void script_task_func(void* param)
 {
     vm = be_vm_new();
+    be_set_obs_hook(vm, &obs_hook);
+    comp_set_strict(vm);
 
     int ret = be_loadfile(vm, "/data/main.be");
-
-    if (!ret) {
-        ret = be_pcall(vm, 0);
-        if (ret) {
-            ESP_LOGW(TAG, "Berry call ex: %d", be_getexcept(vm, ret));
-        }
+    if (ret) {
+        script_log_error(vm, ret);
     } else {
-        ESP_LOGW(TAG, "Berry load ex: %d", be_getexcept(vm, ret));
+        script_watchdog_reset();
+        ret = be_pcall(vm, 0);
+        script_watchdog_disable();
+        if (ret) {
+            script_log_error(vm, ret);
+        }
     }
 
-    while (shutdown_sem == NULL) {
-        //ESP_LOGW(TAG, "Berry top: %d", be_top(vm));
+    bool started = ret == 0;
+    xQueueSend(start_queue, (void*)&started, 0);
 
-        be_getglobal(vm, "timer");
+    while (shutdown_sem == NULL) {
+        if (be_top(vm) > 1) {
+            ESP_LOGW(TAG, "Berry top: %d", be_top(vm));
+        }
+
+        be_getglobal(vm, "evse");
         if (!be_isnil(vm, -1)) {
-            be_getmethod(vm, -1, "process");
+            be_getmethod(vm, -1, "_process");
             if (!be_isnil(vm, -1)) {
                 be_pushvalue(vm, -2);
                 ret = be_pcall(vm, 1);
                 if (ret) {
-                    be_dumpexcept(vm);
+                    script_log_error(vm, ret);
                 }
                 be_pop(vm, 1);
             }
@@ -68,44 +123,7 @@ static void script_task_func(void* param)
     vTaskDelete(NULL);
 }
 
-void script_repl_run(char* cmd)
-{
-    if (vm == NULL) {
-        ESP_LOGW(TAG, "Berry not started");
-        return;
-    }
-
-    size_t cmd_len = strlen(cmd);
-    size_t cmd2_len = cmd_len + 12;
-    char* cmd2 = (char*)malloc(cmd2_len);
-    snprintf(cmd2, cmd2_len, "return (%s)", cmd);
-
-    int ret = be_loadbuffer(vm, "input", cmd2, strlen(cmd2));
-    if (be_getexcept(vm, ret) == BE_SYNTAX_ERROR) {
-        be_pop(vm, 2);
-        // if fails, try the direct command
-        ret = be_loadbuffer(vm, "input", cmd, cmd_len);
-    }
-
-    if (ret == 0) {
-        ret = be_pcall(vm, 0);
-        if (ret == 0) {
-            if (!be_isnil(vm, 1)) {
-                const char* ret_val = be_tostring(vm, 1);
-                ESP_LOGI(TAG, "Berry return: %s", ret_val);
-            }
-            be_pop(vm, 1);
-        } else {
-            ESP_LOGW(TAG, "Berry call ex: %d", be_getexcept(vm, ret));
-        }
-    }
-
-    if (cmd2 != NULL) {
-        free(cmd2);
-    }
-}
-
-void script_stop(void)
+static void script_stop(void)
 {
     if (script_task) {
         ESP_LOGI(TAG, "Stopping script");
@@ -126,41 +144,52 @@ void script_stop(void)
     }
 }
 
-static void script_start(void)
+static esp_err_t script_start(void)
 {
     if (!script_task) {
         ESP_LOGI(TAG, "Starting script");
         xTaskCreate(script_task_func, "script_task", 4 * 1024, NULL, 5, &script_task);
+
+        bool started = false;
+        if (xQueueReceive(start_queue, (void*)&started, pdMS_TO_TICKS(START_TIMEOUT))) {
+            return started ? ESP_OK : ESP_ERR_INVALID_STATE;
+        }
+        return ESP_ERR_TIMEOUT;
     }
+    return ESP_ERR_INVALID_STATE;
 }
 
 void script_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
+    start_queue = xQueueCreate(1, sizeof(bool));
+
     if (script_is_enabled()) {
         script_start();
     }
 }
 
-void script_reload(void)
+esp_err_t script_reload(void)
 {
     if (script_is_enabled()) {
         script_stop();
-        script_start();
+        return script_start();
     }
+    return ESP_OK;
 }
 
-void script_set_enabled(bool enabled)
+esp_err_t script_set_enabled(bool enabled)
 {
     nvs_set_u8(nvs, NVS_ENABLED, enabled);
 
     nvs_commit(nvs);
 
     if (enabled) {
-        script_start();
+        return script_start();
     } else {
         script_stop();
+        return ESP_OK;
     }
 }
 

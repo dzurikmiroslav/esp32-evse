@@ -308,9 +308,7 @@ esp_err_t json_set_script_config(cJSON* root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
 
-    script_set_enabled(enabled);
-
-    return ESP_OK;
+    return script_set_enabled(enabled);
 }
 
 cJSON* json_get_state(void)

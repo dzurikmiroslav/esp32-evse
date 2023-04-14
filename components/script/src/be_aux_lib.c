@@ -43,8 +43,21 @@ static int m_read(bvm* vm)
 
 static int m_analog_read(bvm* vm)
 {
+    int argc = be_top(vm);
+    if (argc == 1 && be_isstring(vm, 1)) {
+        const char* name = be_tostring(vm, 1);
+        int value;
 
-    be_return(vm);
+        if (aux_analog_read(name, &value) == ESP_OK) {
+            be_pushint(vm, value);
+            be_return(vm);
+        } else {
+            be_raise(vm, "value_error", "unknow input name");
+            be_return_nil(vm);
+        }
+    }
+    be_raise(vm, "type_error", NULL);
+    be_return_nil(vm);
 }
 
 

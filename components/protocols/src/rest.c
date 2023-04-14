@@ -304,7 +304,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
             root = json_get_modbus_config();
         }
-         if (strcmp(req->uri, "/api/v1/config/script") == 0) {
+        if (strcmp(req->uri, "/api/v1/config/script") == 0) {
             root = json_get_script_config();
         }
         if (strcmp(req->uri, "/api/v1/firmware/checkUpdate") == 0) {
@@ -387,7 +387,7 @@ static esp_err_t json_post_handler(httpd_req_t* req)
 
             return ESP_OK;
         } else {
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, NULL);
+            httpd_resp_send_err(req, ret == ESP_ERR_INVALID_STATE ? HTTPD_500_INTERNAL_SERVER_ERROR : HTTPD_400_BAD_REQUEST, NULL);
 
             return ESP_FAIL;
         }
@@ -593,13 +593,16 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 static esp_err_t script_reload_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        httpd_resp_set_type(req, "text/plain");
+        if (script_reload() == ESP_OK) {
+            httpd_resp_set_type(req, "text/plain");
+            httpd_resp_sendstr(req, "Script reloaded");
 
-        script_reload();
+            return ESP_OK;
+        } else {
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
 
-        httpd_resp_sendstr(req, "Script reloaded");
-
-        return ESP_OK;
+            return ESP_FAIL;
+        }
     } else {
         return ESP_FAIL;
     }
