@@ -19,5 +19,5 @@ idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include"
                     PRIV_INCLUDE_DIRS "src"
                     EMBED_FILES "${embed_files}"
-                    PRIV_REQUIRES nvs_flash esp_http_server esp_https_ota app_update json mqtt
-                    REQUIRES config api)
+                    PRIV_REQUIRES nvs_flash esp_http_server esp_https_ota app_update json mqtt vfs spiffs
+                    REQUIRES config api script)

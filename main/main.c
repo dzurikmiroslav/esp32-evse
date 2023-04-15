@@ -23,6 +23,7 @@
 #include "serial_logger.h"
 #include "board_config.h"
 #include "wifi.h"
+#include "script.h"
 
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
@@ -58,10 +59,10 @@ static void wifi_event_task_func(void* param)
         if (mode_bits & WIFI_AP_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 100, 900);
 
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_AP_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_AP_CONNECTED_BIT) {
+            if (xEventGroupWaitBits(wifi_event_group, WIFI_AP_CONNECTED_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_AP_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
                 do {
-                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_AP_DISCONNECTED_BIT));
+                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_AP_DISCONNECTED_BIT));
             } else {
                 if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
@@ -70,10 +71,10 @@ static void wifi_event_task_func(void* param)
         } else if (mode_bits & WIFI_STA_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 500, 500);
 
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_CONNECTED_BIT) {
+            if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT | WIFI_AP_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_CONNECTED_BIT) {
                 led_set_on(LED_ID_WIFI);
                 do {
-                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_DISCONNECTED_BIT));
+                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_DISCONNECTED_BIT));
             }
         }
     }
@@ -131,41 +132,29 @@ static void button_init(void)
         .mode = GPIO_MODE_INPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pull_up_en = GPIO_PULLUP_ENABLE,
-        .intr_type = GPIO_INTR_ANYEDGE        
+        .intr_type = GPIO_INTR_ANYEDGE
     };
     ESP_ERROR_CHECK(gpio_config(&conf));
     ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
 }
 
-static esp_err_t init_spiffs(void)
+static void fs_init(void)
 {
-    esp_vfs_spiffs_conf_t conf = {
+    esp_vfs_spiffs_conf_t cfg_conf = {
         .base_path = "/cfg",
         .partition_label = "cfg",
         .max_files = 5,
         .format_if_mount_failed = false
     };
-    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
 
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            ESP_LOGE(TAG, "Failed to mount or format filesystem");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
-        } else {
-            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
-        }
-        return ESP_FAIL;
-    }
-
-    size_t total = 0, used = 0;
-    ret = esp_spiffs_info("cfg", &total, &used);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-    }
-    return ESP_OK;
+    esp_vfs_spiffs_conf_t data_conf = {
+        .base_path = "/data",
+        .partition_label = "data",
+        .max_files = 5,
+        .format_if_mount_failed = true
+    };
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
 }
 
 static bool ota_diagnostic(void)
@@ -243,7 +232,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_ERROR_CHECK(init_spiffs());
+    fs_init();
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -259,6 +248,7 @@ void app_main(void)
     protocols_init();
     evse_init();
     button_init();
+    script_init();
 #ifndef CONFIG_ESP_CONSOLE_UART
     esp_log_set_vprintf(log_vprintf);
 #endif

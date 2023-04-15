@@ -87,9 +87,9 @@
                         document.getElementById('rcm').innerText = YES_NO[data.rcm];
                         document.getElementById('energyMeter').innerText = data.energyMeter;
                         document.getElementById('energyMeterThreePhases').innerText = YES_NO[data.energyMeterThreePhases];
-                        document.getElementById('aux1').innerText = YES_NO[data.aux1];
-                        document.getElementById('aux2').innerText = YES_NO[data.aux2];
-                        document.getElementById('aux3').innerText = YES_NO[data.aux3];
+                        document.getElementById('auxIn').innerHTML = data.auxIn.map(name => `<span class="d-inline badge text-bg-secondary">${name}</span>`).join(' ')
+                        document.getElementById('auxOut').innerHTML = data.auxOut.map(name => `<span class="d-inline badge text-bg-secondary">${name}</span>`).join(' ')
+                        document.getElementById('auxAin').innerHTML = data.auxAin.map(name => `<span class="d-inline badge text-bg-secondary">${name}</span>`).join(' ')
                         document.getElementById('serial1').innerText = data.serial1 !== 'none' ? data.serial1Name : 'N/A';
                         document.getElementById('serial2').innerText = data.serial2 !== 'none' ? data.serial2Name : 'N/A';
                         document.getElementById('serial3').innerText = data.serial3 !== 'none' ? data.serial3Name : 'N/A';
@@ -270,16 +270,16 @@
                         <td id="energyMeterThreePhases"></td>
                     </tr>
                     <tr>
-                        <th scope="row">AUX 1</th>
-                        <td id="aux1"></td>
+                        <th scope="row">AUX input</th>
+                        <td id="auxIn"></td>
                     </tr>
                     <tr>
-                        <th scope="row">AUX 2</th>
-                        <td id="aux2"></td>
+                        <th scope="row">AUX out</th>
+                        <td id="auxOut"></td>
                     </tr>
                     <tr>
-                        <th scope="row">AUX 3</th>
-                        <td id="aux3"></td>
+                        <th scope="row">AUX analog input</th>
+                        <td id="auxAin"></td>
                     </tr>
                     <tr>
                         <th scope="row">Serial 1</th>

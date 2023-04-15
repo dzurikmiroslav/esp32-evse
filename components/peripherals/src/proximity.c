@@ -19,10 +19,10 @@ void proximity_init(void)
 
 uint8_t proximity_get_max_current(void)
 {
-    int voltage ;
+    int voltage;
     adc_oneshot_read(adc_handle, board_config.pilot_adc_channel, &voltage);
     adc_cali_raw_to_voltage(adc_cali_handle, voltage, &voltage);
-    
+
     ESP_LOGD(TAG, "Measured: %dmV", voltage);
 
     uint8_t current;

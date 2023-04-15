@@ -54,6 +54,13 @@
             return response.json();
         }
 
+        function textResponse(response) {
+            if (!response.ok) {
+                throw response;
+            }
+            return response.text();
+        }
+
         function checkResponse(response) {
             if (!response.ok) {
                 throw response;
@@ -88,6 +95,10 @@
             return value === 0 ? 'none' : `${value / 1000} kW`;
         }
 
+        function formatBytes(value) {
+            return value > 1000 ? `${value / 1000} KB` : `${value} B`;
+        }
+
         function loadSettings() {
             document.getElementById('loading').classList.add('show');
 
@@ -112,9 +123,6 @@
                     document.getElementById('evseSocketLockDetectionHigh').value = data.evse.socketLockDetectionHigh;
                     document.getElementById('evseEnergyMeter').value = data.evse.energyMeter;
                     document.getElementById('evseAcVoltage').value = data.evse.acVoltage;
-                    document.getElementById('evseAux1').value = data.evse.aux1;
-                    document.getElementById('evseAux2').value = data.evse.aux2;
-                    document.getElementById('evseAux3').value = data.evse.aux3;
                     document.getElementById('wifiEnabled').checked = data.wifi.enabled;
                     document.getElementById('wifiEnabled').dispatchEvent(new Event("change"));
                     document.getElementById('wifiSsid').value = data.wifi.ssid;
@@ -144,6 +152,7 @@
                     document.getElementById('serial3Parity').value = data.serial.serial3Parity;
                     document.getElementById('modbusTcpEnabled').checked = data.modbus.tcpEnabled;
                     document.getElementById('modbusUnitId').value = data.modbus.unitId;
+                    document.getElementById('scriptEnabled').checked = data.script.enabled;
                     document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !data.evse.socketOutlet);
                 })
                 .finally(() => document.getElementById('loading').classList.remove('show'))
@@ -174,9 +183,6 @@
                     document.getElementById('evseSocketLockDetectionHigh').value = data.socketLockDetectionHigh;
                     document.getElementById('evseEnergyMeter').value = data.energyMeter;
                     document.getElementById('evseAcVoltage').value = data.acVoltage;
-                    document.getElementById('evseAux1').value = data.aux1;
-                    document.getElementById('evseAux2').value = data.aux2;
-                    document.getElementById('evseAux3').value = data.aux3;
                     document.getElementById('evseSocketLockFields').querySelectorAll('input, select').forEach(input => input.disabled = !data.socketOutlet);
                 })
                 .finally(() => {
@@ -315,9 +321,26 @@
                 .catch(showError);
         }
 
+        function loadScriptSettings() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/config/script')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('scriptEnabled').checked = data.enabled;
+                })
+                .finally(() => {
+                    document.getElementById('scriptForm').classList.remove('was-validated');
+                    document.getElementById('loading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
         function submitEvseSettings() {
-            if (!document.getElementById('evseForm').checkValidity()) {
-                document.getElementById('evseForm').classList.add('was-validated');
+            const form = document.getElementById('evseForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -335,10 +358,7 @@
                     socketLockRetryCount: document.getElementById('evseSocketLockRetryCount').valueAsNumber,
                     socketLockDetectionHigh: document.getElementById('evseSocketLockDetectionHigh').value === 'true',
                     energyMeter: document.getElementById('evseEnergyMeter').value,
-                    acVoltage: document.getElementById('evseAcVoltage').valueAsNumber,
-                    aux1: document.getElementById('evseAux1').value,
-                    aux2: document.getElementById('evseAux2').value,
-                    aux3: document.getElementById('evseAux3').value
+                    acVoltage: document.getElementById('evseAcVoltage').valueAsNumber
                 };
 
                 fetch('/api/v1/config/evse', {
@@ -349,18 +369,20 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        document.getElementById('evseForm').classList.remove('was-validated');
+                        form.classList.remove('was-validated');
                     })
                     .catch(showError);
             }
         }
 
         function submitWifiSettings() {
-            if (!document.getElementById('wifiForm').checkValidity()) {
-                document.getElementById('wifiForm').classList.add('was-validated');
+            const form = document.getElementById('wifiForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -378,18 +400,20 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        document.getElementById('wifiForm').classList.remove('was-validated');
+                        form.classList.remove('was-validated');
                     })
                     .catch(showError);
             }
         }
 
         function submitMqttSettings() {
-            if (!document.getElementById('mqttForm').checkValidity()) {
-                document.getElementById('mqttForm').classList.add('was-validated');
+            const form = document.getElementById('mqttForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -410,18 +434,20 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        document.getElementById('mqttForm').classList.remove('was-validated');
+                        form.classList.remove('was-validated');
                     })
                     .catch(showError);
             }
         }
 
         function submitTcpLoggerSettings() {
-            if (!document.getElementById('tcpLoggerForm').checkValidity()) {
-                document.getElementById('tcpLoggerForm').classList.add('was-validated');
+            const form = document.getElementById('serialForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -437,18 +463,20 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        document.getElementById('tcpLoggerForm').classList.remove('was-validated');
+                        form.classList.remove('was-validated');
                     })
                     .catch(showError);
             }
         }
 
         function submitSerialSettings() {
-            if (!document.getElementById('serialForm').checkValidity()) {
-                document.getElementById('serialForm').classList.add('was-validated');
+            const form = document.getElementById('serialForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -478,18 +506,20 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        document.getElementById('serialForm').classList.remove('was-validated');
+                        form.classList.remove('was-validated');
                     })
                     .catch(showError);
             }
         }
 
         function submitModbusSettings() {
-            if (!document.getElementById('modbusForm').checkValidity()) {
-                document.getElementById('modbusForm').classList.add('was-validated');
+            const form = document.getElementById('modbusForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -506,13 +536,183 @@
                     body: JSON.stringify(config)
                 })
                     .then(checkResponse)
-                    .then(text => new bootstrap.Toast('#updatedToast').show())
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        document.getElementById('modbusForm').classList.remove('was-validated');
+                        form.classList.remove('was-validated');
                     })
                     .catch(showError);
             }
+        }
+
+        function submitScriptSettings() {
+            const form = document.getElementById('scriptForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+            } else {
+                document.getElementById('loading').classList.add('show');
+
+                const config = {
+                    enabled: document.getElementById('scriptEnabled').checked
+                };
+
+                fetch('/api/v1/config/script', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                    .then(checkResponse)
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        form.classList.remove('was-validated');
+                    })
+                    .catch(showError);
+            }
+        }
+
+        function deleteFileSystemFile(fileName) {
+            document.getElementById('loading').classList.add('show');
+
+            fetch(`/api/v1/fs/data/${fileName}`, { method: 'DELETE' })
+                .then(checkResponse)
+                .then(() => new bootstrap.Toast('#updatedToast').show())
+                .finally(() => {
+                    document.getElementById('loading').classList.remove('show');
+                    reloadFileSystemTable();
+                })
+                .catch(showError);
+        }
+
+        function createFileSystemFile() {
+            new bootstrap.Modal('#fileEditModal').show();
+            document.getElementById('fileEditName').value = '';
+            document.getElementById('fileEditPrevName').value = '';
+            document.getElementById('fileEditContent').value = '';
+        }
+
+        function editFileSystemFile(fileName) {
+            new bootstrap.Modal('#fileEditModal').show();
+            document.getElementById('fileEditLoading').classList.add('show');
+            document.getElementById('fileEditName').value = '';
+            document.getElementById('fileEditPrevName').value = '';
+            document.getElementById('fileEditContent').value = '';
+
+            fetch(`/api/v1/fs/data/${fileName}`)
+                .then(textResponse)
+                .then(data => {
+                    document.getElementById('fileEditPrevName').value = fileName;
+                    document.getElementById('fileEditName').value = fileName;
+                    document.getElementById('fileEditContent').value = data;
+                })
+                .finally(() => {
+                    document.getElementById('fileEditLoading').classList.remove('show');
+                })
+                .catch(showError);
+        }
+
+        function submitFileEdit() {
+            const form = document.getElementById('fileEditForm');
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+            } else {
+                document.getElementById('fileEditLoading').classList.add('show');
+
+                const name = document.getElementById('fileEditName').value;
+                const prevName = document.getElementById('fileEditPrevName').value;
+
+                let promise = fetch(`/api/v1/fs/data/${name}`, {
+                    method: 'POST',
+                    body: document.getElementById('fileEditContent').value
+                });
+
+                if (name !== prevName && prevName) {
+                    //delete old
+                    promise = promise.then(() => fetch(`/api/v1/fs/data/${prevName}`, { method: 'DELETE' }))
+                }
+
+                promise
+                    .then(checkResponse)
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
+                    .finally(() => {
+                        document.getElementById('fileEditLoading').classList.remove('show');
+                        form.classList.remove('was-validated');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('fileEditModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        reloadFileSystemTable();
+                    })
+                    .catch(showError);
+            }
+        }
+
+        function reloadFileSystemTable() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/partition/data')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('fileSystemSize').textContent = `${formatBytes(data.used)} / ${formatBytes(data.total)}`;
+                    document.getElementById('fileSystemProgressBar').style.width = `${100 * (data.used / data.total)}%`;
+                    document.getElementById('fileTableBody').innerHTML = data.files.map(file => `<tr>
+                        <td>
+                            <div class="d-flex">
+                                <span class="m-1">${file.name}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex justify-content-between">
+                                <span class="m-1">${formatBytes(file.size)}</span>
+                                <span>
+                                    <a href="/api/v1/fs/data/${file.name}" target="_blank" class="btn btn-secondary btn-sm">Download</a>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="editFileSystemFile('${file.name}')">Edit</button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteFileSystemFile('${file.name}')">Delete</button>
+                                </span>
+                            </div>
+                        </td>
+                        </tr>`).join('');
+                })
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
+        }
+
+        function uploadFileSystemFile() {
+            const input = document.getElementById('fileSystemFile');
+
+            if (input.files) {
+                document.getElementById('loading').classList.add('show');
+                fetch(`/api/v1/fs/data/${input.files[0].name}`, {
+                    method: 'POST',
+                    body: input.files[0]
+                })
+                    .then(checkResponse)
+                    .then(() => new bootstrap.Toast('#updatedToast').show())
+                    .finally(() => {
+                        document.getElementById('loading').classList.remove('show');
+                        input.value = null;
+                        reloadFileSystemTable();
+                    })
+                    .catch(showError);
+            }
+        }
+
+        function selectFileSystemFile() {
+            const input = document.getElementById('fileSystemFile');
+            input.click();
+        }
+
+        function reloadScript() {
+            document.getElementById('loading').classList.add('show');
+
+            fetch('/api/v1/script/reload', { method: 'POST' })
+                .then(checkResponse)
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
         }
 
         function showReload() {
@@ -562,18 +762,18 @@
             fetch('/api/v1/firmware/update', {
                 method: 'POST'
             })
-                .then(text => new bootstrap.Toast('#firmwareUpdatedToast').show())
+                .then(() => new bootstrap.Toast('#firmwareUpdatedToast').show())
                 .then(showReload)
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
         }
 
         function uploadFirmware() {
-            const uploadFirmwareForm = document.getElementById('uploadFirmwareForm');
-            const firmwareFile = document.getElementById('firmwareFile');
+            const form = document.getElementById('uploadFirmwareForm');
+            const file = document.getElementById('firmwareFile');
 
-            if (!uploadFirmwareForm.checkValidity()) {
-                uploadFirmwareForm.classList.add('was-validated');
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
@@ -582,40 +782,40 @@
                     headers: {
                         'Content-Type': 'application/octet-stream'
                     },
-                    body: firmwareFile.files[0]
+                    body: file.files[0]
                 })
-                    .then(text => new bootstrap.Toast('#firmwareUpdatedToast').show())
+                    .then(() => new bootstrap.Toast('#firmwareUpdatedToast').show())
                     .then(showReload)
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        uploadFirmwareForm.classList.remove('was-validated');
-                        firmwareFile.value = null;
+                        form.classList.remove('was-validated');
+                        file.value = null;
                     })
                     .catch(showError);
             }
         }
 
         function uploadBoardConfig() {
-            const uploadBoardConfigForm = document.getElementById('uploadBoardConfigForm');
-            const boardConfigFile = document.getElementById('boardConfigFile');
+            const form = document.getElementById('uploadBoardConfigForm');
+            const file = document.getElementById('boardConfigFile');
 
-            if (!uploadBoardConfigForm.checkValidity()) {
-                uploadBoardConfigForm.classList.add('was-validated');
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
             } else {
                 document.getElementById('loading').classList.add('show');
 
-                fetch('/api/v1/boardConfig/raw', {
+                fetch('/api/v1/fs/cfg/board.cfg', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'text/plain'
                     },
-                    body: boardConfigFile.files[0]
+                    body: file.files[0]
                 })
                     .then(() => new bootstrap.Toast('#configUpdatedToast').show())
                     .finally(() => {
                         document.getElementById('loading').classList.remove('show');
-                        uploadBoardConfigForm.classList.remove('was-validated');
-                        boardConfigFile.value = null;
+                        form.classList.remove('was-validated');
+                        file.value = null;
                     })
                     .catch(showError);
             }
@@ -660,21 +860,6 @@
                     if (data.temperatureSensor) {
                         document.getElementById('evseTemperatureThresholdField').classList.remove('d-none');
                         document.getElementById('evseTemperatureThreshold').disabled = false;
-                    }
-                    if (data.aux1) {
-                        document.getElementById('evseAux1Field').classList.remove('d-none');
-                        document.getElementById('evseAux1').disabled = false;
-                    }
-                    if (data.aux2) {
-                        document.getElementById('evseAux2Field').classList.remove('d-none');
-                        document.getElementById('evseAux2').disabled = false;
-                    }
-                    if (data.aux3) {
-                        document.getElementById('evseAux3Field').classList.remove('d-none');
-                        document.getElementById('evseAux3').disabled = false;
-                    }
-                    if (data.aux1 || data.aux2 || data.aux3) {
-                        document.getElementById('evseAuxFields').classList.remove('d-none');
                     }
                     if (data.energyMeter === 'cur') {
                         document.getElementById('evseEnergyMeterCur').disabled = false;
@@ -726,6 +911,7 @@
             });
 
             loadSettings();
+            reloadFileSystemTable();
 
             document.querySelectorAll('button[data-bs-toggle="tab"]')
                 .forEach(tab => tab.addEventListener('shown.bs.tab', event => {
@@ -828,6 +1014,16 @@
                                     <button class="nav-link" id="modbus-tab" type="button" role="tab"
                                         data-bs-toggle="tab" data-bs-target="#modbus" aria-controls="modbus"
                                         aria-selected="false">Modbus</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="fileSystem-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#fileSystem" aria-controls="fileSystem"
+                                        aria-selected="false">Files</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="script-tab" type="button" role="tab"
+                                        data-bs-toggle="tab" data-bs-target="#script" aria-controls="script"
+                                        aria-selected="false">Script</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="system-tab" type="button" role="tab"
@@ -955,36 +1151,6 @@
                                     <label class="form-label" for="evseAcVoltage">AC voltage</label>
                                     <input type="number" class="form-control" id="evseAcVoltage" min="100" max="300"
                                         step="1" required>
-                                </div>
-                            </div>
-                            <div class="row d-none" id="evseAuxFields">
-                                <h5>IO</h5>
-                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux1Field">
-                                    <label class="form-label" for="evseAux1">AUX 1</label>
-                                    <select class="form-select" id="evseAux1" disabled>
-                                        <option value="none">None</option>
-                                        <option value="enable_button">Enable button</option>
-                                        <option value="enable_switch">Enable switch</option>
-                                        <option value="authorize_button">Authorize button</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux2Field">
-                                    <label class="form-label" for="evseAux2">AUX 2</label>
-                                    <select class="form-select" id="evseAux2" disabled>
-                                        <option value="none">None</option>
-                                        <option value="enable_button">Enable button</option>
-                                        <option value="enable_switch">Enable switch</option>
-                                        <option value="authorize_button">Authorize button</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6 col-xl-3 mb-3 d-none" id="evseAux3Field">
-                                    <label class="form-label" for="evseAux3">AUX 3</label>
-                                    <select class="form-select" id="evseAux3" disabled>
-                                        <option value="none">None</option>
-                                        <option value="enable_button">Enable button</option>
-                                        <option value="enable_switch">Enable switch</option>
-                                        <option value="authorize_button">Authorize button</option>
-                                    </select>
                                 </div>
                             </div>
                             <div class="d-flex flex-column gap-2 flex-md-row">
@@ -1263,12 +1429,74 @@
                             </div>
                         </form>
                     </div>
-                    <div class="tab-pane fade" id="system" role="tabpanel">
-                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                            Flashing incorrect firmware or uploading an incorrect board configuration can cause the device to malfunction!
+                    <div class="tab-pane fade" id="fileSystem" role="tabpanel">
+                        <h5>Files</h5>
+
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3 d-md-flex flex-row">
+                                <div class="progress flex-grow-1 my-1 me-md-1">
+                                    <div id="fileSystemProgressBar" class="progress-bar bg-info" role="progressbar">
+                                    </div>
+                                </div>
+                                <span id="fileSystemSize"></span>
+                            </div>
+                        </div>
+
+                        <input type="file" class="form-control d-none" id="fileSystemFile" onchange="uploadFileSystemFile()">
+
+                        <div class="d-flex flex-column gap-2 mb-3 flex-md-row">
+                            <button type="button" class="btn btn-primary"
+                                onclick="createFileSystemFile()">Create</button>
+
+                            <button type="button" class="btn btn-success"
+                                onclick="selectFileSystemFile()">Upload</button>
+                        </div>
+
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th scope="col">File name</th>
+                                    <th scope="col">File size</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fileTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane fade" id="script" role="tabpanel">
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            When enabled, will be executed <strong>main.be</strong> on file system.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
-                        
+
+                        <h5>Script</h5>
+
+                        <form id="scriptForm" novalidate>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                            id="scriptEnabled">
+                                        <label class="form-check-label" for="scriptEnabled">Enabled</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column gap-2 flex-md-row">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="submitScriptSettings()">Submit</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="loadScriptSettings()">Reset</button>
+                                <button type="button" class="btn btn-warning" onclick="reloadScript()">Reload</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="system" role="tabpanel">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            Flashing incorrect firmware or uploading an incorrect board configuration can cause the
+                            device to malfunction!
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+
                         <h5>System</h5>
 
                         <div class="d-flex flex-column gap-2 flex-md-row mb-3">
@@ -1303,7 +1531,7 @@
 
                         <h5>Board configuration</h5>
 
-                        <p>Download board configuration <a href="/api/v1/boardConfig/raw" target="_blank">board.cfg</a>
+                        <p>Download board configuration <a href="/api/v1/fs/cfg/board.cfg" target="_blank">board.cfg</a>
                         </p>
 
                         <form id="uploadBoardConfigForm" novalidate>
@@ -1331,6 +1559,38 @@
             <span class="text-muted">ESP32 electric vehicle supply equipment</span>
         </div>
     </footer>
+
+    <div class="modal modal-lg fade" id="fileEditModal" tabindex="-1" aria-labelledby="fileEditModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div id="fileEditLoading" class="overlay fade text-center">
+                    <div class="spinner-border" role="status"></div>
+                </div>
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="fileEditModalLabel">Edit file</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="fileEditForm" novalidate>
+                        <input type="hidden" id="fileEditPrevName">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label" for="fileEditName">File name</label>
+                            <input type="text" class="form-control" id="fileEditName" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="fileEditContent">File content</label>
+                            <textarea rows="10" class="form-control" id="fileEditContent"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="submitFileEdit()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="toast-container position-fixed p-3 end-0">
         <div id="updatedToast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
