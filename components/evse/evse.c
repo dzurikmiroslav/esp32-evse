@@ -112,7 +112,10 @@ static void set_pilot(enum pilot_state_e state)
 
 static void set_socket_lock(bool locked)
 {
-    if (socket_lock_locked != locked || !(error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT))) {
+    if (error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT)) {
+        return;
+    }
+    if (socket_lock_locked != locked) {
         socket_lock_locked = locked;
         socket_lock_set_locked(socket_lock_locked);
     }
