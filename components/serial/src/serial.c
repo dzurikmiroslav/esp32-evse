@@ -11,8 +11,8 @@
 #include "serial_modbus.h"
 #include "serial_nextion.h"
 
-#define BAUD_RATE_MIN           2400
-#define BAUD_RATE_MAX           230400
+#define BAUD_RATE_MIN           300
+#define BAUD_RATE_MAX           1000000
 
 #define NVS_NAMESPACE           "serial"
 #define NVS_MODE                "mode_%x"
@@ -133,7 +133,7 @@ serial_mode_t serial_get_mode(serial_id_t id)
 
 int serial_get_baud_rate(serial_id_t id)
 {
-    int32_t value = 115200;
+    int32_t value = 460800;
     char key[12];
     sprintf(key, NVS_BAUD_RATE, id);
     nvs_get_i32(nvs, key, &value);

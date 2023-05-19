@@ -80,10 +80,6 @@ static void handle_message(const char* topic, const char* data)
             cJSON* root = json_get_mqtt_config();
             publish_message("/response/config/mqtt", root);
             cJSON_Delete(root);
-        } else if (strcmp(sub_topic, "/request/config/tcpLogger") == 0) {
-            cJSON* root = json_get_tcp_logger_config();
-            publish_message("/response/config/tcpLogger", root);
-            cJSON_Delete(root);
         } else if (strcmp(sub_topic, "/request/boardConfig") == 0) {
             cJSON* root = json_get_board_config();
             publish_message("/response/boardConfig", root);
@@ -106,11 +102,7 @@ static void handle_message(const char* topic, const char* data)
             cJSON* root = cJSON_Parse(data);
             json_set_mqtt_config(root);
             cJSON_Delete(root);
-        } else if (strcmp(sub_topic, "/set/config/tcpLogger") == 0) {
-            cJSON* root = cJSON_Parse(data);
-            json_set_tcp_logger_config(root);
-            cJSON_Delete(root);
-        }
+        } 
     }
 }
 

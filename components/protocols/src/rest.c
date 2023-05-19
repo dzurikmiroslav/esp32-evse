@@ -20,12 +20,14 @@
 #include "timeout_utils.h"
 #include "evse.h"
 #include "script.h"
+#include "logger.h"
 
 #define SCRATCH_BUFSIZE         1024
 
 #define MAX_JSON_SIZE           (50*1024) // 50 KB
 #define MAX_JSON_SIZE_STR       "50KB"
 #define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define MAX_OPEN_SOCKETS        5
 
 #define NVS_NAMESPACE           "rest"
 #define NVS_USER                "user"
@@ -278,7 +280,6 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "evse", json_get_evse_config());
             cJSON_AddItemToObject(root, "wifi", json_get_wifi_config());
             cJSON_AddItemToObject(root, "mqtt", json_get_mqtt_config());
-            cJSON_AddItemToObject(root, "tcpLogger", json_get_tcp_logger_config());
             cJSON_AddItemToObject(root, "serial", json_get_serial_config());
             cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
             cJSON_AddItemToObject(root, "script", json_get_script_config());
@@ -294,9 +295,6 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/mqtt") == 0) {
             root = json_get_mqtt_config();
-        }
-        if (strcmp(req->uri, "/api/v1/config/tcpLogger") == 0) {
-            root = json_get_tcp_logger_config();
         }
         if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
             root = json_get_serial_config();
@@ -338,7 +336,7 @@ static esp_err_t json_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
         cJSON* root = read_request_json(req);
-        const char* res_msg;
+
         esp_err_t ret = ESP_OK;
 
         if (root == NULL) {
@@ -347,43 +345,31 @@ static esp_err_t json_post_handler(httpd_req_t* req)
 
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             ret = json_set_evse_config(root);
-            res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {
             ret = json_set_wifi_config(root, true);
-            res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/mqtt") == 0) {
             ret = json_set_mqtt_config(root);
-            res_msg = "Config updated";
-        }
-        if (strcmp(req->uri, "/api/v1/config/tcpLogger") == 0) {
-            ret = json_set_tcp_logger_config(root);
-            res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
             ret = json_set_serial_config(root);
-            res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
             ret = json_set_modbus_config(root);
-            res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/config/script") == 0) {
             ret = json_set_script_config(root);
-            res_msg = "Config updated";
         }
         if (strcmp(req->uri, "/api/v1/credentials") == 0) {
             set_credentials(root);
-            res_msg = "Credentials updated";
         }
 
         cJSON_Delete(root);
 
-        httpd_resp_set_type(req, "text/plain");
-
         if (ret == ESP_OK) {
-            httpd_resp_sendstr(req, res_msg);
+            httpd_resp_set_type(req, "text/plain");
+            httpd_resp_sendstr(req, "OK");
 
             return ESP_OK;
         } else {
@@ -399,10 +385,11 @@ static esp_err_t json_post_handler(httpd_req_t* req)
 static esp_err_t restart_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        httpd_resp_set_type(req, "text/plain");
-
         evse_set_available(false);
-        httpd_resp_sendstr(req, "Restart in one second");
+
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "OK");
+
         timeout_restart();
 
         return ESP_OK;
@@ -415,23 +402,19 @@ static esp_err_t state_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
-        const char* res_msg;
 
         if (strcmp(req->uri, "/api/v1/state/authorize") == 0) {
             evse_authorize();
-            res_msg = "Authorized";
         }
         if (strcmp(req->uri, "/api/v1/state/enable") == 0) {
             evse_set_enabled(true);
-            res_msg = "Enabled";
         }
         if (strcmp(req->uri, "/api/v1/state/disable") == 0) {
             evse_set_enabled(false);
-            res_msg = "Disabled";
         }
 
         httpd_resp_set_type(req, "text/plain");
-        httpd_resp_sendstr(req, res_msg);
+        httpd_resp_sendstr(req, "OK");
 
         return ESP_OK;
     } else {
@@ -443,8 +426,6 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
         evse_set_available(false);
-
-        httpd_resp_set_type(req, "text/plain");
 
         char avl_version[32];
         if (ota_get_available_version(avl_version) == ESP_OK) {
@@ -479,7 +460,8 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
             return ESP_FAIL;
         }
 
-        httpd_resp_sendstr(req, "Firmware upgraded successfully");
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "OK");
 
         return ESP_OK;
     } else {
@@ -491,8 +473,6 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
         evse_set_available(false);
-
-        httpd_resp_set_type(req, "text/plain");
 
         esp_err_t err;
         esp_ota_handle_t update_handle = 0;
@@ -582,7 +562,8 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         ESP_LOGI(TAG, "Prepare to restart system!");
         timeout_restart();
 
-        httpd_resp_sendstr(req, "Firmware uploaded successfully");
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "OK");
 
         return ESP_OK;
     } else {
@@ -593,16 +574,12 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 static esp_err_t script_reload_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        if (script_reload() == ESP_OK) {
-            httpd_resp_set_type(req, "text/plain");
-            httpd_resp_sendstr(req, "Script reloaded");
+        script_reload();
 
-            return ESP_OK;
-        } else {
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "OK");
 
-            return ESP_FAIL;
-        }
+        return ESP_OK;
     } else {
         return ESP_FAIL;
     }
@@ -721,7 +698,6 @@ static esp_err_t fs_file_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
         char* path = req->uri + strlen("/api/v1/fs");
-        char* file = strrchr(path, '/') + 1;
 
         FILE* fd = fopen(path, "w");
         if (fd == NULL) {
@@ -757,7 +733,8 @@ static esp_err_t fs_file_post_handler(httpd_req_t* req)
 
         fclose(fd);
 
-        httpd_resp_sendstr(req, "File uploaded successfully");
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "OK");
 
         return ESP_OK;
     } else {
@@ -772,7 +749,82 @@ static esp_err_t fs_file_delete_handler(httpd_req_t* req)
 
         unlink(path);
 
-        httpd_resp_sendstr(req, "File deleted successfully");
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_sendstr(req, "OK");
+
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+static esp_err_t log_get_handler(httpd_req_t* req)
+{
+    if (authorize_req(req)) {
+        uint16_t count = logger_count();
+        char count_str[16];
+        itoa(count, count_str, 10);
+        httpd_resp_set_hdr(req, "X-Count", count_str);
+
+        uint16_t index = 0;
+        char buf[24];
+        char param[16];
+        if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+            if (httpd_query_key_value(buf, "index", param, sizeof(param)) == ESP_OK) {
+                index = atoi(param);
+            }
+        }
+
+        httpd_resp_set_type(req, "text/plain");
+        char* line;
+        uint16_t line_len;
+        while (logger_read(&index, &line, &line_len) && index <= count) {
+            if (httpd_resp_send_chunk(req, line, line_len) != ESP_OK) {
+                ESP_LOGE(TAG, "Sending failed");
+                httpd_resp_sendstr_chunk(req, NULL);
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
+                return ESP_FAIL;
+            }
+        }
+
+        httpd_resp_send_chunk(req, NULL, 0);
+
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+static esp_err_t script_output_get_handler(httpd_req_t* req)
+{
+    if (authorize_req(req)) {
+        uint16_t count = script_output_count();
+        char count_str[16];
+        itoa(count, count_str, 10);
+        httpd_resp_set_hdr(req, "X-Count", count_str);
+
+        uint16_t index = 0;
+        char buf[24];
+        char param[16];
+        if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+            if (httpd_query_key_value(buf, "index", param, sizeof(param)) == ESP_OK) {
+                index = atoi(param);
+            }
+        }
+
+        httpd_resp_set_type(req, "text/plain");
+        char* line;
+        uint16_t line_len;
+        while (script_output_read(&index, &line, &line_len) && index <= count) {
+            if (httpd_resp_send_chunk(req, line, line_len) != ESP_OK) {
+                ESP_LOGE(TAG, "Sending failed");
+                httpd_resp_sendstr_chunk(req, NULL);
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
+                return ESP_FAIL;
+            }
+        }
+
+        httpd_resp_send_chunk(req, NULL, 0);
 
         return ESP_OK;
     } else {
@@ -788,7 +840,7 @@ static esp_err_t fs_file_delete_handler(httpd_req_t* req)
 //     close(sockfd);
 // }
 
-// static esp_err_t sess_n_open(httpd_handle_t hd, int sockfd)
+// static esp_err_t sess_on_open(httpd_handle_t hd, int sockfd)
 // {
 //     ESP_LOGW(TAG, "open %d (%d)", sockfd, ++sess_count);
 //     return ESP_OK;
@@ -808,9 +860,9 @@ void rest_init(void)
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 13;
-    config.max_open_sockets = 3;
-    config.lru_purge_enable = true;
+    config.max_uri_handlers = 15;
+    // config.max_open_sockets = 3;
+    // config.lru_purge_enable = true;
     // config.open_fn = sess_on_open;
     // config.close_fn = sess_on_close;
 
@@ -844,6 +896,20 @@ void rest_init(void)
         .handler = fs_file_delete_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_delete_uri));
+
+    httpd_uri_t log_get_uri = {
+        .uri = "/api/v1/log",
+        .method = HTTP_GET,
+        .handler = log_get_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &log_get_uri));
+
+    httpd_uri_t script_output_get_uri = {
+        .uri = "/api/v1/script/output",
+        .method = HTTP_GET,
+        .handler = script_output_get_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &script_output_get_uri));
 
     httpd_uri_t json_get_uri = {
        .uri = "/api/v1/*",

@@ -2,8 +2,7 @@ set(srcs
     "src/protocols.c"
     "src/rest.c"
     "src/mqtt.c"
-    "src/modbus_tcp.c"
-    "src/tcp_logger.c")
+    "src/modbus_tcp.c")
 
 set(embed_files
     "web-gz/index.html"
@@ -20,4 +19,4 @@ idf_component_register(SRCS "${srcs}"
                     PRIV_INCLUDE_DIRS "src"
                     EMBED_FILES "${embed_files}"
                     PRIV_REQUIRES nvs_flash esp_http_server esp_https_ota app_update json mqtt vfs spiffs
-                    REQUIRES config api script)
+                    REQUIRES config api script logger)

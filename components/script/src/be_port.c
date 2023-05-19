@@ -12,14 +12,18 @@
 #include <string.h>
 #include "esp_log.h"
 
+#include "script_utils.h"
+
 /* this file contains configuration for the file system. */
 
 /* standard input and output */
 
 BERRY_API void be_writebuffer(const char *buffer, size_t length)
 {
-    ESP_LOG_BUFFER_CHAR("berry", buffer, length);
+    //ESP_LOG_BUFFER_CHAR("berry", buffer, length);
+    script_output_print(buffer, length);
     //be_fwrite(stdout, buffer, length);
+    //output_buffer_append(script_output_buffer, buffer, length);
 }
 
 BERRY_API char* be_readstring(char *buffer, size_t size)

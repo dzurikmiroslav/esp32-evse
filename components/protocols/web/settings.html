@@ -134,7 +134,6 @@
                     document.getElementById('mqttUser').value = data.mqtt.user;
                     document.getElementById('mqttPassword').value = '';
                     document.getElementById('mqttPeriodicity').value = data.mqtt.periodicity;
-                    document.getElementById('tcpLoggerEnabled').checked = data.tcpLogger.enabled;
                     document.getElementById('serial1Mode').value = data.serial.serial1Mode;
                     document.getElementById('serial1BaudRate').value = data.serial.serial1BaudRate;
                     document.getElementById('serial1DataBits').value = data.serial.serial1DataBits;
@@ -256,21 +255,6 @@
                 })
                 .finally(() => {
                     document.getElementById('mqttForm').classList.remove('was-validated');
-                    document.getElementById('loading').classList.remove('show');
-                })
-                .catch(showError);
-        }
-
-        function loadTcpLoggerSettings() {
-            document.getElementById('loading').classList.add('show');
-
-            fetch('/api/v1/config/tcpLogger')
-                .then(jsonResponse)
-                .then(data => {
-                    document.getElementById('tcpLoggerEnabled').checked = data.enabled;
-                })
-                .finally(() => {
-                    document.getElementById('tcpLoggerForm').classList.remove('was-validated');
                     document.getElementById('loading').classList.remove('show');
                 })
                 .catch(showError);
@@ -427,35 +411,6 @@
                 };
 
                 fetch('/api/v1/config/mqtt', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(config)
-                })
-                    .then(checkResponse)
-                    .then(() => new bootstrap.Toast('#updatedToast').show())
-                    .finally(() => {
-                        document.getElementById('loading').classList.remove('show');
-                        form.classList.remove('was-validated');
-                    })
-                    .catch(showError);
-            }
-        }
-
-        function submitTcpLoggerSettings() {
-            const form = document.getElementById('serialForm');
-
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-            } else {
-                document.getElementById('loading').classList.add('show');
-
-                const config = {
-                    enabled: document.getElementById('tcpLoggerEnabled').checked
-                };
-
-                fetch('/api/v1/config/tcpLogger', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -711,6 +666,7 @@
 
             fetch('/api/v1/script/reload', { method: 'POST' })
                 .then(checkResponse)
+                .then(() => scriptOutputIndex = 0)
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
         }
@@ -831,6 +787,62 @@
                 .catch(showError);
         }
 
+        var logsIndex = 0;
+
+        function refreshLogs() {
+            const fetchLog = () => fetch(`/api/v1/log?index=${logsIndex}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw response;
+                    }
+                    const count = response.headers.get('X-Count');
+                    logsIndex = count < logsIndex ? 0 : count;
+
+                    response.text()
+                        .then(msg => {
+                            if (msg) {
+                                const textarea = document.getElementById('logsContent');
+                                const scrolled = textarea.scrollHeight === textarea.scrollTop + textarea.clientHeight;
+                                textarea.value += msg.replace(/\u001b\[.*?m/g, '');
+                                if (scrolled) {
+                                    textarea.scrollTop = textarea.scrollHeight;
+                                }
+                            }
+                        });
+                })
+                .catch(showError);
+
+            fetchLog();
+        }
+
+        var scriptOutputIndex = 0;
+
+        function refreshScriptOutput() {
+            const fetchOutput = () => fetch(`/api/v1/script/output?index=${scriptOutputIndex}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw response;
+                    }
+                    const count = response.headers.get('X-Count');
+                    scriptOutputIndex = count < scriptOutputIndex ? 0 : count;
+
+                    response.text()
+                        .then(msg => {
+                            if (msg) {
+                                const textarea = document.getElementById('scriptOutputContent');
+                                const scrolled = textarea.scrollHeight === textarea.scrollTop + textarea.clientHeight;
+                                textarea.value += msg;
+                                if (scrolled) {
+                                    textarea.scrollTop = textarea.scrollHeight;
+                                }
+                            }
+                        });
+                })
+                .catch(showError);
+
+            fetchOutput();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('wifiEnabled').addEventListener('change', event => {
                 document.getElementById('wifiFields').querySelectorAll('input, button').forEach(input => input.disabled = !event.target.checked);
@@ -920,6 +932,17 @@
                         offcanvas.hide();
                     }
                 }));
+
+            setInterval(() => {
+                if (!document.hidden) {
+                    if (document.getElementById('logs-tab').ariaSelected === 'true') {
+                        refreshLogs();
+                    }
+                    if (document.getElementById('script-tab').ariaSelected === 'true') {
+                        refreshScriptOutput();
+                    }
+                }
+            }, 1000);
         });
     </script>
 </head>
@@ -1000,12 +1023,6 @@
                                         data-bs-target="#mqtt" aria-controls="mqtt" aria-selected="false">MQTT</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="tcpLogger-tab" type="button" role="tab"
-                                        data-bs-toggle="tab" data-bs-target="#tcpLogger" aria-controls="tcpLogger"
-                                        aria-selected="false">TCP
-                                        logger</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="serial-tab" type="button" role="tab"
                                         data-bs-toggle="tab" data-bs-target="#serial" aria-controls="serial"
                                         aria-selected="false">Serial</button>
@@ -1029,6 +1046,10 @@
                                     <button class="nav-link" id="system-tab" type="button" role="tab"
                                         data-bs-toggle="tab" data-bs-target="#system" aria-controls="system"
                                         aria-selected="false">System</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="logs-tab" type="button" role="tab" data-bs-toggle="tab"
+                                        data-bs-target="#logs" aria-controls="logs" aria-selected="false">Logs</button>
                                 </li>
                             </ul>
                         </div>
@@ -1245,26 +1266,6 @@
                             </div>
                         </form>
                     </div>
-                    <div class="tab-pane fade" id="tcpLogger" role="tabpanel">
-                        <h5>TCP logger</h5>
-                        <form id="tcpLoggerForm" novalidate>
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch"
-                                            id="tcpLoggerEnabled">
-                                        <label class="form-check-label" for="tcpLoggerEnabled">Enabled</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="d-flex flex-column gap-2 flex-md-row">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="submitTcpLoggerSettings()">Submit</button>
-                                <button type="button" class="btn btn-secondary"
-                                    onclick="loadTcpLoggerSettings()">Reset</button>
-                            </div>
-                        </form>
-                    </div>
                     <div class="tab-pane fade" id="serial" role="tabpanel">
                         <form id="serialForm" novalidate>
                             <div id="serial1Field" class="row d-none">
@@ -1281,8 +1282,8 @@
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
                                     <label class="form-label" for="serial1BaudRate">Baud rate</label>
-                                    <input type="number" class="form-control" id="serial1BaudRate" min="2400"
-                                        max="230400" step="1" required disabled>
+                                    <input type="number" class="form-control" id="serial1BaudRate" min="3000"
+                                        max="1000000" step="1" required disabled>
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
                                     <label class="form-label" for="serial1DataBits">Data bits</label>
@@ -1324,8 +1325,8 @@
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
                                     <label class="form-label" for="serial2BaudRate">Baud rate</label>
-                                    <input type="number" disabled class="form-control" id="serial2BaudRate" min="2400"
-                                        max="230400" step="1" required disabled>
+                                    <input type="number" disabled class="form-control" id="serial2BaudRate" min="300"
+                                        max="1000000" step="1" required disabled>
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
                                     <label class="form-label" for="serial2DataBits">Data bits</label>
@@ -1367,8 +1368,8 @@
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
                                     <label class="form-label" for="serial3BaudRate">Baud rate</label>
-                                    <input type="number" disabled class="form-control" id="serial3BaudRate" min="2400"
-                                        max="230400" step="1" required disabled>
+                                    <input type="number" disabled class="form-control" id="serial3BaudRate" min="300"
+                                        max="1000000" step="1" required disabled>
                                 </div>
                                 <div class="col-6 col-md-3 col-lg-2 mb-3">
                                     <label class="form-label" for="serial3DataBits">Data bits</label>
@@ -1442,7 +1443,8 @@
                             </div>
                         </div>
 
-                        <input type="file" class="form-control d-none" id="fileSystemFile" onchange="uploadFileSystemFile()">
+                        <input type="file" class="form-control d-none" id="fileSystemFile"
+                            onchange="uploadFileSystemFile()">
 
                         <div class="d-flex flex-column gap-2 mb-3 flex-md-row">
                             <button type="button" class="btn btn-primary"
@@ -1464,11 +1466,6 @@
                         </table>
                     </div>
                     <div class="tab-pane fade" id="script" role="tabpanel">
-                        <div class="alert alert-info alert-dismissible fade show" role="alert">
-                            When enabled, will be executed <strong>main.be</strong> on file system.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-
                         <h5>Script</h5>
 
                         <form id="scriptForm" novalidate>
@@ -1481,7 +1478,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex flex-column gap-2 flex-md-row">
+                            <div class="d-flex flex-column gap-2 flex-md-row mb-3">
                                 <button type="button" class="btn btn-primary"
                                     onclick="submitScriptSettings()">Submit</button>
                                 <button type="button" class="btn btn-secondary"
@@ -1489,6 +1486,11 @@
                                 <button type="button" class="btn btn-warning" onclick="reloadScript()">Reload</button>
                             </div>
                         </form>
+
+                        <h6>Output</h6>
+
+                        <textarea id="scriptOutputContent" class="form-control form-control-sm mb-3" disabled
+                            rows="15"></textarea>
                     </div>
                     <div class="tab-pane fade" id="system" role="tabpanel">
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -1548,6 +1550,13 @@
                                     onclick="uploadBoardConfig()">Upload</button>
                             </div>
                         </form>
+                    </div>
+
+                    <div class="tab-pane fade" id="logs" role="tabpanel">
+                        <h5>Logs</h5>
+
+                        <textarea id="logsContent" class="form-control form-control-sm mb-3" disabled
+                            rows="20"></textarea>
                     </div>
                 </div>
             </div>

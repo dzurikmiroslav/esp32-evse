@@ -270,7 +270,7 @@ void tcp_server_stop(void)
         listen_sock = -1;
 
         if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
-            ESP_LOGE(TAG, "Server task stop timeout, will be force stoped");
+            ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
             vTaskDelete(tcp_server_task);
         }
 

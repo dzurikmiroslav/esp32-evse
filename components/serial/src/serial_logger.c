@@ -1,6 +1,7 @@
 #include "esp_log.h"
 
 #include "serial_logger.h"
+#include "logger.h"
 
 #define BUF_SIZE        256
 
@@ -8,12 +9,19 @@ static const char* TAG = "serial_logger";
 
 static uart_port_t port = -1;
 
-void serial_logger_print(const char* str, int len)
+static TaskHandle_t serial_logger_task = NULL;
+
+static void serial_logger_task_func(void* param)
 {
-    if (port != -1) {
-        uart_write_bytes(port, str, len);
-        //uart_tx_chars(port, str, len);
-        //uart_tx_chars(port, "\r", 1);
+    char* str;
+    uint16_t str_len;
+    uint16_t index = 0;
+    while (true) {
+        if (xEventGroupWaitBits(logger_event_group, LOGGER_SERIAL_BIT, pdTRUE, pdFALSE, portMAX_DELAY)) {
+            while (logger_read(&index, &str, &str_len)) {
+                uart_write_bytes(port, str, str_len);
+            }
+        }
     }
 }
 
@@ -55,11 +63,18 @@ void serial_logger_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
             return;
         }
     }
+
+    xTaskCreate(serial_logger_task_func, "serial_logger_task", 2 * 1024, NULL, 5, &serial_logger_task);
 }
 
 void serial_logger_stop(void)
 {
     ESP_LOGI(TAG, "Stopping");
+
+    if (serial_logger_task) {
+        vTaskDelete(serial_logger_task);
+        serial_logger_task = NULL;
+    }
 
     if (port != -1) {
         uart_driver_delete(port);

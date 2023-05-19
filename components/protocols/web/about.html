@@ -90,9 +90,15 @@
                         document.getElementById('auxIn').innerHTML = data.auxIn.map(name => `<span class="d-inline badge text-bg-secondary">${name}</span>`).join(' ')
                         document.getElementById('auxOut').innerHTML = data.auxOut.map(name => `<span class="d-inline badge text-bg-secondary">${name}</span>`).join(' ')
                         document.getElementById('auxAin').innerHTML = data.auxAin.map(name => `<span class="d-inline badge text-bg-secondary">${name}</span>`).join(' ')
-                        document.getElementById('serial1').innerText = data.serial1 !== 'none' ? data.serial1Name : 'N/A';
-                        document.getElementById('serial2').innerText = data.serial2 !== 'none' ? data.serial2Name : 'N/A';
-                        document.getElementById('serial3').innerText = data.serial3 !== 'none' ? data.serial3Name : 'N/A';
+                        if (data.serial1 !== 'none') {
+                            document.getElementById('serial').insertAdjacentHTML('beforeend', `<span class="d-inline badge text-bg-secondary">${data.serial1Name}</span> `);
+                        }
+                        if (data.serial2 !== 'none') {
+                            document.getElementById('serial').insertAdjacentHTML('beforeend', `<span class="d-inline badge text-bg-secondary">${data.serial2Name}</span> `);
+                        }
+                        if (data.serial3 !== 'none') {
+                            document.getElementById('serial').insertAdjacentHTML('beforeend', `<span class="d-inline badge text-bg-secondary">${data.serial3Name}</span> `);
+                        }                        
                     }),
                 fetch('/api/v1/info')
                     .then(jsonResponse)
@@ -282,17 +288,9 @@
                         <td id="auxAin"></td>
                     </tr>
                     <tr>
-                        <th scope="row">Serial 1</th>
-                        <td id="serial1"></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Serial 2</th>
-                        <td id="serial2"></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Serial 3</th>
-                        <td id="serial3"></td>
-                    </tr>
+                        <th scope="row">Serial</th>
+                        <td id="serial"></td>
+                    </tr>                  
                 </tbody>
             </table>
         </div>

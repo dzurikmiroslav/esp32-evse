@@ -11,6 +11,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_spiffs.h"
+#include "esp_sntp.h"
 #include "driver/gpio.h"
 
 #include "evse.h"
@@ -18,12 +19,11 @@
 #include "led.h"
 #include "api.h"
 #include "protocols.h"
-#include "tcp_logger.h"
 #include "serial.h"
-#include "serial_logger.h"
 #include "board_config.h"
 #include "wifi.h"
 #include "script.h"
+#include "logger.h"
 
 
 #define AP_CONNECTION_TIMEOUT   60000 // 60sec
@@ -194,19 +194,11 @@ static void update_leds(void)
     }
 }
 
-static int log_vprintf(const char* str, va_list l)
-{
-    static char buf[256];
-
-    int len = vsprintf(buf, str, l);
-    serial_logger_print(buf, len);
-    tcp_logger_print(buf, len);
-
-    return len;
-}
-
 void app_main(void)
 {
+    logger_init();
+    esp_log_set_vprintf(logger_vprintf);
+
     const esp_partition_t* running = esp_ota_get_running_partition();
     ESP_LOGI(TAG, "Running partition: %s", running->label);
 
@@ -239,6 +231,12 @@ void app_main(void)
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
+    //TODO time configuration settings
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+    setenv("TZ", "UTC-2", 1);
+    tzset();
+
     board_config_load();
 
     wifi_init();
@@ -249,9 +247,6 @@ void app_main(void)
     evse_init();
     button_init();
     script_init();
-#ifndef CONFIG_ESP_CONSOLE_UART
-    esp_log_set_vprintf(log_vprintf);
-#endif
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 5, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 5, &user_input_task);

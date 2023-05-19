@@ -11,10 +11,12 @@
 
 #include "script.h"
 #include "script_utils.h"
+#include "output_buffer.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
 #define HEARTBEAT_THRESHOLD     5
+#define OUTPUT_BUFFER_SIZE      4096
 
 #define NVS_NAMESPACE           "script"
 #define NVS_ENABLED             "enabled"
@@ -27,22 +29,52 @@ static TaskHandle_t script_task = NULL;
 
 static SemaphoreHandle_t shutdown_sem = NULL;
 
-static QueueHandle_t start_queue = NULL;
-
 static bvm* vm = NULL;
 
 static int heartbeat_counter;
 
-void script_log_error(bvm* vm, int ret)
+static output_buffer_t* output_buffer = NULL;
+
+static SemaphoreHandle_t output_mutex;
+
+void script_handle_result(bvm* vm, int res)
 {
-    if (ret == BE_EXEC_ERROR) {
-        ESP_LOGW(TAG, "Error: %s", be_tostring(vm, -1));
-        be_pop(vm, 1);
+    switch (res) {
+    case BE_EXCEPTION:
+        be_dumpexcept(vm);
+        break;
+    case BE_EXIT:
+        be_toindex(vm, -1);
+        break;
+    case BE_IO_ERROR:
+        be_writestring("error: ");
+        be_writestring(be_tostring(vm, -1));
+        be_writenewline();
+        break;
+    case BE_MALLOC_FAIL:
+        be_writestring("error: memory allocation failed.\n");
+        break;
+    default:
+        break;
     }
-    if (ret == BE_EXCEPTION) {
-        ESP_LOGW(TAG, "Exception: '%s' - %s", be_tostring(vm, -2), be_tostring(vm, -1));
-        be_pop(vm, 2);
-    }
+
+    // if (ret == BE_EXEC_ERROR) {
+    //     //ESP_LOGW(TAG, "Error: %s", be_tostring(vm, -1));
+    //     output_buffer_append_str(output_buffer, "Error: ");
+    //     output_buffer_append_str(output_buffer, be_tostring(vm, -1));
+    //     output_buffer_append_str(output_buffer, "\n");
+    //     be_pop(vm, 1);
+    // }
+    // if (ret == BE_EXCEPTION) {
+    //     //ESP_LOGW(TAG, "Exception: '%s' - %s", be_tostring(vm, -2), be_tostring(vm, -1));
+    //     output_buffer_append_str(output_buffer, "Exception: '");
+    //     output_buffer_append_str(output_buffer, be_tostring(vm, -2));
+    //     output_buffer_append_str(output_buffer, "' - ");
+    //     output_buffer_append_str(output_buffer, be_tostring(vm, -2));
+    //     output_buffer_append_str(output_buffer, "\n");
+    //     be_pop(vm, 2);
+    // }
+
 }
 
 void script_watchdog_reset(void)
@@ -72,24 +104,26 @@ static void obs_hook(bvm* vm, int event, ...)
 
 static void script_task_func(void* param)
 {
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    output_buffer_append_str(output_buffer, "berry " BERRY_VERSION "\n");
+    xSemaphoreGive(output_mutex);
+
     vm = be_vm_new();
     be_set_obs_hook(vm, &obs_hook);
     comp_set_strict(vm);
 
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    output_buffer_append_str(output_buffer, "loading file '/data/main.be'...\n");
+    xSemaphoreGive(output_mutex);
+
     int ret = be_loadfile(vm, "/data/main.be");
-    if (ret) {
-        script_log_error(vm, ret);
-    } else {
+    if (ret == 0) {
         script_watchdog_reset();
         ret = be_pcall(vm, 0);
         script_watchdog_disable();
-        if (ret) {
-            script_log_error(vm, ret);
-        }
     }
-
-    bool started = ret == 0;
-    xQueueSend(start_queue, (void*)&started, 0);
+    
+    script_handle_result(vm, ret);
 
     while (shutdown_sem == NULL) {
         if (be_top(vm) > 1) {
@@ -101,10 +135,8 @@ static void script_task_func(void* param)
             be_getmethod(vm, -1, "_process");
             if (!be_isnil(vm, -1)) {
                 be_pushvalue(vm, -2);
-                ret = be_pcall(vm, 1);
-                if (ret) {
-                    script_log_error(vm, ret);
-                }
+                ret = be_pcall(vm, 1);            
+                script_handle_result(vm, ret);                
                 be_pop(vm, 1);
             }
             be_pop(vm, 1);
@@ -130,7 +162,7 @@ static void script_stop(void)
         shutdown_sem = xSemaphoreCreateBinary();
 
         if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
-            ESP_LOGE(TAG, "Server task stop timeout, will be force stoped");
+            ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
             vTaskDelete(script_task);
             if (vm != NULL) {
                 be_vm_delete(vm);
@@ -141,55 +173,81 @@ static void script_stop(void)
         vSemaphoreDelete(shutdown_sem);
         shutdown_sem = NULL;
         script_task = NULL;
+
+        xSemaphoreTake(output_mutex, portMAX_DELAY);
+        output_buffer_delete(output_buffer);
+        output_buffer = NULL;
+         xSemaphoreGive(output_mutex);
     }
 }
 
-static esp_err_t script_start(void)
+void script_start(void)
 {
     if (!script_task) {
+        output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
+
         ESP_LOGI(TAG, "Starting script");
         xTaskCreate(script_task_func, "script_task", 4 * 1024, NULL, 5, &script_task);
-
-        bool started = false;
-        if (xQueueReceive(start_queue, (void*)&started, pdMS_TO_TICKS(START_TIMEOUT))) {
-            return started ? ESP_OK : ESP_ERR_INVALID_STATE;
-        }
-        return ESP_ERR_TIMEOUT;
     }
-    return ESP_ERR_INVALID_STATE;
 }
 
 void script_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    start_queue = xQueueCreate(1, sizeof(bool));
+    output_mutex = xSemaphoreCreateMutex();
 
     if (script_is_enabled()) {
         script_start();
     }
 }
 
-esp_err_t script_reload(void)
+void script_output_print(const char* buffer, size_t length)
+{
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+
+    output_buffer_append_buf(output_buffer, buffer, length);
+
+    xSemaphoreGive(output_mutex);
+}
+
+uint16_t script_output_count(void)
+{
+    return output_buffer != NULL ? output_buffer->count : 0;
+}
+
+bool script_output_read(uint16_t* index, char** str, uint16_t* len)
+{
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+
+    bool has_next = false;
+    if (output_buffer != NULL) {
+        has_next = output_buffer_read(output_buffer, index, str, len);
+    }
+
+    xSemaphoreGive(output_mutex);
+
+    return has_next;
+}
+
+void script_reload(void)
 {
     if (script_is_enabled()) {
         script_stop();
-        return script_start();
+        script_start();
     }
-    return ESP_OK;
 }
 
-esp_err_t script_set_enabled(bool enabled)
+void script_set_enabled(bool enabled)
 {
     nvs_set_u8(nvs, NVS_ENABLED, enabled);
 
     nvs_commit(nvs);
 
     if (enabled) {
-        return script_start();
+        script_start();
     } else {
         script_stop();
-        return ESP_OK;
     }
 }
 
