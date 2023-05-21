@@ -9,7 +9,6 @@
 
 #include "json.h"
 #include "mqtt.h"
-#include "tcp_logger.h"
 #include "wifi.h"
 #include "timeout_utils.h"
 #include "evse.h"
@@ -277,24 +276,6 @@ esp_err_t json_set_modbus_config(cJSON* root)
     return modbus_set_unit_id(unit_id);
 }
 
-cJSON* json_get_tcp_logger_config(void)
-{
-    cJSON* root = cJSON_CreateObject();
-
-    cJSON_AddBoolToObject(root, "enabled", tcp_logger_is_enabled());
-
-    return root;
-}
-
-esp_err_t json_set_tcp_logger_config(cJSON* root)
-{
-    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
-
-    tcp_logger_set_enabled(enabled);
-
-    return ESP_OK;
-}
-
 cJSON* json_get_script_config(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -308,7 +289,9 @@ esp_err_t json_set_script_config(cJSON* root)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "enabled"));
 
-    return script_set_enabled(enabled);
+    script_set_enabled(enabled);
+
+    return ESP_OK;
 }
 
 cJSON* json_get_state(void)

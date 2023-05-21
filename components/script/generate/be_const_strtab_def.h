@@ -52,7 +52,7 @@ be_define_const_str(class, "class", 2872970239u, 57, 5, &be_const_str_power);
 be_define_const_str(classname, "classname", 1998589948u, 0, 9, &be_const_str_getbits);
 be_define_const_str(classof, "classof", 1796577762u, 0, 7, &be_const_str_fromb64);
 be_define_const_str(clear, "clear", 1550717474u, 0, 5, &be_const_str_enabled);
-be_define_const_str(clear_interval, "clear_interval", 540801398u, 0, 14, &be_const_str_tolower);
+be_define_const_str(clock, "clock", 363073373u, 0, 5, &be_const_str_except);
 be_define_const_str(collect, "collect", 2399039025u, 0, 7, &be_const_str_contains);
 be_define_const_str(compile, "compile", 1000265118u, 0, 7, &be_const_str_pi);
 be_define_const_str(concat, "concat", 4124019837u, 0, 6, &be_const_str_deinit);
@@ -92,7 +92,7 @@ be_define_const_str(getfloat, "getfloat", 2820979603u, 0, 8, NULL);
 be_define_const_str(geti, "geti", 2381006490u, 0, 4, NULL);
 be_define_const_str(hex, "hex", 4273249610u, 0, 3, &be_const_str_read);
 be_define_const_str(if, "if", 959999494u, 50, 2, NULL);
-be_define_const_str(imax, "imax", 3084515410u, 0, 4, NULL);
+be_define_const_str(imax, "imax", 3084515410u, 0, 4, &be_const_str_time);
 be_define_const_str(imin, "imin", 2714127864u, 0, 4, NULL);
 be_define_const_str(import, "import", 288002260u, 66, 6, &be_const_str_sqrt);
 be_define_const_str(init, "init", 380752755u, 0, 4, &be_const_str_resize);
@@ -143,7 +143,6 @@ be_define_const_str(reverse, "reverse", 558918661u, 0, 7, NULL);
 be_define_const_str(set, "set", 3324446467u, 0, 3, NULL);
 be_define_const_str(set_charging_current, "set_charging_current", 1932343753u, 0, 20, NULL);
 be_define_const_str(set_enabled, "set_enabled", 3566858229u, 0, 11, &be_const_str_tohex);
-be_define_const_str(set_interval, "set_interval", 2550845781u, 0, 12, NULL);
 be_define_const_str(setbits, "setbits", 2762408167u, 0, 7, &be_const_str_voltage);
 be_define_const_str(setfloat, "setfloat", 2799488807u, 0, 8, NULL);
 be_define_const_str(seti, "seti", 1500556254u, 0, 4, NULL);
@@ -163,6 +162,7 @@ be_define_const_str(str, "str", 3259748752u, 0, 3, NULL);
 be_define_const_str(super, "super", 4152230356u, 0, 5, NULL);
 be_define_const_str(tan, "tan", 2633446552u, 0, 3, NULL);
 be_define_const_str(tanh, "tanh", 153638352u, 0, 4, NULL);
+be_define_const_str(time, "time", 1564253156u, 0, 4, NULL);
 be_define_const_str(tob64, "tob64", 373777640u, 0, 5, NULL);
 be_define_const_str(tohex, "tohex", 1583935793u, 0, 5, &be_const_str_toptr);
 be_define_const_str(tolower, "tolower", 1042520049u, 0, 7, &be_const_str_toupper);
@@ -192,7 +192,7 @@ static const bstring* const m_string_table[] = {
     NULL,
     (const bstring *)&be_const_str_number,
     (const bstring *)&be_const_str_dump,
-    (const bstring *)&be_const_str_set_interval,
+    NULL,
     (const bstring *)&be_const_str_charging_current,
     (const bstring *)&be_const_str___upper__,
     (const bstring *)&be_const_str_rand,
@@ -209,7 +209,7 @@ static const bstring* const m_string_table[] = {
     (const bstring *)&be_const_str___lower__,
     (const bstring *)&be_const_str_SERIAL_UART,
     (const bstring *)&be_const_str__X2Esize,
-    (const bstring *)&be_const_str_clear_interval,
+    (const bstring *)&be_const_str_tolower,
     (const bstring *)&be_const_str_ENERGY_METER_CUR,
     (const bstring *)&be_const_str_,
     (const bstring *)&be_const_str_cosh,
@@ -222,7 +222,7 @@ static const bstring* const m_string_table[] = {
     (const bstring *)&be_const_str_call,
     NULL,
     (const bstring *)&be_const_str_STATE_D,
-    (const bstring *)&be_const_str_except,
+    (const bstring *)&be_const_str_clock,
     NULL,
     (const bstring *)&be_const_str_asin,
     NULL,

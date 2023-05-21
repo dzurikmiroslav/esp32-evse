@@ -188,7 +188,7 @@
 #define BE_USE_STRING_MODULE            1
 #define BE_USE_JSON_MODULE              1
 #define BE_USE_MATH_MODULE              1
-#define BE_USE_TIME_MODULE              0
+#define BE_USE_TIME_MODULE              1
 #define BE_USE_OS_MODULE                0
 #define BE_USE_GLOBAL_MODULE            1
 #define BE_USE_SYS_MODULE               1

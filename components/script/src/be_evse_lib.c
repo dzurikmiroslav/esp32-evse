@@ -6,29 +6,23 @@
 #include "be_vm.h"
 #include "be_exec.h"
 #include "esp_log.h"
+#include "sys/queue.h"
 
 #include "evse.h"
 #include "energy_meter.h"
 #include "script_utils.h"
 
-#define MAX_DRIVER      10
-#define MAX_INTERVAL    10
-
-
-typedef struct
-{
-    int delay;
-    TickType_t prev_tick;
-    bvalue callback;
-} evse_interval_t;
+typedef struct driver_entry_s {
+    SLIST_ENTRY(driver_entry_s) entries;
+    bvalue value;
+} driver_entry_t;
 
 typedef struct
 {
     TickType_t tick_100ms;
     TickType_t tick_250ms;
     TickType_t tick_1s;
-    bvalue drivers[MAX_DRIVER];
-    evse_interval_t intervals[MAX_INTERVAL];
+    SLIST_HEAD(drivers_head, driver_entry_s) drivers;
 } evse_ctx_t;
 
 static int m_init(bvm* vm)
@@ -37,12 +31,7 @@ static int m_init(bvm* vm)
     ctx->tick_100ms = 0;
     ctx->tick_250ms = 0;
     ctx->tick_1s = 0;
-    for (int i = 0; i < MAX_DRIVER; i++) {
-        ctx->drivers[i].type = BE_NONE;
-    }
-    for (int i = 0; i < MAX_INTERVAL; i++) {
-        ctx->intervals[i].delay = 0;
-    }
+    SLIST_INIT(&ctx->drivers);
 
     be_newcomobj(vm, ctx, &be_commonobj_destroy_generic);
     be_setmember(vm, 1, "_ctx");
@@ -160,7 +149,7 @@ static void driver_call_event(bvm* vm, const char* method)
         int ret = be_pcall(vm, 1);
         script_watchdog_disable();
         if (ret == BE_EXCEPTION) {
-            script_log_error(vm, ret);
+            script_handle_result(vm, ret);
         }
         be_pop(vm, 1);
     }
@@ -192,46 +181,23 @@ static int m_process(bvm* vm)
         every_1s = true;
     }
 
-    for (int i = 0; i < MAX_DRIVER; i++) {
-        if (ctx->drivers[i].type == BE_INSTANCE) {
-            bvalue* top = be_incrtop(vm);
-            *top = ctx->drivers[i];
+    driver_entry_t* driver;
+    SLIST_FOREACH(driver, &ctx->drivers, entries) {
+        bvalue* top = be_incrtop(vm);
+        *top = driver->value;
 
-            driver_call_event(vm, "loop");
-            if (every_100ms) {
-                driver_call_event(vm, "every_100ms");
-            }
-            if (every_250ms) {
-                driver_call_event(vm, "every_250ms");
-            }
-            if (every_1s) {
-                driver_call_event(vm, "every_1s");
-            }
-
-            be_pop(vm, 1);
+        driver_call_event(vm, "loop");
+        if (every_100ms) {
+            driver_call_event(vm, "every_100ms");
         }
-    }
-
-    for (int i = 0; i < MAX_INTERVAL; i++) {
-        evse_interval_t* interval = &ctx->intervals[i];
-
-        if (interval->delay > 0) {
-            if (now - interval->prev_tick >= pdMS_TO_TICKS(interval->delay)) {
-                interval->prev_tick = now;
-
-                bvalue* top = be_incrtop(vm);
-                *top = interval->callback;
-
-                script_watchdog_reset();
-                int ret = be_pcall(vm, 0);
-                script_watchdog_disable();
-                if (ret == BE_EXCEPTION) {
-                    script_log_error(vm, ret);
-                }
-
-                be_pop(vm, 1);
-            }
+        if (every_250ms) {
+            driver_call_event(vm, "every_250ms");
         }
+        if (every_1s) {
+            driver_call_event(vm, "every_1s");
+        }
+
+        be_pop(vm, 1);
     }
 
     be_return(vm);
@@ -244,22 +210,14 @@ static int m_add_driver(bvm* vm)
         be_getmember(vm, 1, "_ctx");
         evse_ctx_t* ctx = (evse_ctx_t*)be_tocomptr(vm, -1);
 
-        bool added = false;
-        for (int i = 0; i < MAX_DRIVER; i++) {
-            if (ctx->drivers[i].type == BE_NONE) {
-                bvalue* driver = be_indexof(vm, 2);
-                if (be_isgcobj(driver)) {
-                    be_gc_fix_set(vm, driver->v.gc, btrue);
-                }
-                ctx->drivers[i] = *driver;
-                added = true;
-                break;
-            }
+        bvalue* driver = be_indexof(vm, 2);
+        if (be_isgcobj(driver)) {
+            be_gc_fix_set(vm, driver->v.gc, btrue);
         }
 
-        if (!added) {
-            be_raise(vm, "value_error", "max drivers reached");
-        }
+        driver_entry_t* entry = (driver_entry_t*)malloc(sizeof(driver_entry_t));
+        entry->value = *driver;
+        SLIST_INSERT_HEAD(&ctx->drivers, entry, entries);
     } else {
         be_raise(vm, "type_error", NULL);
     }
@@ -276,9 +234,13 @@ static int m_remove_driver(bvm* vm)
 
         bvalue* driver = be_indexof(vm, 2);
 
-        for (int i = 0; i < MAX_DRIVER; i++) {
-            if (memcmp(&ctx->drivers[i], driver, sizeof(bvalue)) == 0) {
-                ctx->drivers[i].type = BE_NONE;
+        driver_entry_t* entry;
+        driver_entry_t* entry_tmp;
+        SLIST_FOREACH_SAFE(entry, &ctx->drivers, entries, entry_tmp) {
+            if (memcmp(&entry->value, driver, sizeof(bvalue)) == 0) {
+                ESP_LOGI("evseber", "remove entry" );
+                SLIST_REMOVE(&ctx->drivers, entry, driver_entry_s, entries);
+                free((void*)entry);
             }
         }
     } else {
@@ -293,83 +255,6 @@ static int m_delay(bvm* vm)
     int argc = be_top(vm);
     if (argc == 1 && be_isnumber(vm, 1)) {
         vTaskDelay(pdMS_TO_TICKS(be_toint(vm, 1)));
-    } else {
-        be_raise(vm, "type_error", NULL);
-    }
-
-    be_return(vm);
-}
-
-static int m_set_interval(bvm* vm)
-{
-    int argc = be_top(vm);
-    if (argc == 3 && be_isnumber(vm, 2) && be_isfunction(vm, 3)) {
-        be_getmember(vm, 1, "_ctx");
-        evse_ctx_t* ctx = (evse_ctx_t*)be_tocomptr(vm, -1);
-
-        int index = -1;
-        for (int i = 0; i < MAX_INTERVAL; i++) {
-            evse_interval_t* interval = &ctx->intervals[i];
-            if (interval->delay == 0) {
-                interval->delay = be_toint(vm, 2);
-                interval->prev_tick = xTaskGetTickCount();
-                bvalue* callback = be_indexof(vm, 3);
-                if (be_isgcobj(callback)) {
-                    be_gc_fix_set(vm, callback->v.gc, btrue);
-                }
-                interval->callback = *callback;
-                index = i;
-                break;
-            }
-        }
-
-        if (index == -1) {
-            be_raise(vm, "value_error", "max intervals reached");
-        } else {
-            be_pushint(vm, index);
-        }
-    } else {
-        be_raise(vm, "type_error", NULL);
-    }
-
-    be_return(vm);
-}
-
-static int m_clear_interval(bvm* vm)
-{
-    int argc = be_top(vm);
-    if (argc == 2 && be_isnumber(vm, 2)) {
-        int index = be_toint(vm, 2);
-
-        be_getmember(vm, 1, "_ctx");
-        evse_ctx_t* ctx = (evse_ctx_t*)be_tocomptr(vm, -1);
-
-        if (index >= 0 && index < MAX_INTERVAL) {
-            ctx->intervals[index].delay = 0;
-        } else {
-            be_raise(vm, "value_error", "invalid index");
-        }
-    } else {
-        be_raise(vm, "type_error", NULL);
-    }
-
-    be_return(vm);
-}
-
-int m_log(struct bvm* vm) 
-{
-    int argc = be_top(vm);
-    if (argc >= 2) {
-        const char* msg = be_tostring(vm, 2);
-
-        esp_log_level_t level = ESP_LOG_INFO;
-        if (argc >= 3 && be_isint(vm, 3)) {
-            level = be_toint(vm, 3);
-        }
-
-        ESP_LOG_BUFFER_CHAR_LEVEL("berry", msg, strlen(msg), level);
-
-        be_return(vm);
     } else {
         be_raise(vm, "type_error", NULL);
     }
@@ -392,8 +277,6 @@ class class_evse (scope: global, name: Evse) {
 
     _process, func(m_process)
 
-    log, func(m_log)
-
     state, func(m_state)
     enabled, func(m_enabled)
     set_enabled, func(m_set_enabled)
@@ -409,8 +292,6 @@ class class_evse (scope: global, name: Evse) {
     remove_driver, func(m_remove_driver)
 
     delay, func(m_delay)
-    set_interval, func(m_set_interval)
-    clear_interval, func(m_clear_interval)
 }
 @const_object_info_end */
 #include "../generate/be_fixed_class_evse.h"

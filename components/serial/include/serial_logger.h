@@ -4,14 +4,6 @@
 #include "driver/uart.h"
 
 /**
- * @brief Print message to all active serial loggers
- * 
- * @param str 
- * @param len 
- */
-void serial_logger_print(const char* str, int len);
-
-/**
  * @brief Start serial logger on uart
  * 
  * @param uart_num 
