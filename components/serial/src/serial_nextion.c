@@ -131,7 +131,6 @@ typedef struct
 
 static void tx_str(const char* cmd)
 {
-    //ESP_LOGI(TAG, "%s", cmd);
     uart_write_bytes(port, cmd, strlen(cmd));
     uart_write_bytes(port, DELIMITER, 3);
 }
@@ -228,7 +227,7 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
 
     //nextion return codes
     if (cmd[0] == NEX_RET_AUTO_SLEEP) {
-        ESP_LOGI(TAG, "Enter auto sleep");
+        ESP_LOGD(TAG, "Enter auto sleep");
         ctx->sleep = true;
         ctx->state = evse_get_state();
         return;
@@ -239,10 +238,10 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
     rx_cmd[cmd_len] = '\0';
 
     if (strcmp(rx_cmd, CMD_UNSUBSCRIBE) == 0) {
-        ESP_LOGI(TAG, "Unsubscribe all");
+        ESP_LOGD(TAG, "Unsubscribe all");
         memset((void*)&ctx->var_sub, 0, sizeof(var_sub_t));
     } else if (sscanf(rx_cmd, CMD_SUBSCRIBE, var_str) > 0) {
-        ESP_LOGI(TAG, "Subscribe %s", var_str);
+        ESP_LOGD(TAG, "Subscribe %s", var_str);
         ctx->sleep = false;
         handle_subscribe(ctx, var_str);
     } else if (sscanf(rx_cmd, CMD_ENABLED, &var_u8) > 0) {

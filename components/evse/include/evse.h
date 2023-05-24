@@ -17,7 +17,7 @@
 #define EVSE_ERR_TEMPERATURE_HIGH_BIT       BIT6
 #define EVSE_ERR_TEMPERATURE_FAULT_BIT      BIT7
 
-#define EVSE_ERR_AUTO_CLEAR_BITS            (EVSE_ERR_PILOT_FAULT_BIT | EVSE_ERR_DIODE_SHORT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT)
+#define EVSE_ERR_AUTO_CLEAR_BITS            (EVSE_ERR_PILOT_FAULT_BIT | EVSE_ERR_DIODE_SHORT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT | EVSE_ERR_RCM_SELFTEST_FAULT_BIT)
 
 /**
  * @brief States of evse controller
@@ -188,9 +188,15 @@ esp_err_t evse_set_rcm(bool rcm);
 bool evse_is_rcm(void);
 
 /**
+ * @brief Called from RCM ISR handler when triggered
+ * 
+ */
+void evse_rcm_triggered_isr(void);
+
+/**
  * @brief Set temperature threshold, stored in NVS
  * 
- * @param rcm temperature in dg. C
+ * @param temperature in dg. C
  * @return esp_err_t 
  */
 esp_err_t evse_set_temp_threshold(uint8_t temp_threshold);
@@ -198,7 +204,7 @@ esp_err_t evse_set_temp_threshold(uint8_t temp_threshold);
 /**
  * @brief Get temperature threshold, stored in NVS
  * 
- * @return temperature in dg.C
+ * @return temperature in dg. C
  */
 uint8_t evse_get_temp_threshold(void);
 

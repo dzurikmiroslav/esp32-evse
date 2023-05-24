@@ -64,7 +64,7 @@ static inline bool _onewire_wait_for_bus(gpio_num_t pin, int max_wait)
 static void setup_pin(gpio_num_t pin, bool open_drain)
 {
     gpio_set_direction(pin, open_drain ? GPIO_MODE_INPUT_OUTPUT_OD : GPIO_MODE_OUTPUT);
-    gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
+    // gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
 }
 
 // Perform the onewire reset function.  We will wait up to 250uS for

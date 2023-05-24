@@ -37,6 +37,10 @@
 #define LIMIT_CHARGING_TIME_BIT         BIT1
 #define LIMIT_UNDER_POWER_BIT           BIT2
 
+#define RCM_SELFTEST_BIT                BIT0
+#define RCM_SELFTEST_OK_BIT             BIT1
+#define RCM_SELFTEST_PERFORMED_BIT      BIT2
+
 static const char* TAG = "evse";
 
 static nvs_handle nvs;
@@ -62,6 +66,8 @@ static uint8_t reached_limit = 0;
 static bool socket_outlet = false;
 
 static bool rcm = false;
+
+static uint8_t rcm_selftest = 0;
 
 static uint8_t temp_threshold = 60;
 
@@ -90,6 +96,22 @@ static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 static bool socket_lock_locked = false;
 
 static evse_state_t prev_state = EVSE_STATE_A;
+
+static void set_error_bits(uint32_t bits)
+{
+    error |= bits;
+    if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
+        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+    }
+}
+
+static void clear_error_bits(uint32_t bits)
+{
+    bool has_error = error != 0;
+    error &= ~bits;
+
+    error_cleared |= has_error && error == 0;
+}
 
 static void set_pilot(enum pilot_state_e state)
 {
@@ -121,9 +143,29 @@ static void set_socket_lock(bool locked)
     }
 }
 
+static void rcm_perform_selftest(void)
+{
+    if (!(rcm_selftest & RCM_SELFTEST_PERFORMED_BIT)) {
+        ESP_LOGI(TAG, "Performing residual current monitor self test");
+
+        rcm_selftest |= RCM_SELFTEST_BIT;
+        rcm_selftest &= ~RCM_SELFTEST_OK_BIT;
+
+        rcm_test();
+
+        rcm_selftest &= ~RCM_SELFTEST_BIT;
+        if (!(rcm_selftest & RCM_SELFTEST_OK_BIT)) {
+            ESP_LOGW(TAG, "Residual current monitor self test fail");
+            set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
+        }
+
+        rcm_selftest |= RCM_SELFTEST_PERFORMED_BIT;
+    }
+}
+
 static void apply_state(void)
 {
-    evse_state_t new_state = evse_get_state(); // getter method detec error state
+    evse_state_t new_state = evse_get_state(); // getter method detect error state
 
     if (prev_state != new_state) {
         ESP_LOGI(TAG, "Enter %c state", 'A' + new_state);
@@ -145,9 +187,13 @@ static void apply_state(void)
             authorized = false;
             reached_limit = 0;
             under_power_start_time = 0;
+            rcm_selftest = 0;
             energy_meter_stop_session();
             break;
         case EVSE_STATE_B:
+            if (board_config.rcm && rcm) {
+                rcm_perform_selftest();
+            }        
             if (socket_outlet) {
                 cable_max_current = proximity_get_max_current();
                 if (board_config.socket_lock) {
@@ -165,22 +211,6 @@ static void apply_state(void)
 
         prev_state = new_state;
     }
-}
-
-static void set_error_bits(uint32_t bits)
-{
-    error |= bits;
-    if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
-        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
-    }
-}
-
-static void clear_error_bits(uint32_t bits)
-{
-    bool has_error = error != 0;
-    error &= ~bits;
-
-    error_cleared |= has_error && error == 0;
 }
 
 static bool can_goto_state_c(void)
@@ -202,15 +232,6 @@ static bool can_goto_state_c(void)
     }
 
     return true;
-}
-
-static void rcm_selftest(void)
-{
-    if (rcm && rcm_test() == false) {
-        set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
-    } else {
-        clear_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT);
-    }
 }
 
 void evse_process(void)
@@ -242,16 +263,6 @@ void evse_process(void)
             break;
         default:
             break;
-        }
-    }
-
-    if (board_config.rcm && rcm) {
-        if ((error & EVSE_ERR_RCM_TRIGGERED_BIT) && rcm_is_triggered()) {
-            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
-        }
-
-        if (rcm_was_triggered()) {
-            set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
         }
     }
 
@@ -417,6 +428,17 @@ void evse_set_available(bool available)
     xSemaphoreGive(mutex);
 }
 
+void evse_rcm_triggered_isr(void)
+{
+    if (rcm_selftest & RCM_SELFTEST_BIT) {
+        rcm_selftest |= RCM_SELFTEST_OK_BIT;
+    } else {
+        error |= EVSE_ERR_RCM_TRIGGERED_BIT;
+        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+        ac_relay_set_state_isr(false);
+    }
+}
+
 void evse_init()
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
@@ -448,8 +470,6 @@ void evse_init()
     nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &under_power_limit);
 
     pilot_set_level(true);
-
-    rcm_selftest();
 }
 
 evse_state_t evse_get_state(void)
@@ -538,20 +558,14 @@ esp_err_t evse_set_rcm(bool _rcm)
     ESP_LOGI(TAG, "Set rcm %d", _rcm);
 
     if (_rcm && !board_config.rcm) {
-        ESP_LOGE(TAG, "Cant residual current monitor not available");
+        ESP_LOGE(TAG, "Residual current monitor not available");
         return ESP_ERR_INVALID_ARG;
     }
-
-    xSemaphoreTake(mutex, portMAX_DELAY);
 
     rcm = _rcm;
 
     nvs_set_u8(nvs, NVS_RCM, rcm);
     nvs_commit(nvs);
-
-    rcm_selftest();
-
-    xSemaphoreGive(mutex);
 
     return ESP_OK;
 }
