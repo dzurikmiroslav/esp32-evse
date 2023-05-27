@@ -94,6 +94,12 @@ static int m_charging_time(bvm* vm)
     be_return(vm);
 }
 
+static int m_session_time(bvm* vm)
+{
+    be_pushint(vm, energy_meter_get_session_time);
+    be_return(vm);
+}
+
 static int m_consumption(bvm* vm)
 {
     be_pushint(vm, energy_meter_get_consumption());
@@ -284,6 +290,7 @@ class class_evse (scope: global, name: Evse) {
     set_charging_current, func(m_set_charging_current)
     power, func(m_power)
     charging_time, func(m_charging_time)
+    session_time, func(m_session_time)
     consumption, func(m_consumption)
     voltage, func(m_voltage)
     current, func(m_current)
