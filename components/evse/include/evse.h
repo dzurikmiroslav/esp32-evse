@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-#define evse_state_is_session(state)        (state >= EVSE_STATE_B && state <= EVSE_STATE_D)
-#define evse_state_is_charging(state)       (state >= EVSE_STATE_C && state <= EVSE_STATE_D)
+#define evse_state_is_session(state)        (state >= EVSE_STATE_B1 && state <= EVSE_STATE_D2)
+#define evse_state_is_charging(state)       (state == EVSE_STATE_C2 || state == EVSE_STATE_D2)
 
 #define EVSE_ERR_PILOT_FAULT_BIT            BIT0
 #define EVSE_ERR_DIODE_SHORT_BIT            BIT1
@@ -26,9 +26,12 @@
 typedef enum
 {
     EVSE_STATE_A,
-    EVSE_STATE_B,
-    EVSE_STATE_C,
-    EVSE_STATE_D,
+    EVSE_STATE_B1,
+    EVSE_STATE_B2,
+    EVSE_STATE_C1,
+    EVSE_STATE_C2,
+    EVSE_STATE_D1,
+    EVSE_STATE_D2,
     EVSE_STATE_E,
     EVSE_STATE_F
 } evse_state_t;
@@ -41,8 +44,8 @@ void evse_init(void);
 
 /**
  * @brief Set evse controller to available state or F
- * 
- * @param available 
+ *
+ * @param available
  */
 void evse_set_available(bool available);
 
@@ -58,6 +61,14 @@ void evse_process(void);
  * @return evse_state_t
  */
 evse_state_t evse_get_state(void);
+
+/**
+ * @brief Format to string value
+ * 
+ * @param state 
+ * @return const char 
+ */
+const char *evse_state_to_str(evse_state_t state);
 
 /**
  * @brief Return error bits when state is EVSE_STATE_E
@@ -77,7 +88,7 @@ uint16_t evse_get_charging_current(void);
  * @brief Set charging current
  *
  * @param charging_current current in A*10
- * @return esp_err_t 
+ * @return esp_err_t
  */
 esp_err_t evse_set_charging_current(uint16_t charging_current);
 
@@ -92,7 +103,7 @@ uint16_t evse_get_default_charging_current(void);
  * @brief Set default charging current, stored in NVS
  *
  * @param charging_current current in A*10
- * @return esp_err_t 
+ * @return esp_err_t
  */
 esp_err_t evse_set_default_charging_current(uint16_t charging_current);
 
@@ -135,16 +146,16 @@ bool evse_is_enabled(void);
 
 /**
  * @brief Set enabled charging
- * 
- * @param enabled 
+ *
+ * @param enabled
  */
 void evse_set_enabled(bool enabled);
 
 /**
  * @brief Is session consumption, charging time or under power limit reached
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool evse_is_limit_reached(void);
 
@@ -157,60 +168,60 @@ uint32_t evse_get_consumption_limit(void);
 
 /**
  * @brief Set socket outlet, stored in NVS
- * 
- * @param socket_outlet 
- * @return esp_err_t 
+ *
+ * @param socket_outlet
+ * @return esp_err_t
  */
 esp_err_t evse_set_socket_outlet(bool socket_outlet);
 
 /**
  * @brief Get socket outlet, stored in NVS
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool evse_get_socket_outlet(void);
 
 /**
  * @brief Set residual current monitoring, stored in NVS
- * 
- * @param rcm 
- * @return esp_err_t 
+ *
+ * @param rcm
+ * @return esp_err_t
  */
 esp_err_t evse_set_rcm(bool rcm);
 
 /**
  * @brief Get residual current monitoring, stored in NVS
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool evse_is_rcm(void);
 
 /**
  * @brief Called from RCM ISR handler when triggered
- * 
+ *
  */
 void evse_rcm_triggered_isr(void);
 
 /**
  * @brief Set temperature threshold, stored in NVS
- * 
+ *
  * @param temperature in dg. C
- * @return esp_err_t 
+ * @return esp_err_t
  */
 esp_err_t evse_set_temp_threshold(uint8_t temp_threshold);
 
 /**
  * @brief Get temperature threshold, stored in NVS
- * 
+ *
  * @return temperature in dg. C
  */
 uint8_t evse_get_temp_threshold(void);
 
 /**
  * @brief Set consumption limit
- * 
+ *
  * @param consumption_limit Consumption in Ws
  */
 void evse_set_consumption_limit(uint32_t consumption_limit);
@@ -224,7 +235,7 @@ uint32_t evse_get_charging_time_limit(void);
 
 /**
  * @brief Set charging time limit
- * 
+ *
  * @param charging_time_limit Time in s
  */
 void evse_set_charging_time_limit(uint32_t charging_time_limit);
@@ -238,7 +249,7 @@ uint16_t evse_get_under_power_limit(void);
 
 /**
  * @brief Set under power limit
- * 
+ *
  * @param under_power_limit power in W
  */
 void evse_set_under_power_limit(uint16_t under_power_limit);
@@ -252,7 +263,7 @@ uint32_t evse_get_default_consumption_limit(void);
 
 /**
  * @brief Set consumption limit, stored in NVS
- * 
+ *
  * @param consumption_limit consumption in 1Ws
  */
 void evse_set_default_consumption_limit(uint32_t consumption_limit);
@@ -266,7 +277,7 @@ uint32_t evse_get_default_charging_time_limit(void);
 
 /**
  * @brief Set charging time limit, stored in NVS
- * 
+ *
  * @param charging_time_limit Time in s
  */
 void evse_set_default_charging_time_limit(uint32_t charging_time_limit);
@@ -280,7 +291,7 @@ uint16_t evse_get_default_under_power_limit(void);
 
 /**
  * @brief Set under power limit, stored in NVS
- * 
+ *
  * @param under_power_limit power in W
  */
 void evse_set_default_under_power_limit(uint16_t under_power_limit);

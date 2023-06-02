@@ -140,9 +140,9 @@
                     document.getElementById('authorize').classList.add('d-none');
                     if (state.limitReached) {
                         document.getElementById('status').innerText = 'Charging limit reached';
-                    } else if (state.state === 'C' || state.state === 'D') {
+                    } else if (['C2', 'D2'].includes(state.state)) {
                         document.getElementById('status').innerText = 'Charging';
-                    } else if (state.state === 'B') {
+                    } else if (['B1', 'B2', 'C1', 'D1'].includes(state.state)) {
                         document.getElementById('status').innerText = 'EV connected';
                     } else {
                         document.getElementById('status').innerText = 'EV not connected';
@@ -168,7 +168,7 @@
                 document.getElementById('powerL3').innerHTML = formatVA(state.voltage[2], state.current[2]);
             }
             document.getElementById('consumption').innerText = `${state.consumption / 1000}`;
-            document.getElementById('session').classList.toggle('d-none', state.state !== 'B' && state.state !== 'C' && state.state !== 'D');
+            document.getElementById('session').classList.toggle('d-none', ['A', 'E', 'F'].includes(state.state));
         }
 
         function loadState() {
@@ -224,9 +224,6 @@
             document.getElementById('loading').classList.add('show');
 
             state.enabled = document.getElementById('enabled').checked;
-            if (!status.enabled && (state.state === 'C' || state.state === 'D')) {
-                state.state = 'B';
-            }
 
             fetch(`/api/v1/state/${state.enabled ? 'enable' : 'disable'}`, { method: 'POST' })
                 .then(checkResponse)
@@ -287,7 +284,7 @@
                 .catch(showError);
 
             loadState();
-            setInterval(loadStateVisible, 10000);
+            setInterval(loadStateVisible, 5000);
 
             const setChargingCurrent = debounce((value) => sendEvseSettings({ chargingCurrent: value }), 500);
             document.getElementById('chargingCurrent').addEventListener('input', event => {
