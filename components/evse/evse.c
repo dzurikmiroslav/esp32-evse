@@ -490,12 +490,14 @@ void evse_set_available(bool available)
 
 void evse_rcm_triggered_isr(void)
 {
-    if (rcm_selftest & RCM_SELFTEST_BIT) {
-        rcm_selftest |= RCM_SELFTEST_OK_BIT;
-    } else {
-        error |= EVSE_ERR_RCM_TRIGGERED_BIT;
-        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
-        ac_relay_set_state_isr(false);
+    if (rcm) {
+        if (rcm_selftest & RCM_SELFTEST_BIT) {
+            rcm_selftest |= RCM_SELFTEST_OK_BIT;
+        } else {
+            error |= EVSE_ERR_RCM_TRIGGERED_BIT;
+            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+            ac_relay_set_state_isr(false);
+        }
     }
 }
 
