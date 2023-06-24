@@ -173,12 +173,18 @@ static void update_leds(void)
             led_set_off(LED_ID_CHARGING);
             led_set_off(LED_ID_ERROR);
             break;
-        case EVSE_STATE_B:
-            led_set_state(LED_ID_CHARGING, 250, 250);
+        case EVSE_STATE_B1:
+        case EVSE_STATE_B2:
+            led_set_state(LED_ID_CHARGING, 500, 500);
             led_set_off(LED_ID_ERROR);
             break;
-        case EVSE_STATE_C:
-        case EVSE_STATE_D:
+        case EVSE_STATE_C1:
+        case EVSE_STATE_D1:
+            led_set_state(LED_ID_CHARGING, 1900, 100);
+            led_set_off(LED_ID_ERROR);
+            break;
+        case EVSE_STATE_C2:
+        case EVSE_STATE_D2:
             led_set_on(LED_ID_CHARGING);
             led_set_off(LED_ID_ERROR);
             break;

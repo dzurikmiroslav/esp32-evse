@@ -96,7 +96,8 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
     ESP_LOGD(TAG, "HR read %d", addr);
     switch (addr) {
     case MODBUS_REG_STATE:
-        *value = evse_get_state();
+        const char* state_str = evse_state_to_str(evse_get_state());
+        *value = state_str[0] << 8 | state_str[1];
         break;
     case MODBUS_REG_ERROR:
         *value = UINT32_GET_HI(evse_get_error());

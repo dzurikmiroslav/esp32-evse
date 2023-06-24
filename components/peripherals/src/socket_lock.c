@@ -139,11 +139,11 @@ void socket_lock_init(void)
         gpio_config_t io_conf = {};
 
         io_conf.mode = GPIO_MODE_OUTPUT;
-        io_conf.pin_bit_mask = (1ULL << board_config.socket_lock_a_gpio) | (1ULL << board_config.socket_lock_b_gpio);
+        io_conf.pin_bit_mask = BIT64(board_config.socket_lock_a_gpio) | BIT64(board_config.socket_lock_b_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
         io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pin_bit_mask = 1ULL << board_config.socket_lock_detection_gpio;
+        io_conf.pin_bit_mask = BIT64(board_config.socket_lock_detection_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
         xTaskCreate(socket_lock_task_func, "socket_lock_task", 2 * 1024, NULL, 10, &socket_lock_task);

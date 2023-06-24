@@ -271,9 +271,12 @@ static int m_delay(bvm* vm)
 /* @const_object_info_begin
 class class_evse (scope: global, name: Evse) {
     STATE_A, int(EVSE_STATE_A)
-    STATE_B, int(EVSE_STATE_B)
-    STATE_C, int(EVSE_STATE_C)
-    STATE_D, int(EVSE_STATE_D)
+    STATE_B1, int(EVSE_STATE_B1)
+    STATE_B2, int(EVSE_STATE_B2)
+    STATE_C1, int(EVSE_STATE_C1)
+    STATE_C2, int(EVSE_STATE_C2)
+    STATE_D1, int(EVSE_STATE_D1)
+    STATE_D2, int(EVSE_STATE_D2)
     STATE_E, int(EVSE_STATE_E)
     STATE_F, int(EVSE_STATE_F)
 

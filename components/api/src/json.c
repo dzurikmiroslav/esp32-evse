@@ -298,8 +298,7 @@ cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
 
-    char str[2] = { 'A' + evse_get_state(), '\0' };
-    cJSON_AddStringToObject(root, "state", str);
+    cJSON_AddStringToObject(root, "state", evse_state_to_str(evse_get_state()));
     cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
     cJSON_AddBoolToObject(root, "limitReached", evse_is_limit_reached());

@@ -20,6 +20,7 @@
 #define AUTHORIZED_TIME                 60000  // 60sec
 #define ERROR_WAIT_TIME                 60000  // 60sec
 #define UNDER_POWER_TIME                60000  // 60sec
+#define C1_D1_AC_RELAY_WAIT_TIME        6000   // 6sec
 #define TEMP_THRESHOLD_MIN              40
 #define TEMP_THRESHOLD_MAX              80
 
@@ -36,6 +37,10 @@
 #define LIMIT_CONSUMPTION_BIT           BIT0
 #define LIMIT_CHARGING_TIME_BIT         BIT1
 #define LIMIT_UNDER_POWER_BIT           BIT2
+
+#define RCM_SELFTEST_BIT                BIT0
+#define RCM_SELFTEST_OK_BIT             BIT1
+#define RCM_SELFTEST_PERFORMED_BIT      BIT2
 
 static const char* TAG = "evse";
 
@@ -63,6 +68,8 @@ static bool socket_outlet = false;
 
 static bool rcm = false;
 
+static uint8_t rcm_selftest = 0;
+
 static uint8_t temp_threshold = 60;
 
 static bool enabled = true;
@@ -77,6 +84,8 @@ static TickType_t error_wait_to = 0;
 
 static TickType_t under_power_start_time = 0;
 
+static TickType_t c1_d1_ac_relay_wait_to = 0;
+
 static uint8_t cable_max_current = 63;
 
 enum pilot_state_e {
@@ -90,6 +99,22 @@ static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 static bool socket_lock_locked = false;
 
 static evse_state_t prev_state = EVSE_STATE_A;
+
+static void set_error_bits(uint32_t bits)
+{
+    error |= bits;
+    if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
+        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+    }
+}
+
+static void clear_error_bits(uint32_t bits)
+{
+    bool has_error = error != 0;
+    error &= ~bits;
+
+    error_cleared |= has_error && error == 0;
+}
 
 static void set_pilot(enum pilot_state_e state)
 {
@@ -121,12 +146,32 @@ static void set_socket_lock(bool locked)
     }
 }
 
+static void rcm_perform_selftest(void)
+{
+    if (!(rcm_selftest & RCM_SELFTEST_PERFORMED_BIT)) {
+        ESP_LOGI(TAG, "Performing residual current monitor self test");
+
+        rcm_selftest |= RCM_SELFTEST_BIT;
+        rcm_selftest &= ~RCM_SELFTEST_OK_BIT;
+
+        rcm_test();
+
+        rcm_selftest &= ~RCM_SELFTEST_BIT;
+        if (!(rcm_selftest & RCM_SELFTEST_OK_BIT)) {
+            ESP_LOGW(TAG, "Residual current monitor self test fail");
+            set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
+        }
+
+        rcm_selftest |= RCM_SELFTEST_PERFORMED_BIT;
+    }
+}
+
 static void apply_state(void)
 {
-    evse_state_t new_state = evse_get_state(); // getter method detec error state
+    evse_state_t new_state = evse_get_state(); // getter method detect error state
 
     if (prev_state != new_state) {
-        ESP_LOGI(TAG, "Enter %c state", 'A' + new_state);
+        ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
         if (error) {
             ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
         }
@@ -137,28 +182,47 @@ static void apply_state(void)
         case EVSE_STATE_E:
         case EVSE_STATE_F:
             ac_relay_set_state(false);
+            set_pilot(new_state == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
+
             if (board_config.socket_lock && socket_outlet) {
                 set_socket_lock(false);
             }
-            set_pilot(new_state == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
-
             authorized = false;
             reached_limit = 0;
             under_power_start_time = 0;
+            rcm_selftest = 0;
+            c1_d1_ac_relay_wait_to = 0;
             energy_meter_stop_session();
             break;
-        case EVSE_STATE_B:
-            if (socket_outlet) {
-                cable_max_current = proximity_get_max_current();
-                if (board_config.socket_lock) {
-                    set_socket_lock(true);
-                }
-            }
+        case EVSE_STATE_B1:
+            set_pilot(PILOT_STATE_12V);
             ac_relay_set_state(false);
+
+            c1_d1_ac_relay_wait_to = 0;
+            if (board_config.socket_lock && socket_outlet) {
+                set_socket_lock(true);
+            }
+            if (board_config.rcm && rcm) {
+                rcm_perform_selftest();
+            }
+            if (board_config.proximity && socket_outlet) {
+                cable_max_current = proximity_get_max_current();
+            }
             energy_meter_start_session();
             break;
-        case EVSE_STATE_C:
-        case EVSE_STATE_D:
+        case EVSE_STATE_B2:
+            set_pilot(PILOT_STATE_PWM);
+            ac_relay_set_state(false);
+            break;
+        case EVSE_STATE_C1:
+        case EVSE_STATE_D1:
+            set_pilot(PILOT_STATE_12V);
+            //ac_relay_set_state(true); let previous state
+            c1_d1_ac_relay_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(C1_D1_AC_RELAY_WAIT_TIME);
+            break;
+        case EVSE_STATE_C2:
+        case EVSE_STATE_D2:
+            set_pilot(PILOT_STATE_PWM);
             ac_relay_set_state(true);
             break;
         }
@@ -167,23 +231,7 @@ static void apply_state(void)
     }
 }
 
-static void set_error_bits(uint32_t bits)
-{
-    error |= bits;
-    if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
-        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
-    }
-}
-
-static void clear_error_bits(uint32_t bits)
-{
-    bool has_error = error != 0;
-    error &= ~bits;
-
-    error_cleared |= has_error && error == 0;
-}
-
-static bool can_goto_state_c(void)
+static bool can_charging(void)
 {
     if (!enabled) {
         return false;
@@ -202,15 +250,6 @@ static bool can_goto_state_c(void)
     }
 
     return true;
-}
-
-static void rcm_selftest(void)
-{
-    if (rcm && rcm_test() == false) {
-        set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
-    } else {
-        clear_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT);
-    }
 }
 
 void evse_process(void)
@@ -245,16 +284,6 @@ void evse_process(void)
         }
     }
 
-    if (board_config.rcm && rcm) {
-        if ((error & EVSE_ERR_RCM_TRIGGERED_BIT) && rcm_is_triggered()) {
-            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
-        }
-
-        if (rcm_was_triggered()) {
-            set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
-        }
-    }
-
     if (board_config.onewire && board_config.onewire_temp_sensor) {
         if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
@@ -282,13 +311,13 @@ void evse_process(void)
                 // stay in current state
                 break;
             case PILOT_VOLTAGE_9:
-                state = EVSE_STATE_B;
+                state = EVSE_STATE_B1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
-        case EVSE_STATE_B:
+        case EVSE_STATE_B1:
             if (!authorized) {
                 if (require_auth) {
                     authorized = auth_grant_to >= xTaskGetTickCount();
@@ -297,55 +326,89 @@ void evse_process(void)
                     authorized = true;
                 }
             }
-            if (!enabled || !authorized || reached_limit > 0) {
-                set_pilot(PILOT_STATE_12V);
-            } else {
-                set_pilot(PILOT_STATE_PWM);
-            }
+        case EVSE_STATE_B2:
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                // stay in current state
+                if (can_charging()) {
+                    state = EVSE_STATE_B2;
+                } else {
+                    state = EVSE_STATE_B1;
+                }
                 break;
             case PILOT_VOLTAGE_6:
-                if (can_goto_state_c()) {
-                    state = EVSE_STATE_C;
+                if (can_charging()) {
+                    state = EVSE_STATE_C2;
+                } else {
+                    state = EVSE_STATE_C1;
                 }
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
-        case EVSE_STATE_C:
+        case EVSE_STATE_C1:
+            if (c1_d1_ac_relay_wait_to != 0 && xTaskGetTickCount() >= c1_d1_ac_relay_wait_to) {
+                ESP_LOGW(TAG, "Force switch off ac relay");
+                ac_relay_set_state(false);
+                c1_d1_ac_relay_wait_to = 0;
+            }
+        case EVSE_STATE_C2:
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                state = EVSE_STATE_B;
+                if (can_charging()) {
+                    state = EVSE_STATE_B2;
+                } else {
+                    state = EVSE_STATE_B1;
+                }
                 break;
             case PILOT_VOLTAGE_6:
-                // stay in current state
+                if (can_charging()) {
+                    state = EVSE_STATE_C2;
+                } else {
+                    state = EVSE_STATE_C1;
+                }
                 break;
             case PILOT_VOLTAGE_3:
-                state = EVSE_STATE_D;
+                if (can_charging()) {
+                    state = EVSE_STATE_D2;
+                } else {
+                    state = EVSE_STATE_D1;
+                }
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
-        case EVSE_STATE_D:
+        case EVSE_STATE_D1:
+            if (c1_d1_ac_relay_wait_to != 0 && xTaskGetTickCount() >= c1_d1_ac_relay_wait_to) {
+                ESP_LOGW(TAG, "Force switch off ac relay");
+                ac_relay_set_state(false);
+                c1_d1_ac_relay_wait_to = 0;
+            }
+        case EVSE_STATE_D2:
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_6:
-                state = EVSE_STATE_C;
+                if (can_charging()) {
+                    state = EVSE_STATE_C2;
+                } else {
+                    state = EVSE_STATE_C1;
+                }
                 break;
             case PILOT_VOLTAGE_3:
-                // stay in current state
+                if (can_charging()) {
+                    state = EVSE_STATE_D2;
+                } else {
+                    state = EVSE_STATE_D1;
+                }
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
@@ -389,7 +452,15 @@ void evse_process(void)
 
         if (reached_limit > 0 && evse_state_is_charging(state)) {
             ESP_LOGI(TAG, "Reached limit %d", reached_limit);
-            state = EVSE_STATE_B;
+            if (state == EVSE_STATE_B2) {
+                state = EVSE_STATE_B1;
+            }
+            if (state == EVSE_STATE_C2) {
+                state = EVSE_STATE_C1;
+            }
+            if (state == EVSE_STATE_D2) {
+                state = EVSE_STATE_D1;
+            }
         }
     }
 
@@ -415,6 +486,19 @@ void evse_set_available(bool available)
     apply_state();
 
     xSemaphoreGive(mutex);
+}
+
+void evse_rcm_triggered_isr(void)
+{
+    if (rcm) {
+        if (rcm_selftest & RCM_SELFTEST_BIT) {
+            rcm_selftest |= RCM_SELFTEST_OK_BIT;
+        } else {
+            error |= EVSE_ERR_RCM_TRIGGERED_BIT;
+            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+            ac_relay_set_state_isr(false);
+        }
+    }
 }
 
 void evse_init()
@@ -448,13 +532,36 @@ void evse_init()
     nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &under_power_limit);
 
     pilot_set_level(true);
-
-    rcm_selftest();
 }
 
 evse_state_t evse_get_state(void)
 {
     return error ? EVSE_STATE_E : state;
+}
+
+const char* evse_state_to_str(evse_state_t state)
+{
+    switch (state) {
+    case EVSE_STATE_A:
+        return "A";
+    case EVSE_STATE_B1:
+        return "B1";
+    case  EVSE_STATE_B2:
+        return "B2";
+    case EVSE_STATE_C1:
+        return "C1";
+    case EVSE_STATE_C2:
+        return "C2";
+    case EVSE_STATE_D1:
+        return "D1";
+    case EVSE_STATE_D2:
+        return "D2";
+    case  EVSE_STATE_E:
+        return "E";
+    case EVSE_STATE_F:
+        return "F";
+    default: return NULL;
+    }
 }
 
 uint32_t evse_get_error(void)
@@ -538,20 +645,14 @@ esp_err_t evse_set_rcm(bool _rcm)
     ESP_LOGI(TAG, "Set rcm %d", _rcm);
 
     if (_rcm && !board_config.rcm) {
-        ESP_LOGE(TAG, "Cant residual current monitor not available");
+        ESP_LOGE(TAG, "Residual current monitor not available");
         return ESP_ERR_INVALID_ARG;
     }
-
-    xSemaphoreTake(mutex, portMAX_DELAY);
 
     rcm = _rcm;
 
     nvs_set_u8(nvs, NVS_RCM, rcm);
     nvs_commit(nvs);
-
-    rcm_selftest();
-
-    xSemaphoreGive(mutex);
 
     return ESP_OK;
 }
@@ -623,16 +724,28 @@ void evse_set_enabled(bool _enabled)
 
     if (enabled != _enabled) {
         enabled = _enabled;
-        if (enabled) {
-            under_power_start_time = 0;
-        } else {
-            if (evse_state_is_charging(state)) {
-                state = EVSE_STATE_B;
+        if (!enabled) {
+            if (state == EVSE_STATE_C2) {
+                state = EVSE_STATE_C1;
+            } else if (state == EVSE_STATE_D2) {
+                state = EVSE_STATE_D1;
             }
+            apply_state();
         }
-
-        apply_state();
     }
+
+    // if (enabled != _enabled) {
+    //     enabled = _enabled;
+    //     if (enabled) {
+    //         under_power_start_time = 0;
+    //     } else {
+    //         if (evse_state_is_charging(state)) {
+    //             state = EVSE_STATE_B;
+    //         }
+    //     }
+
+    //     apply_state();
+    // }
 
     xSemaphoreGive(mutex);
 }

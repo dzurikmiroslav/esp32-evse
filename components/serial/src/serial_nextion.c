@@ -12,6 +12,7 @@
 
 #define BUF_SIZE                256
 #define NEX_RET_AUTO_SLEEP      0x86
+#define NEX_RET_BUF_OVERFLOW    0x24
 
 static const char* VAR_STATE = "state";
 static const char* VAR_ENABLED = "en";
@@ -41,7 +42,7 @@ static const char* VAR_APP_VERSION = "appVer";
 static const char* VAR_HEAP_SIZE = "heap";
 static const char* VAR_MAX_HEAP_SIZE = "maxHeap";
 
-static const char* VAR_FMT_STATE = "state.val=%"PRIu8;
+static const char* VAR_FMT_STATE = "state.txt=\"%s\"";
 static const char* VAR_FMT_ENABLED = "en.val=%"PRIu8;
 static const char* VAR_FMT_ERROR = "err.val=%"PRIu16;
 static const char* VAR_FMT_PENDING_AUTH = "pendAuth.val=%"PRIu8;
@@ -131,7 +132,6 @@ typedef struct
 
 static void tx_str(const char* cmd)
 {
-    //ESP_LOGI(TAG, "%s", cmd);
     uart_write_bytes(port, cmd, strlen(cmd));
     uart_write_bytes(port, DELIMITER, 3);
 }
@@ -228,9 +228,14 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
 
     //nextion return codes
     if (cmd[0] == NEX_RET_AUTO_SLEEP) {
-        ESP_LOGI(TAG, "Enter auto sleep");
+        ESP_LOGD(TAG, "Enter auto sleep");
         ctx->sleep = true;
         ctx->state = evse_get_state();
+        return;
+    }
+    if (cmd[0] == NEX_RET_BUF_OVERFLOW) {
+        ESP_LOGW(TAG, "Buffer overflow");
+        vTaskDelay(pdMS_TO_TICKS(250));
         return;
     }
 
@@ -239,10 +244,10 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
     rx_cmd[cmd_len] = '\0';
 
     if (strcmp(rx_cmd, CMD_UNSUBSCRIBE) == 0) {
-        ESP_LOGI(TAG, "Unsubscribe all");
+        ESP_LOGD(TAG, "Unsubscribe all");
         memset((void*)&ctx->var_sub, 0, sizeof(var_sub_t));
     } else if (sscanf(rx_cmd, CMD_SUBSCRIBE, var_str) > 0) {
-        ESP_LOGI(TAG, "Subscribe %s", var_str);
+        ESP_LOGD(TAG, "Subscribe %s", var_str);
         ctx->sleep = false;
         handle_subscribe(ctx, var_str);
     } else if (sscanf(rx_cmd, CMD_ENABLED, &var_u8) > 0) {
@@ -265,7 +270,7 @@ static void tx_vars(context_t* ctx)
     char tx_cmd[64];
 
     if (ctx->var_sub.state) {
-        sprintf(tx_cmd, VAR_FMT_STATE, evse_get_state());
+        sprintf(tx_cmd, VAR_FMT_STATE, evse_state_to_str(evse_get_state()));
         tx_str(tx_cmd);
     }
     if (ctx->var_sub.enabled && ctx->enabled != evse_is_enabled()) {
@@ -382,7 +387,7 @@ static void serial_nextion_task_func(void* param)
     tx_str(NEX_CMD_WAKE);
 
     while (true) {
-        int len = uart_read_bytes(port, buf, (BUF_SIZE - 1), pdMS_TO_TICKS(100));
+        int len = uart_read_bytes(port, buf, (BUF_SIZE - 1), pdMS_TO_TICKS(250));
         if (len > 0) {
             int start = 0;
             for (int i = 1; i < len - 2; i++) {
@@ -415,7 +420,7 @@ void serial_nextion_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_le
             .parity = parity,
             .stop_bits = stop_bit,
             .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-            .rx_flow_ctrl_thresh = 122,
+            .rx_flow_ctrl_thresh = 0,
             .source_clk = UART_SCLK_APB
     };
 

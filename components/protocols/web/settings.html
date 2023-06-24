@@ -815,6 +815,19 @@
             fetchLog();
         }
 
+        function downloadLogs() {
+            const blob = new Blob([document.getElementById('logsContent').value], {type: 'text/plain'});
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.getElementById('download');
+            anchor.href = objectUrl;
+            anchor.click();
+            URL.revokeObjectURL(objectUrl);
+        }
+
+        function clearLogs() {
+            document.getElementById('logsContent').value = '';
+        }
+
         var scriptOutputIndex = 0;
 
         function refreshScriptOutput() {
@@ -841,6 +854,19 @@
                 .catch(showError);
 
             fetchOutput();
+        }
+
+        function downloadScriptOutput() {
+            const blob = new Blob([document.getElementById('scriptOutputContent').value], {type: 'text/plain'});
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.getElementById('download');
+            anchor.href = objectUrl;
+            anchor.click();
+            URL.revokeObjectURL(objectUrl);
+        }
+
+        function clearScriptOutput() {
+            document.getElementById('scriptOutputContent').value = '';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1491,6 +1517,11 @@
 
                         <textarea id="scriptOutputContent" class="form-control form-control-sm mb-3" disabled
                             rows="15"></textarea>
+
+                        <div class="d-flex flex-column gap-2 flex-md-row mb-3">    
+                            <button type="button" class="btn btn-primary" onclick="downloadScriptOutput()">Download</button>                            
+                            <button type="button" class="btn btn-danger" onclick="clearScriptOutput()">Clear</button>
+                        </div>
                     </div>
                     <div class="tab-pane fade" id="system" role="tabpanel">
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -1557,6 +1588,11 @@
 
                         <textarea id="logsContent" class="form-control form-control-sm mb-3" disabled
                             rows="20"></textarea>
+
+                        <div class="d-flex flex-column gap-2 flex-md-row mb-3">
+                            <button type="button" class="btn btn-primary" onclick="downloadLogs()">Download</button>   
+                            <button type="button" class="btn btn-danger" onclick="clearLogs()">Clear</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1669,6 +1705,7 @@
             </div>
         </div>
     </div>
+    <a id="download" class="d-none" download="log.txt"></a>
 </body>
 
 </html>
