@@ -3,6 +3,7 @@
 #include "driver/gpio.h"
 #include "driver/gptimer.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 
 #include "rcm.h"
 #include "board_config.h"
@@ -46,6 +47,7 @@ void rcm_init(void)
             .name = "rcm"
         };
 
+        vTaskDelay(pdMS_TO_TICKS(100));  //wait for gpio setup
         esp_timer_handle_t periodic_timer;
         ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
         ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 10000));
@@ -60,6 +62,7 @@ bool rcm_test(void)
     gpio_set_level(board_config.rcm_test_gpio, 1);
     vTaskDelay(pdMS_TO_TICKS(100));
     gpio_set_level(board_config.rcm_test_gpio, 0);
+    vTaskDelay(pdMS_TO_TICKS(50));  //wait for write gpio
 
     do_test = false;
 
