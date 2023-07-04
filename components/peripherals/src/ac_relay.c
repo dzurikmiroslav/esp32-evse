@@ -23,8 +23,3 @@ void ac_relay_set_state(bool state)
     ESP_LOGI(TAG, "Set relay: %d", state);
     gpio_set_level(board_config.ac_relay_gpio, state);
 }
-
-void ac_relay_set_state_isr(bool state)
-{
-    gpio_set_level(board_config.ac_relay_gpio, state);
-}

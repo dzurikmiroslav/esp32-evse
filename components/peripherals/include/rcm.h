@@ -1,6 +1,8 @@
 #ifndef RCM_H_
 #define RCM_H_
 
+#include <stdbool.h>
+
 /**
  * @brief Initialize residual current monitor
  *
@@ -13,6 +15,14 @@ void rcm_init(void);
  * @return true
  * @return false
  */
-void rcm_test(void);
+bool rcm_test(void);
+
+/**
+ * @brief Residual current monitor was detected leakage
+ *
+ * @return true
+ * @return false
+ */
+bool rcm_was_triggered(void);
 
 #endif /* RCM_H_ */
