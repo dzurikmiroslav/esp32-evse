@@ -1,8 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
-#include "driver/gptimer.h"
-#include "esp_timer.h"
 #include "esp_log.h"
 
 #include "rcm.h"
@@ -15,17 +13,12 @@ static bool triggered = false;
 
 static bool test_triggered = false;
 
-static void rcm_timer_callback(void* arg)
+static void IRAM_ATTR rcm_isr_handler(void* arg)
 {
-    if (gpio_get_level(board_config.rcm_gpio) == 1) {
-        vTaskDelay(pdMS_TO_TICKS(1));
-        if (gpio_get_level(board_config.rcm_gpio) == 1) {
-            if (do_test) {
-                test_triggered = true;
-            } else {
-                triggered = true;
-            }
-        }
+    if (!do_test) {
+        triggered = true;
+    } else {
+        test_triggered = true;
     }
 }
 
@@ -39,18 +32,10 @@ void rcm_init(void)
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
         io_conf.mode = GPIO_MODE_INPUT;
+        io_conf.intr_type = GPIO_INTR_POSEDGE;
         io_conf.pin_bit_mask = BIT64(board_config.rcm_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
-
-        const esp_timer_create_args_t periodic_timer_args = {
-            .callback = &rcm_timer_callback,
-            .name = "rcm"
-        };
-
-        vTaskDelay(pdMS_TO_TICKS(100));  //wait for gpio setup
-        esp_timer_handle_t periodic_timer;
-        ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-        ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 10000));
+        ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.rcm_gpio, rcm_isr_handler, NULL));
     }
 }
 
@@ -62,7 +47,6 @@ bool rcm_test(void)
     gpio_set_level(board_config.rcm_test_gpio, 1);
     vTaskDelay(pdMS_TO_TICKS(100));
     gpio_set_level(board_config.rcm_test_gpio, 0);
-    vTaskDelay(pdMS_TO_TICKS(50));  //wait for write gpio
 
     do_test = false;
 
@@ -72,6 +56,8 @@ bool rcm_test(void)
 bool rcm_was_triggered(void)
 {
     bool _triggered = triggered;
-    triggered = false;
+    if (gpio_get_level(board_config.rcm_gpio) == 0) {
+        triggered = false;
+    }
     return _triggered;
 }
