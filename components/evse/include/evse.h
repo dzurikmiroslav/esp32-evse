@@ -198,11 +198,6 @@ esp_err_t evse_set_rcm(bool rcm);
  */
 bool evse_is_rcm(void);
 
-/**
- * @brief Called from RCM ISR handler when triggered
- *
- */
-void evse_rcm_triggered_isr(void);
 
 /**
  * @brief Set temperature threshold, stored in NVS

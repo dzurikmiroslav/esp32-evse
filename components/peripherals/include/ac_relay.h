@@ -16,11 +16,4 @@ void ac_relay_init(void);
  */
 void ac_relay_set_state(bool state);
 
-/**
- * @brief Set state of ac relay from ISR
- * 
- * @param state 
- */
-void ac_relay_set_state_isr(bool state);
-
 #endif /* AC_RELAY_H_ */

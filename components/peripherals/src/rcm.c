@@ -1,15 +1,25 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include "esp_log.h"
 
 #include "rcm.h"
 #include "board_config.h"
 #include "evse.h"
 
+static bool do_test = false;
+
+static bool triggered = false;
+
+static bool test_triggered = false;
 
 static void IRAM_ATTR rcm_isr_handler(void* arg)
 {
-    evse_rcm_triggered_isr();
+    if (!do_test) {
+        triggered = true;
+    } else {
+        test_triggered = true;
+    }
 }
 
 void rcm_init(void)
@@ -29,9 +39,25 @@ void rcm_init(void)
     }
 }
 
-void rcm_test(void)
+bool rcm_test(void)
 {
+    do_test = true;
+    test_triggered = false;
+
     gpio_set_level(board_config.rcm_test_gpio, 1);
     vTaskDelay(pdMS_TO_TICKS(100));
     gpio_set_level(board_config.rcm_test_gpio, 0);
+
+    do_test = false;
+
+    return test_triggered;
+}
+
+bool rcm_was_triggered(void)
+{
+    bool _triggered = triggered;
+    if (gpio_get_level(board_config.rcm_gpio) == 0) {
+        triggered = false;
+    }
+    return _triggered;
 }

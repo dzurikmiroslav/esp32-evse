@@ -38,10 +38,6 @@
 #define LIMIT_CHARGING_TIME_BIT         BIT1
 #define LIMIT_UNDER_POWER_BIT           BIT2
 
-#define RCM_SELFTEST_BIT                BIT0
-#define RCM_SELFTEST_OK_BIT             BIT1
-#define RCM_SELFTEST_PERFORMED_BIT      BIT2
-
 static const char* TAG = "evse";
 
 static nvs_handle nvs;
@@ -68,7 +64,7 @@ static bool socket_outlet = false;
 
 static bool rcm = false;
 
-static uint8_t rcm_selftest = 0;
+static bool rcm_selftest = false;
 
 static uint8_t temp_threshold = 60;
 
@@ -146,23 +142,17 @@ static void set_socket_lock(bool locked)
     }
 }
 
-static void rcm_perform_selftest(void)
+static void perform_rcm_selftest(void)
 {
-    if (!(rcm_selftest & RCM_SELFTEST_PERFORMED_BIT)) {
-        ESP_LOGI(TAG, "Performing residual current monitor self test");
-
-        rcm_selftest |= RCM_SELFTEST_BIT;
-        rcm_selftest &= ~RCM_SELFTEST_OK_BIT;
-
-        rcm_test();
-
-        rcm_selftest &= ~RCM_SELFTEST_BIT;
-        if (!(rcm_selftest & RCM_SELFTEST_OK_BIT)) {
+    if (!rcm_selftest) {
+        if (!rcm_test()) {
             ESP_LOGW(TAG, "Residual current monitor self test fail");
             set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
+        } else {
+            ESP_LOGI(TAG, "Residual current monitor self test success");
         }
 
-        rcm_selftest |= RCM_SELFTEST_PERFORMED_BIT;
+        rcm_selftest = true;
     }
 }
 
@@ -190,7 +180,7 @@ static void apply_state(void)
             authorized = false;
             reached_limit = 0;
             under_power_start_time = 0;
-            rcm_selftest = 0;
+            rcm_selftest = false;
             c1_d1_ac_relay_wait_to = 0;
             energy_meter_stop_session();
             break;
@@ -202,10 +192,10 @@ static void apply_state(void)
             if (board_config.socket_lock && socket_outlet) {
                 set_socket_lock(true);
             }
-            if (board_config.rcm && rcm) {
-                rcm_perform_selftest();
+            if (rcm) {
+                perform_rcm_selftest();
             }
-            if (board_config.proximity && socket_outlet) {
+            if (socket_outlet) {
                 cable_max_current = proximity_get_max_current();
             }
             energy_meter_start_session();
@@ -281,6 +271,12 @@ void evse_process(void)
             break;
         default:
             break;
+        }
+    }
+
+    if (rcm) {
+        if (rcm_was_triggered()) {
+            set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
         }
     }
 
@@ -488,19 +484,6 @@ void evse_set_available(bool available)
     xSemaphoreGive(mutex);
 }
 
-void evse_rcm_triggered_isr(void)
-{
-    if (rcm) {
-        if (rcm_selftest & RCM_SELFTEST_BIT) {
-            rcm_selftest |= RCM_SELFTEST_OK_BIT;
-        } else {
-            error |= EVSE_ERR_RCM_TRIGGERED_BIT;
-            error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
-            ac_relay_set_state_isr(false);
-        }
-    }
-}
-
 void evse_init()
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
@@ -516,11 +499,11 @@ void evse_init()
     }
 
     if (nvs_get_u8(nvs, NVS_SOCKET_OUTLET, &u8) == ESP_OK) {
-        socket_outlet = u8;
+        socket_outlet = u8 && board_config.proximity;
     }
 
     if (nvs_get_u8(nvs, NVS_RCM, &u8) == ESP_OK) {
-        rcm = u8;
+        rcm = u8 && board_config.rcm;
     }
 
     nvs_get_u8(nvs, NVS_TEMP_THRESHOLD, &temp_threshold);
