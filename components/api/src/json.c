@@ -34,6 +34,7 @@ cJSON* json_get_evse_config(void)
 {
     cJSON* root = cJSON_CreateObject();
 
+    cJSON_AddNumberToObject(root, "maxChargingCurrent", evse_get_max_charging_current());
     cJSON_AddNumberToObject(root, "chargingCurrent", evse_get_charging_current() / 10.0);
     cJSON_AddNumberToObject(root, "defaultChargingCurrent", evse_get_default_charging_current() / 10.0);
     cJSON_AddBoolToObject(root, "requireAuth", evse_is_require_auth());
@@ -60,6 +61,9 @@ cJSON* json_get_evse_config(void)
 
 esp_err_t json_set_evse_config(cJSON* root)
 {
+    if (cJSON_IsNumber(cJSON_GetObjectItem(root, "maxChargingCurrent"))) {
+        RETURN_ON_ERROR(evse_set_max_charging_current(cJSON_GetObjectItem(root, "maxChargingCurrent")->valuedouble));
+    }
     if (cJSON_IsNumber(cJSON_GetObjectItem(root, "chargingCurrent"))) {
         RETURN_ON_ERROR(evse_set_charging_current(cJSON_GetObjectItem(root, "chargingCurrent")->valuedouble * 10));
     }
@@ -299,6 +303,7 @@ cJSON* json_get_state(void)
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "state", evse_state_to_str(evse_get_state()));
+    cJSON_AddBoolToObject(root, "available", evse_is_available());
     cJSON_AddBoolToObject(root, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(root, "pendingAuth", evse_is_pending_auth());
     cJSON_AddBoolToObject(root, "limitReached", evse_is_limit_reached());
@@ -407,7 +412,6 @@ cJSON* json_get_board_config(void)
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "deviceName", board_config.device_name);
-    cJSON_AddNumberToObject(root, "maxChargingCurrent", board_config.max_charging_current);
     cJSON_AddBoolToObject(root, "socketLock", board_config.socket_lock);
     cJSON_AddBoolToObject(root, "proximity", board_config.proximity);
     cJSON_AddNumberToObject(root, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);

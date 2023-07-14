@@ -81,7 +81,6 @@
                     .then(jsonResponse)
                     .then(data => {
                         document.getElementById('deviceName').innerText = data.deviceName;
-                        document.getElementById('maxChargingCurrent').innerText = data.maxChargingCurrent;
                         document.getElementById('proximity').innerText = YES_NO[data.proximity];
                         document.getElementById('socketLock').innerText = YES_NO[data.socketLock];
                         document.getElementById('rcm').innerText = YES_NO[data.rcm];
@@ -250,10 +249,6 @@
                     <tr>
                         <th scope="row">Device name</th>
                         <td id="deviceName"></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Max charging current</th>
-                        <td id="maxChargingCurrent"></td>
                     </tr>
                     <tr>
                         <th scope="row">Proximity pilot</th>

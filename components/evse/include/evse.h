@@ -50,6 +50,14 @@ void evse_init(void);
 void evse_set_available(bool available);
 
 /**
+ * @brief Return true if evse controller is available
+ * 
+ * @return true 
+ * @return false 
+ */
+bool evse_is_available(void);
+
+/**
  * @brief Main loop of evse
  *
  */
@@ -76,6 +84,21 @@ const char *evse_state_to_str(evse_state_t state);
  * @return uint32_t
  */
 uint32_t evse_get_error(void);
+
+/**
+ * @brief Get max charging current, stored in NVS
+ * 
+ * @return current in A
+ */
+uint8_t evse_get_max_charging_current(void);
+
+/**
+ * @brief Set max charging current, stored in NVS
+ * 
+ * @param max_charging_current current in A
+ * @return esp_err_t 
+ */
+esp_err_t evse_set_max_charging_current(uint8_t max_charging_current);
 
 /**
  * @brief Get charging current

@@ -9,7 +9,6 @@ static int m_read(bvm* vm)
     be_newobject(vm, "map");
     be_map_insert_str(vm, "device_name", board_config.device_name);
     be_map_insert_bool(vm, "proximity", board_config.proximity);
-    be_map_insert_int(vm, "max_charging_current", board_config.max_charging_current);
     be_map_insert_bool(vm, "socket_lock", board_config.socket_lock);
     be_map_insert_bool(vm, "rcm", board_config.rcm);
     be_map_insert_int(vm, "energy_meter", board_config.energy_meter);

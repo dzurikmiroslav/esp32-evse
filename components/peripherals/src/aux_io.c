@@ -122,16 +122,16 @@ void aux_init(void)
     };
 
     if (board_config.aux_ain_1) {
-        aux_ain[aux_ain_count].adc = board_config.aux_ain_1_adc;
+        aux_ain[aux_ain_count].adc = board_config.aux_ain_1_adc_channel;
         aux_ain[aux_ain_count].name = board_config.aux_out_1_name;
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.aux_ain_1_adc, &config));
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.aux_ain_1_adc_channel, &config));
         aux_ain_count++;
     }
 
     if (board_config.aux_ain_2) {
-        aux_ain[aux_ain_count].adc = board_config.aux_ain_2_adc;
+        aux_ain[aux_ain_count].adc = board_config.aux_ain_2_adc_channel;
         aux_ain[aux_ain_count].name = board_config.aux_out_2_name;
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.aux_ain_2_adc, &config));
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.aux_ain_2_adc_channel, &config));
         aux_ain_count++;
     }
 }

@@ -98,6 +98,7 @@ typedef struct
     bool pending_auth : 1;
     bool limit_reached : 1;
     bool charging_current : 1;
+    bool max_charging_current : 1;
     bool session_time : 1;
     bool charging_time : 1;
     bool power : 1;
@@ -125,6 +126,7 @@ typedef struct
     evse_state_t state;
     bool enabled;
     uint16_t charging_current;
+    uint16_t max_charging_current;
     uint32_t consumption_limit;
     uint32_t charging_time_limit;
     uint16_t under_power_limit;
@@ -159,7 +161,9 @@ static void handle_subscribe(context_t* ctx, const char* var)
         sprintf(tx_cmd, VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
         tx_str(tx_cmd);
     } else if (!strcmp(var, VAR_MAX_CHARGING_CURRENT)) {
-        sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, board_config.max_charging_current);
+        ctx->var_sub.max_charging_current = true;
+        ctx->max_charging_current = evse_get_max_charging_current();
+        sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
         tx_str(tx_cmd);
     } else if (!strcmp(var, VAR_SESSION_TIME)) {
         ctx->var_sub.session_time = true;
@@ -293,6 +297,11 @@ static void tx_vars(context_t* ctx)
     if (ctx->var_sub.charging_current && ctx->charging_current != evse_get_charging_current()) {
         ctx->charging_current = evse_get_charging_current();
         sprintf(tx_cmd, VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
+        tx_str(tx_cmd);
+    }
+    if (ctx->var_sub.max_charging_current && ctx->max_charging_current != evse_get_max_charging_current()) {
+        ctx->max_charging_current = evse_get_max_charging_current();
+        sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
         tx_str(tx_cmd);
     }
     if (ctx->var_sub.session_time) {

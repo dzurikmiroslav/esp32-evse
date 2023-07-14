@@ -44,8 +44,6 @@ typedef struct
     uint16_t proximity_down_threshold_20;
     uint16_t proximity_down_threshold_32;
 
-    uint8_t max_charging_current;
-
     gpio_num_t ac_relay_gpio;
 
     bool socket_lock : 1;
@@ -106,11 +104,11 @@ typedef struct
 
     bool aux_ain_1 : 1;
     char aux_ain_1_name[8];
-    adc_channel_t aux_ain_1_adc;
+    adc_channel_t aux_ain_1_adc_channel;
 
     bool aux_ain_2 : 1;
     char aux_ain_2_name[8];
-    adc_channel_t aux_ain_2_adc;
+    adc_channel_t aux_ain_2_adc_channel;
 
     board_config_serial_t serial_1;
     char serial_1_name[16];

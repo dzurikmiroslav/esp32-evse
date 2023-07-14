@@ -62,6 +62,23 @@ static int m_set_enabled(bvm* vm)
     be_return(vm);
 }
 
+static int m_available(bvm* vm)
+{
+    be_pushbool(vm, evse_is_available());
+    be_return(vm);
+}
+
+static int m_set_available(bvm* vm)
+{
+    int top = be_top(vm);
+    if (top == 2 && be_isbool(vm, 2)) {
+        evse_set_available(be_tobool(vm, 2));
+    } else {
+        be_raise(vm, "type_error", NULL);
+    }
+    be_return(vm);
+}
+
 static int m_charging_current(bvm* vm)
 {
     be_pushreal(vm, evse_get_charging_current() / 10.0f);
@@ -289,6 +306,8 @@ class class_evse (scope: global, name: Evse) {
     state, func(m_state)
     enabled, func(m_enabled)
     set_enabled, func(m_set_enabled)
+    available, func(m_available)
+    set_available, func(m_set_available)
     charging_current, func(m_charging_current)
     set_charging_current, func(m_set_charging_current)
     power, func(m_power)

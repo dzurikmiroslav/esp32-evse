@@ -105,6 +105,8 @@
             fetch('/api/v1/config')
                 .then(jsonResponse)
                 .then(data => {
+                    document.getElementById('evseMaxChargingCurrent').value = data.evse.maxChargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrent').max = data.evse.maxChargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').value = data.evse.defaultChargingCurrent;
                     document.getElementById('evseDefaultChargingCurrentValue').innerText = data.evse.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.evse.requireAuth;
@@ -164,6 +166,8 @@
             fetch('/api/v1/config/evse')
                 .then(jsonResponse)
                 .then(data => {
+                    document.getElementById('evseMaxChargingCurrent').value = data.maxChargingCurrent;
+                    document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseDefaultChargingCurrent').value = data.defaultChargingCurrent;
                     document.getElementById('evseDefaultChargingCurrentValue').innerText = data.defaultChargingCurrent;
                     document.getElementById('evseRequireAuth').checked = data.requireAuth;
@@ -329,6 +333,7 @@
                 document.getElementById('loading').classList.add('show');
 
                 const config = {
+                    maxChargingCurrent: document.getElementById('evseMaxChargingCurrent').valueAsNumber,
                     defaultChargingCurrent: document.getElementById('evseDefaultChargingCurrent').valueAsNumber,
                     requireAuth: document.getElementById('evseRequireAuth').checked,
                     socketOutlet: document.getElementById('evseSocketOutlet').checked,
@@ -698,6 +703,26 @@
             document.getElementById('reloadToast').addEventListener('hide.bs.toast', () => clearInterval(toast.intervalId), { once: true });
         }
 
+        function refreshAvailable() {
+            fetch('/api/v1/state')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('available').checked = data.available;
+                })
+                .catch(showError);
+        }
+
+        function updateAvailable() {
+            const available = document.getElementById('available').checked;
+
+            document.getElementById('loading').classList.add('show');
+            fetch(`/api/v1/state/${available ? 'available' : 'unavailable'}`, { method: 'POST' })
+                .then(checkResponse)
+                .finally(() => document.getElementById('loading').classList.remove('show'))
+                .catch(showError);
+        }
+
+
         function checkUpdateFirmware() {
             document.getElementById('loading').classList.add('show');
 
@@ -790,7 +815,7 @@
         var logsIndex = 0;
 
         function refreshLogs() {
-            const fetchLog = () => fetch(`/api/v1/log?index=${logsIndex}`)
+            fetch(`/api/v1/log?index=${logsIndex}`)
                 .then(response => {
                     if (!response.ok) {
                         throw response;
@@ -811,12 +836,10 @@
                         });
                 })
                 .catch(showError);
-
-            fetchLog();
         }
 
         function downloadLogs() {
-            const blob = new Blob([document.getElementById('logsContent').value], {type: 'text/plain'});
+            const blob = new Blob([document.getElementById('logsContent').value], { type: 'text/plain' });
             const objectUrl = URL.createObjectURL(blob);
             const anchor = document.getElementById('download');
             anchor.href = objectUrl;
@@ -831,7 +854,7 @@
         var scriptOutputIndex = 0;
 
         function refreshScriptOutput() {
-            const fetchOutput = () => fetch(`/api/v1/script/output?index=${scriptOutputIndex}`)
+            fetch(`/api/v1/script/output?index=${scriptOutputIndex}`)
                 .then(response => {
                     if (!response.ok) {
                         throw response;
@@ -852,12 +875,10 @@
                         });
                 })
                 .catch(showError);
-
-            fetchOutput();
         }
 
         function downloadScriptOutput() {
-            const blob = new Blob([document.getElementById('scriptOutputContent').value], {type: 'text/plain'});
+            const blob = new Blob([document.getElementById('scriptOutputContent').value], { type: 'text/plain' });
             const objectUrl = URL.createObjectURL(blob);
             const anchor = document.getElementById('download');
             anchor.href = objectUrl;
@@ -881,7 +902,6 @@
             fetch('/api/v1/boardConfig')
                 .then(jsonResponse)
                 .then(data => {
-                    document.getElementById('evseDefaultChargingCurrent').max = data.maxChargingCurrent;
                     document.getElementById('evseSocketLockBreakTime').min = data.socketLockMinBreakTime;
                     if (data.proximity) {
                         document.getElementById('evseSocketOutletField').classList.remove('d-none');
@@ -924,6 +944,11 @@
                 })
                 .catch(showError);
 
+            document.getElementById('evseMaxChargingCurrent').addEventListener('input', event => {
+                console.log(document.getElementById('evseDefaultChargingCurrent').valueAsNumber, event.target.valueAsNumber)
+                document.getElementById('evseDefaultChargingCurrent').max = event.target.valueAsNumber;
+                document.getElementById('evseDefaultChargingCurrentValue').innerText = document.getElementById('evseDefaultChargingCurrent').value;
+            });
             document.getElementById('evseDefaultChargingCurrent').addEventListener('input', event => {
                 document.getElementById('evseDefaultChargingCurrentValue').innerText = event.target.value;
             });
@@ -950,6 +975,7 @@
 
             loadSettings();
             reloadFileSystemTable();
+            refreshAvailable();
 
             document.querySelectorAll('button[data-bs-toggle="tab"]')
                 .forEach(tab => tab.addEventListener('shown.bs.tab', event => {
@@ -969,6 +995,14 @@
                     }
                 }
             }, 1000);
+
+            setInterval(() => {
+                if (!document.hidden) {
+                    if (document.getElementById('system-tab').ariaSelected === 'true') {
+                        refreshAvailable();
+                    }
+                }
+            }, 5000);
         });
     </script>
 </head>
@@ -1086,13 +1120,20 @@
                         <h5>EVSE</h5>
                         <form id="evseForm" novalidate>
                             <div class="row">
+                                <div class="col-6 col-xl-4 mb-3">
+                                    <label class="form-label" for="evseMaxChargingCurrent">Max charging current</label>
+                                    <input type="number" class="form-control" id="evseMaxChargingCurrent" step="1"
+                                        min="6" max="63" required>
+                                </div>
+                            </div>
+                            <div class="row">
                                 <div class="col-12 col-md-6 col-xl-4">
                                     <label for="evseDefaultChargingCurrent" class="form-label">
                                         Charging current
                                         <span class="fw-bolder"><span id="evseDefaultChargingCurrentValue"></span>
                                             A</span>
                                     </label>
-                                    <input type="range" class="form-range" min="6" max="80" step="0.1"
+                                    <input type="range" class="form-range" min="6" max="63" step="0.1"
                                         id="evseDefaultChargingCurrent">
                                 </div>
                             </div>
@@ -1518,16 +1559,26 @@
                         <textarea id="scriptOutputContent" class="form-control form-control-sm mb-3" disabled
                             rows="15"></textarea>
 
-                        <div class="d-flex flex-column gap-2 flex-md-row mb-3">    
-                            <button type="button" class="btn btn-primary" onclick="downloadScriptOutput()">Download</button>                            
+                        <div class="d-flex flex-column gap-2 flex-md-row mb-3">
+                            <button type="button" class="btn btn-primary"
+                                onclick="downloadScriptOutput()">Download</button>
                             <button type="button" class="btn btn-danger" onclick="clearScriptOutput()">Clear</button>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="system" role="tabpanel">
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
                             Flashing incorrect firmware or uploading an incorrect board configuration can cause the
-                            device to malfunction!
+                            device to malfunction! <br />
+                            During restart or update is recommended disable charging available.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="available"
+                                    onchange="updateAvailable()">
+                                <label class="form-check-label" for="available">Charging available</label>
+                            </div>
                         </div>
 
                         <h5>System</h5>
@@ -1590,7 +1641,7 @@
                             rows="20"></textarea>
 
                         <div class="d-flex flex-column gap-2 flex-md-row mb-3">
-                            <button type="button" class="btn btn-primary" onclick="downloadLogs()">Download</button>   
+                            <button type="button" class="btn btn-primary" onclick="downloadLogs()">Download</button>
                             <button type="button" class="btn btn-danger" onclick="clearLogs()">Clear</button>
                         </div>
                     </div>
