@@ -18,12 +18,13 @@
 #define MODBUS_REG_STATE                100
 #define MODBUS_REG_ERROR                101 // 2 word
 #define MODBUS_REG_ENABLED              103
-#define MODBUS_REG_PENDING_AUTH         104
-#define MODBUS_REG_CHR_CURRENT          105
-#define MODBUS_REG_CONSUMPTION_LIM      106 // 2 word
-#define MODBUS_REG_CHR_TIME_LIM         108 // 2 word
-#define MODBUS_REG_UNDER_POWER_LIM      110
-#define MODBUS_REG_AUTHORISE            111
+#define MODBUS_REG_AVAILABLE            104
+#define MODBUS_REG_PENDING_AUTH         105
+#define MODBUS_REG_CHR_CURRENT          106
+#define MODBUS_REG_CONSUMPTION_LIM      107 // 2 word
+#define MODBUS_REG_CHR_TIME_LIM         109 // 2 word
+#define MODBUS_REG_UNDER_POWER_LIM      111
+#define MODBUS_REG_AUTHORISE            112
 
 #define MODBUS_REG_EMETER_POWER         200
 #define MODBUS_REG_EMETER_SES_TIME      201 // 2 word
@@ -108,6 +109,9 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         *value = UINT32_GET_LO(evse_get_error());
         break;
     case MODBUS_REG_ENABLED:
+        *value = evse_is_enabled();
+        break;
+    case MODBUS_REG_AVAILABLE:
         *value = evse_is_enabled();
         break;
     case MODBUS_REG_PENDING_AUTH:
@@ -276,6 +280,12 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         evse_set_enabled(value);
+        break;
+    case MODBUS_REG_AVAILABLE:
+        if (value > 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        evse_set_available(value);
         break;
     case MODBUS_REG_CHR_CURRENT:
         if (evse_set_charging_current(value) != ESP_OK) {
