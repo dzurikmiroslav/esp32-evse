@@ -4,6 +4,8 @@ on:
   push:
     tags-ignore:
      - '**'
+    branches:
+      - '**'
   pull_request:
   release:
     types:
@@ -44,4 +46,3 @@ jobs:
           asset_path: ./build/esp32-evse.bin
           asset_name: ${{ matrix.platform }}-evse.bin
           asset_content_type: application/octet-stream
-          
