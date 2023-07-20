@@ -185,7 +185,8 @@
             fetch('/api/v1/config/evse')
                 .then(jsonResponse)
                 .then(data => {
-                    document.getElementById('evseChargingCurrent').value = data.chargingCurrent;
+                    document.getElementById('chargingCurrent').max = data.maxChargingCurrent;
+                    document.getElementById('chargingCurrent').value = data.chargingCurrent;
                 })
                 .catch(showError);
         }
@@ -246,40 +247,28 @@
         document.addEventListener('visibilitychange', loadStateVisible);
 
         document.addEventListener('DOMContentLoaded', () => {
-            Promise.all([
-                fetch('/api/v1/boardConfig')
-                    .then(jsonResponse)
-                    .then(data => {
-                        document.getElementById('chargingCurrent').max = data.maxChargingCurrent;
-                        if (data.energyMeterThreePhases) {
-                            document.getElementById('powerL2').classList.remove('d-none');
-                            document.getElementById('powerL3').classList.remove('d-none');
-                        }
-                    }),
-                fetch('/api/v1/config/evse')
-                    .then(jsonResponse)
-                    .then(data => {
-                        document.getElementById('enabled').disabled = data.aux1 === 'enable_switch' || data.aux2 === 'enable_switch' || data.aux3 === 'enable_switch';
+            fetch('/api/v1/config/evse')
+                .then(jsonResponse)
+                .then(data => {
+                    document.getElementById('chargingCurrent').max = data.maxChargingCurrent;
+                    document.getElementById('chargingCurrent').value = data.chargingCurrent;
+                    document.getElementById('chargingCurrentValue').innerText = data.chargingCurrent;
 
-                        document.getElementById('chargingCurrent').value = data.chargingCurrent;
-                        document.getElementById('chargingCurrentValue').innerText = data.chargingCurrent;
+                    document.getElementById('consumptionLimit').value = data.consumptionLimit;
+                    document.getElementById('consumptionLimitValue').innerText = formatLimitWh(data.consumptionLimit);
 
-                        document.getElementById('consumptionLimit').value = data.consumptionLimit;
-                        document.getElementById('consumptionLimitValue').innerText = formatLimitWh(data.consumptionLimit);
+                    document.getElementById('chargingTimeLimit').value = data.chargingTimeLimit;
+                    document.getElementById('chargingTimeLimitValue').innerText = formatLimitSec(data.chargingTimeLimit);
 
-                        document.getElementById('chargingTimeLimit').value = data.chargingTimeLimit;
-                        document.getElementById('chargingTimeLimitValue').innerText = formatLimitSec(data.chargingTimeLimit);
+                    document.getElementById('underPowerLimit').value = data.underPowerLimit;
+                    document.getElementById('underPowerLimitValue').innerText = formatLimitW(data.underPowerLimit);
 
-                        document.getElementById('underPowerLimit').value = data.underPowerLimit;
-                        document.getElementById('underPowerLimitValue').innerText = formatLimitW(data.underPowerLimit);
-
-                        if (data.consumptionLimit || data.chargingTimeLimit || data.underPowerLimit) {
-                            document.getElementById('sessionLimitAccordionButton').ariaExpanded = true;
-                            document.getElementById('sessionLimitAccordionButton').classList.remove('collapsed');
-                            document.getElementById('sessionLimitCollapse').classList.add('show');
-                        }
-                    })
-            ])
+                    if (data.consumptionLimit || data.chargingTimeLimit || data.underPowerLimit) {
+                        document.getElementById('sessionLimitAccordionButton').ariaExpanded = true;
+                        document.getElementById('sessionLimitAccordionButton').classList.remove('collapsed');
+                        document.getElementById('sessionLimitCollapse').classList.add('show');
+                    }
+                })
                 .finally(() => document.getElementById('loading').classList.remove('show'))
                 .catch(showError);
 
@@ -392,7 +381,7 @@
                             Charging current
                             <span class="fw-bolder"><span id="chargingCurrentValue"></span> A</span>
                         </label>
-                        <input type="range" class="form-range" min="6" max="80" step="0.1" id="chargingCurrent">
+                        <input type="range" class="form-range" min="6" max="63" step="0.1" id="chargingCurrent">
                     </div>
                 </div>
 

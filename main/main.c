@@ -138,12 +138,23 @@ static void button_init(void)
     ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
 }
 
+static void fs_info(esp_vfs_spiffs_conf_t* conf)
+{
+    size_t total = 0, used = 0;
+    esp_err_t ret = esp_spiffs_info(conf->partition_label, &total, &used);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get partition %s information %s", conf->partition_label, esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "Partition %s size: total: %d, used: %d", conf->partition_label, total, used);
+    }
+}
+
 static void fs_init(void)
 {
     esp_vfs_spiffs_conf_t cfg_conf = {
         .base_path = "/cfg",
         .partition_label = "cfg",
-        .max_files = 5,
+        .max_files = 1,
         .format_if_mount_failed = false
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
@@ -155,6 +166,9 @@ static void fs_init(void)
         .format_if_mount_failed = true
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
+
+    fs_info(&cfg_conf);
+    fs_info(&data_conf);
 }
 
 static bool ota_diagnostic(void)
@@ -194,7 +208,7 @@ static void update_leds(void)
             break;
         case EVSE_STATE_F:
             led_set_off(LED_ID_CHARGING);
-            led_set_off(LED_ID_ERROR);
+            led_set_state(LED_ID_ERROR, 500, 500);
             break;
         }
     }

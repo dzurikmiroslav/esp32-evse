@@ -18,12 +18,13 @@
 #define MODBUS_REG_STATE                100
 #define MODBUS_REG_ERROR                101 // 2 word
 #define MODBUS_REG_ENABLED              103
-#define MODBUS_REG_PENDING_AUTH         104
-#define MODBUS_REG_CHR_CURRENT          105
-#define MODBUS_REG_CONSUMPTION_LIM      106 // 2 word
-#define MODBUS_REG_CHR_TIME_LIM         108 // 2 word
-#define MODBUS_REG_UNDER_POWER_LIM      110
-#define MODBUS_REG_AUTHORISE            111
+#define MODBUS_REG_AVAILABLE            104
+#define MODBUS_REG_PENDING_AUTH         105
+#define MODBUS_REG_CHR_CURRENT          106
+#define MODBUS_REG_CONSUMPTION_LIM      107 // 2 word
+#define MODBUS_REG_CHR_TIME_LIM         109 // 2 word
+#define MODBUS_REG_UNDER_POWER_LIM      111
+#define MODBUS_REG_AUTHORISE            112
 
 #define MODBUS_REG_EMETER_POWER         200
 #define MODBUS_REG_EMETER_SES_TIME      201 // 2 word
@@ -36,20 +37,22 @@
 #define MODBUS_REG_EMETER_L2_CUR        215 // 2 word
 #define MODBUS_REG_EMETER_L3_CUR        217 // 2 word
 
+
 #define MODBUS_REG_SOCKET_OUTLET        300
 #define MODBUS_REG_RCM                  301
 #define MODBUS_REG_TEMP_THRESHOLD       302
 #define MODBUS_REG_REQ_AUTH             303
-#define MODBUS_REG_DEF_CHR_CURRENT      304
-#define MODBUS_REG_DEF_CONSUMPTION_LIM  305 //2 word
-#define MODBUS_REG_DEF_CHR_TIME_LIM     307 //2 word
-#define MODBUS_REG_DEF_UNDER_POWER_LIM  309 
-#define MODBUS_REG_LOCK_OPERATING_TIME  310 
-#define MODBUS_REG_LOCK_BRAKE_TIME      311
-#define MODBUS_REG_LOCK_DET_HI          312
-#define MODBUS_REG_LOCK_RET_COUNT       313
-#define MODBUS_REG_EMETER_MODE          314
-#define MODBUS_REG_EMETER_AC_VLT        315
+#define MODBUS_REG_MAX_CHR_CURRENT      304
+#define MODBUS_REG_DEF_CHR_CURRENT      305
+#define MODBUS_REG_DEF_CONSUMPTION_LIM  306 //2 word
+#define MODBUS_REG_DEF_CHR_TIME_LIM     308 //2 word
+#define MODBUS_REG_DEF_UNDER_POWER_LIM  310 
+#define MODBUS_REG_LOCK_OPERATING_TIME  311 
+#define MODBUS_REG_LOCK_BRAKE_TIME      312
+#define MODBUS_REG_LOCK_DET_HI          313
+#define MODBUS_REG_LOCK_RET_COUNT       314
+#define MODBUS_REG_EMETER_MODE          315
+#define MODBUS_REG_EMETER_AC_VLT        316
 
 #define MODBUS_REG_UPTIME               400 //2 word
 #define MODBUS_REG_TEMP_LOW             402
@@ -106,6 +109,9 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         *value = UINT32_GET_LO(evse_get_error());
         break;
     case MODBUS_REG_ENABLED:
+        *value = evse_is_enabled();
+        break;
+    case MODBUS_REG_AVAILABLE:
         *value = evse_is_enabled();
         break;
     case MODBUS_REG_PENDING_AUTH:
@@ -198,6 +204,9 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
     case MODBUS_REG_REQ_AUTH:
         *value = evse_is_require_auth();
         break;
+    case MODBUS_REG_MAX_CHR_CURRENT:
+        *value = evse_get_max_charging_current();
+        break;
     case MODBUS_REG_DEF_CHR_CURRENT:
         *value = evse_get_default_charging_current();
         break;
@@ -272,6 +281,12 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         }
         evse_set_enabled(value);
         break;
+    case MODBUS_REG_AVAILABLE:
+        if (value > 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        evse_set_available(value);
+        break;
     case MODBUS_REG_CHR_CURRENT:
         if (evse_set_charging_current(value) != ESP_OK) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
@@ -330,6 +345,11 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         evse_set_require_auth(value);
+        break;
+    case MODBUS_REG_MAX_CHR_CURRENT:
+        if (evse_set_max_charging_current(value) != ESP_OK) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
         break;
     case MODBUS_REG_DEF_CHR_CURRENT:
         if (evse_set_default_charging_current(value) != ESP_OK) {

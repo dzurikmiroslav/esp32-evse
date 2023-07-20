@@ -23,6 +23,6 @@ bool rcm_test(void);
  * @return true
  * @return false
  */
-bool rcm_was_triggered(void);
+bool rcm_is_triggered(void);
 
 #endif /* RCM_H_ */

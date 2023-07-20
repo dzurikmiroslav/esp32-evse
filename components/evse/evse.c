@@ -16,15 +16,18 @@
 #include "rcm.h"
 #include "temp_sensor.h"
 
-#define CHARGING_CURRENT_MIN            60
-#define AUTHORIZED_TIME                 60000  // 60sec
-#define ERROR_WAIT_TIME                 60000  // 60sec
-#define UNDER_POWER_TIME                60000  // 60sec
-#define C1_D1_AC_RELAY_WAIT_TIME        6000   // 6sec
+#define MAX_CHARGING_CURRENT_MIN        6       // A
+#define MAX_CHARGING_CURRENT_MAX        63      // A
+#define CHARGING_CURRENT_MIN            60      // A*10
+#define AUTHORIZED_TIME                 60000   // 60sec
+#define ERROR_WAIT_TIME                 60000   // 60sec
+#define UNDER_POWER_TIME                60000   // 60sec
+#define C1_D1_AC_RELAY_WAIT_TIME        6000    // 6sec
 #define TEMP_THRESHOLD_MIN              40
 #define TEMP_THRESHOLD_MAX              80
 
 #define NVS_NAMESPACE                   "evse"
+#define NVS_MAX_CHARGING_CURRENT        "max_chrg_curr"
 #define NVS_DEFAULT_CHARGING_CURRENT    "def_chrg_curr"
 #define NVS_SOCKET_OUTLET               "socket_outlet"
 #define NVS_RCM                         "rcm"
@@ -70,6 +73,8 @@ static uint8_t temp_threshold = 60;
 
 static bool enabled = true;
 
+static bool available = true;
+
 static bool require_auth = false;
 
 static bool authorized = false;
@@ -81,6 +86,8 @@ static TickType_t error_wait_to = 0;
 static TickType_t under_power_start_time = 0;
 
 static TickType_t c1_d1_ac_relay_wait_to = 0;
+
+static uint8_t max_charging_current = 32;
 
 static uint8_t cable_max_current = 63;
 
@@ -207,7 +214,6 @@ static void apply_state(void)
         case EVSE_STATE_C1:
         case EVSE_STATE_D1:
             set_pilot(PILOT_STATE_12V);
-            //ac_relay_set_state(true); let previous state
             c1_d1_ac_relay_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(C1_D1_AC_RELAY_WAIT_TIME);
             break;
         case EVSE_STATE_C2:
@@ -224,6 +230,10 @@ static void apply_state(void)
 static bool can_charging(void)
 {
     if (!enabled) {
+        return false;
+    }
+
+    if (!available) {
         return false;
     }
 
@@ -275,7 +285,7 @@ void evse_process(void)
     }
 
     if (rcm) {
-        if (rcm_was_triggered()) {
+        if (rcm_is_triggered()) {
             set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
         }
     }
@@ -301,6 +311,10 @@ void evse_process(void)
         switch (state)
         {
         case EVSE_STATE_A:
+            if (!available) {
+                state = EVSE_STATE_F;
+                break;
+            }
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
@@ -323,6 +337,10 @@ void evse_process(void)
                 }
             }
         case EVSE_STATE_B2:
+            if (!available) {
+                state = EVSE_STATE_F;
+                break;
+            }
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
@@ -351,8 +369,16 @@ void evse_process(void)
                 ESP_LOGW(TAG, "Force switch off ac relay");
                 ac_relay_set_state(false);
                 c1_d1_ac_relay_wait_to = 0;
+                if (!available) {
+                    state = EVSE_STATE_F;
+                    break;
+                }
             }
         case EVSE_STATE_C2:
+            if (!enabled || !available) {
+                state = EVSE_STATE_C1;
+                break;
+            }
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
@@ -388,8 +414,16 @@ void evse_process(void)
                 ESP_LOGW(TAG, "Force switch off ac relay");
                 ac_relay_set_state(false);
                 c1_d1_ac_relay_wait_to = 0;
+                if (!available) {
+                    state = EVSE_STATE_F;
+                    break;
+                }
             }
         case EVSE_STATE_D2:
+            if (!enabled || !available) {
+                state = EVSE_STATE_D1;
+                break;
+            }
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_6:
@@ -411,7 +445,12 @@ void evse_process(void)
             }
             break;
         case EVSE_STATE_E:
+            break;
         case EVSE_STATE_F:
+            if (available) {
+                state = EVSE_STATE_A;
+                break;
+            }
             break;
         }
 
@@ -469,28 +508,15 @@ void evse_process(void)
     energy_meter_process(evse_state_is_charging(evse_get_state()), charging_current);
 }
 
-void evse_set_available(bool available)
-{
-    ESP_LOGI(TAG, "Set available %d", available);
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    if (available) {
-        state = EVSE_STATE_A;
-    } else {
-        state = EVSE_STATE_F;
-    }
-    apply_state();
-
-    xSemaphoreGive(mutex);
-}
-
 void evse_init()
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
     mutex = xSemaphoreCreateMutex();
 
-    charging_current = board_config.max_charging_current * 10;
+    nvs_get_u8(nvs, NVS_MAX_CHARGING_CURRENT, &max_charging_current);
+
+    charging_current = max_charging_current * 10;
     nvs_get_u16(nvs, NVS_DEFAULT_CHARGING_CURRENT, &charging_current);
 
     uint8_t u8;
@@ -552,6 +578,27 @@ uint32_t evse_get_error(void)
     return error;
 }
 
+uint8_t evse_get_max_charging_current(void)
+{
+    return max_charging_current;
+}
+
+esp_err_t evse_set_max_charging_current(uint8_t value)
+{
+    ESP_LOGI(TAG, "Set max charging current %dA", value);
+
+    if (value < MAX_CHARGING_CURRENT_MIN || value > MAX_CHARGING_CURRENT_MAX) {
+        ESP_LOGE(TAG, "Max charging current out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    max_charging_current = value;
+    nvs_set_u8(nvs, NVS_MAX_CHARGING_CURRENT, value);
+    nvs_commit(nvs);
+
+    return ESP_OK;
+}
+
 uint16_t evse_get_charging_current(void)
 {
     return charging_current;
@@ -561,7 +608,7 @@ esp_err_t evse_set_charging_current(uint16_t value)
 {
     ESP_LOGI(TAG, "Set charging current %dA*10", value);
 
-    if (value < CHARGING_CURRENT_MIN || value > board_config.max_charging_current * 10) {
+    if (value < CHARGING_CURRENT_MIN || value > max_charging_current * 10) {
         ESP_LOGE(TAG, "Charging current out of range");
         return ESP_ERR_INVALID_ARG;
     }
@@ -581,7 +628,7 @@ esp_err_t evse_set_charging_current(uint16_t value)
 
 uint16_t evse_get_default_charging_current(void)
 {
-    uint16_t value = board_config.max_charging_current * 10;
+    uint16_t value = max_charging_current * 10;
     nvs_get_u16(nvs, NVS_DEFAULT_CHARGING_CURRENT, &value);
     return value;
 }
@@ -590,7 +637,7 @@ esp_err_t evse_set_default_charging_current(uint16_t value)
 {
     ESP_LOGI(TAG, "Set default charging current %dA*10", value);
 
-    if (value < CHARGING_CURRENT_MIN || value > board_config.max_charging_current * 10) {
+    if (value < CHARGING_CURRENT_MIN || value > max_charging_current * 10) {
         ESP_LOGE(TAG, "Default charging current out of range");
         return ESP_ERR_INVALID_ARG;
     }
@@ -699,36 +746,54 @@ bool evse_is_enabled(void)
     return enabled;
 }
 
-void evse_set_enabled(bool _enabled)
+void evse_set_enabled(bool value)
 {
-    ESP_LOGI(TAG, "Set enabled %d", _enabled);
+    ESP_LOGI(TAG, "Set enabled %d", value);
 
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    if (enabled != _enabled) {
-        enabled = _enabled;
-        if (!enabled) {
-            if (state == EVSE_STATE_C2) {
-                state = EVSE_STATE_C1;
-            } else if (state == EVSE_STATE_D2) {
-                state = EVSE_STATE_D1;
-            }
-            apply_state();
-        }
+    if (enabled != value) {
+        enabled = value;
+        // if (!enabled) {
+        //     if (state == EVSE_STATE_C2) {
+        //         state = EVSE_STATE_C1;
+        //     } else if (state == EVSE_STATE_D2) {
+        //         state = EVSE_STATE_D1;
+        //     }
+        //     apply_state();
+        // }
     }
 
-    // if (enabled != _enabled) {
-    //     enabled = _enabled;
-    //     if (enabled) {
-    //         under_power_start_time = 0;
-    //     } else {
-    //         if (evse_state_is_charging(state)) {
-    //             state = EVSE_STATE_B;
-    //         }
-    //     }
+    xSemaphoreGive(mutex);
+}
 
-    //     apply_state();
-    // }
+bool evse_is_available(void)
+{
+    return available;
+}
+
+void evse_set_available(bool value)
+{
+    ESP_LOGI(TAG, "Set available %d", value);
+    xSemaphoreTake(mutex, portMAX_DELAY);
+
+    if (available != value) {
+        available = value;
+        // if (available) {
+        //     if (state == EVSE_STATE_F) {
+        //         state = EVSE_STATE_A;
+        //     }
+        // } else {
+        //     if (state == EVSE_STATE_C2) {
+        //         state = EVSE_STATE_C1;
+        //     } else if (state == EVSE_STATE_D2) {
+        //         state = EVSE_STATE_D1;
+        //     } else {
+        //         state = EVSE_STATE_F;
+        //     }
+        // }
+        // apply_state();
+    }
 
     xSemaphoreGive(mutex);
 }

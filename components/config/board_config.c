@@ -100,7 +100,6 @@ void board_config_load()
                     SET_CONFIG_VALUE("PROXIMITY_DOWN_THRESHOLD_13", proximity_down_threshold_13, atoi);
                     SET_CONFIG_VALUE("PROXIMITY_DOWN_THRESHOLD_20", proximity_down_threshold_20, atoi);
                     SET_CONFIG_VALUE("PROXIMITY_DOWN_THRESHOLD_32", proximity_down_threshold_32, atoi);
-                    SET_CONFIG_VALUE("MAX_CHARGING_CURRENT", max_charging_current, atoi);
                     SET_CONFIG_VALUE("AC_RELAY_GPIO", ac_relay_gpio, atoi);
                     SET_CONFIG_VALUE("SOCKET_LOCK", socket_lock, atob);
                     SET_CONFIG_VALUE("SOCKET_LOCK_A_GPIO", socket_lock_a_gpio, atoi);
@@ -147,10 +146,10 @@ void board_config_load()
                     SET_CONFIG_VALUE("AUX_OUT_4_GPIO", aux_out_4_gpio, atoi);
                     SET_CONFIG_VALUE("AUX_AIN_1", aux_ain_1, atob);
                     SET_CONFIG_VALUE_STR("AUX_AIN_1_NAME", aux_ain_1_name);
-                    SET_CONFIG_VALUE("AUX_AIN_1_ADC", aux_ain_1_adc, atoi);
+                    SET_CONFIG_VALUE("AUX_AIN_1_ADC_CHANNEL", aux_ain_1_adc_channel, atoi);
                     SET_CONFIG_VALUE("AUX_AIN_2", aux_ain_2, atob);
                     SET_CONFIG_VALUE_STR("AUX_AIN_2_NAME", aux_ain_2_name);
-                    SET_CONFIG_VALUE("AUX_AIN_2_ADC", aux_ain_2_adc, atoi);
+                    SET_CONFIG_VALUE("AUX_AIN_2_ADC_CHANNEL", aux_ain_2_adc_channel, atoi);
 #if CONFIG_ESP_CONSOLE_UART_NUM != 0
                     SET_CONFIG_VALUE("SERIAL_1", serial_1, atoser);
                     SET_CONFIG_VALUE_STR("SERIAL_1_NAME", serial_1_name);
