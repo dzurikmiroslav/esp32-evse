@@ -32,3 +32,9 @@ jobs:
         with:
           name: firmware-${{ matrix.platform }}
           path: build/esp32-evse.bin
+
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        with:
+          asset_path: ./build/esp32-evse.bin
+          asset_name: '${{ matrix.platform }}-evse.bin'
