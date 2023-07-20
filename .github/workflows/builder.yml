@@ -38,6 +38,7 @@ jobs:
           path: build/esp32-evse.bin
 
       - name: Upload release assets
+        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
