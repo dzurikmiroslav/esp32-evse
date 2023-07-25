@@ -14,7 +14,7 @@ J1772 EVSE firmware for ESP32 based devices.
  - MQTT API
  - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
  - [Scripting](https://github.com/dzurikmiroslav/esp32-evse/wiki/Script)
- - AT commands
+ - [Nextion HMI](https://github.com/dzurikmiroslav/esp32-evse/wiki/Nextion)
 
 ### Device definition method
 
