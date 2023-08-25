@@ -36,7 +36,7 @@ static const char* TAG = "app_main";
 
 static TaskHandle_t user_input_task;
 
-static evse_state_t led_state;
+static evse_state_t led_state = -1;
 
 static void reset_and_reboot(void)
 {

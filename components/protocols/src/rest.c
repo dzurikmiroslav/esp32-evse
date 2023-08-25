@@ -21,6 +21,7 @@
 #include "evse.h"
 #include "script.h"
 #include "logger.h"
+#include "web_archive.h"
 
 #define SCRATCH_BUFSIZE         1024
 
@@ -34,21 +35,6 @@
 #define NVS_PASSWORD            "password"
 
 static const char* TAG = "rest";
-
-extern const char web_favicon_ico_start[] asm("_binary_favicon_ico_start");
-extern const char web_favicon_ico_end[] asm("_binary_favicon_ico_end");
-extern const char web_index_html_start[] asm("_binary_index_html_start");
-extern const char web_index_html_end[] asm("_binary_index_html_end");
-extern const char web_settings_html_start[] asm("_binary_settings_html_start");
-extern const char web_settings_html_end[] asm("_binary_settings_html_end");
-extern const char web_management_html_start[] asm("_binary_management_html_start");
-extern const char web_management_html_end[] asm("_binary_management_html_end");
-extern const char web_about_html_start[] asm("_binary_about_html_start");
-extern const char web_about_html_end[] asm("_binary_about_html_end");
-extern const char web_bootstrap_bundle_min_js_start[] asm("_binary_bootstrap_bundle_min_js_start");
-extern const char web_bootstrap_bundle_min_js_end[] asm("_binary_bootstrap_bundle_min_js_end");
-extern const char web_bootstrap_min_css_start[] asm("_binary_bootstrap_min_css_start");
-extern const char web_bootstrap_min_css_end[] asm("_binary_bootstrap_min_css_end");
 
 static nvs_handle_t nvs;
 
@@ -195,64 +181,41 @@ void set_credentials(cJSON* root)
     nvs_commit(nvs);
 }
 
-static esp_err_t root_get_handler(httpd_req_t* req)
-{
-    httpd_resp_set_status(req, "307 Temporary Redirect");
-    httpd_resp_set_hdr(req, "Location", "/index.html");
-    httpd_resp_send(req, NULL, 0);
-    return ESP_OK;
-}
-
 static esp_err_t web_get_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        const char* type;
-        const char* buf_start;
-        const char* buf_end;
+        char* file_name = req->uri + 1;
+        char* file_suffix = strrchr(req->uri, '.');
+        strcat(file_name, ".gz");
 
-        if (strcmp(req->uri, "/favicon.ico") == 0) {
-            type = "image/x-icon";
-            buf_start = web_favicon_ico_start;
-            buf_end = web_favicon_ico_end;
-        }
-        if (strcmp(req->uri, "/index.html") == 0) {
-            type = "text/html";
-            buf_start = web_index_html_start;
-            buf_end = web_index_html_end;
-        }
-        if (strcmp(req->uri, "/settings.html") == 0) {
-            type = "text/html";
-            buf_start = web_settings_html_start;
-            buf_end = web_settings_html_end;
-        }
-        if (strcmp(req->uri, "/management.html") == 0) {
-            type = "text/html";
-            buf_start = web_management_html_start;
-            buf_end = web_management_html_end;
-        }
-        if (strcmp(req->uri, "/about.html") == 0) {
-            type = "text/html";
-            buf_start = web_about_html_start;
-            buf_end = web_about_html_end;
-        }
-        if (strcmp(req->uri, "/bootstrap.bundle.min.js") == 0) {
-            type = "application/javascript";
-            buf_start = web_bootstrap_bundle_min_js_start;
-            buf_end = web_bootstrap_bundle_min_js_end;
-        }
-        if (strcmp(req->uri, "/bootstrap.min.css") == 0) {
-            type = "text/css";
-            buf_start = web_bootstrap_min_css_start;
-            buf_end = web_bootstrap_min_css_end;
+        char* file_data;
+        uint32_t file_size = web_archive_find(file_name, &file_data);
+        if (file_size == 0) {
+            //fallback to index.html
+            file_size = web_archive_find("index.html.gz", &file_data);
+            file_suffix = ".html.gz";
         }
 
-        if (type == NULL) {
-            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "This URI does not exist");
-            return ESP_FAIL;
-        } else {
-            httpd_resp_set_type(req, type);
+        if (file_size > 0) {
+            if (strcmp(file_suffix, ".html.gz") == 0) {
+                httpd_resp_set_type(req, "text/html");
+            } else if (strcmp(file_suffix, ".css.gz") == 0) {
+                httpd_resp_set_type(req, "text/css");
+            } else if (strcmp(file_suffix, ".js.gz") == 0) {
+                httpd_resp_set_type(req, "application/javascript");
+            } else if (strcmp(file_suffix, ".json.gz") == 0) {
+                httpd_resp_set_type(req, "application/json");
+            } else if (strcmp(file_suffix, ".svg.gz") == 0) {
+                httpd_resp_set_type(req, "application/svg+xml");
+            } else if (strcmp(file_suffix, ".ico.gz") == 0) {
+                httpd_resp_set_type(req, "image/x-icon");
+            }
+
             httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-            httpd_resp_send(req, (const char*)(buf_start), buf_end - buf_start);
+            httpd_resp_send(req, file_data, file_size);
+        } else {
+            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
+            return ESP_FAIL;
         }
 
         return ESP_OK;
@@ -850,7 +813,7 @@ void rest_init(void)
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 15;
+    config.max_uri_handlers = 14;
     // config.max_open_sockets = 3;
     // config.lru_purge_enable = true;
     // config.open_fn = sess_on_open;
@@ -858,6 +821,8 @@ void rest_init(void)
 
     ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
     ESP_ERROR_CHECK(httpd_start(&server, &config));
+
+    //ESP_LOGI(TAG, "Credentials user / password: %s / %s", user, password);
 
     httpd_uri_t partition_get_uri = {
         .uri = "/api/v1/partition/*",
@@ -950,15 +915,8 @@ void rest_init(void)
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_post_uri));
 
-    httpd_uri_t root_get_uri = {
-        .uri = "/",
-        .method = HTTP_GET,
-        .handler = root_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &root_get_uri));
-
     httpd_uri_t web_get_uri = {
-        .uri = "/*",
+        .uri = "*",
         .method = HTTP_GET,
         .handler = web_get_handler
     };

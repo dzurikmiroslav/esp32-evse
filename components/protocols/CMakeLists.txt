@@ -2,16 +2,11 @@ set(srcs
     "src/protocols.c"
     "src/rest.c"
     "src/mqtt.c"
-    "src/modbus_tcp.c")
+    "src/modbus_tcp.c"
+    "src/web_archive.c")
 
 set(embed_files
-    "web-gz/index.html"
-    "web-gz/settings.html"
-    "web-gz/management.html"
-    "web-gz/about.html"
-    "web-gz/bootstrap.min.css"
-    "web-gz/bootstrap.bundle.min.js"
-    "web-gz/favicon.ico"
+    "web.cpio"
     "server_certs/ca_cert.pem")
 
 idf_component_register(SRCS "${srcs}"
