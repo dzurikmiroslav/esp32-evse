@@ -22,6 +22,7 @@
 #include "rest.h"
 #include "temp_sensor.h"
 #include "script.h"
+#include "date_time.h"
 
 #define RETURN_ON_ERROR(x) do {                 \
         esp_err_t err_rc_ = (x);                \
@@ -298,6 +299,32 @@ esp_err_t json_set_script_config(cJSON* root)
     return ESP_OK;
 }
 
+cJSON* json_get_time_config(void)
+{
+    cJSON* root = cJSON_CreateObject();
+    char str[64];
+
+    cJSON_AddBoolToObject(root, "ntpEnabled", date_time_is_ntp_enabled());
+    date_time_get_ntp_server(str);
+    cJSON_AddStringToObject(root, "ntpServer", str);
+    cJSON_AddBoolToObject(root, "ntpFromDhcp", date_time_is_ntp_from_dhcp());
+    date_time_get_timezone(str);
+    cJSON_AddStringToObject(root, "timezone", str);
+
+    return root;
+}
+
+esp_err_t json_set_time_config(cJSON* root)
+{
+    char* ntp_server = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ntpServer"));
+    bool ntp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "ntpEnabled"));
+    bool ntp_from_dhcp = cJSON_IsTrue(cJSON_GetObjectItem(root, "ntpFromDhcp"));
+    char* timezone = cJSON_GetStringValue(cJSON_GetObjectItem(root, "timezone"));
+
+    date_time_set_ntp_config(ntp_enabled, ntp_server, ntp_from_dhcp);
+    return date_time_set_timezone(timezone);
+}
+
 cJSON* json_get_state(void)
 {
     cJSON* root = cJSON_CreateObject();
@@ -428,10 +455,6 @@ cJSON* json_get_board_config(void)
         cJSON_AddStringToObject(root, "energyMeter", "none");
     }
     cJSON_AddBoolToObject(root, "energyMeterThreePhases", board_config.energy_meter_three_phases);
-
-    // cJSON_AddBoolToObject(root, "aux1", board_config.aux_1);
-    // cJSON_AddBoolToObject(root, "aux2", board_config.aux_2);
-    // cJSON_AddBoolToObject(root, "aux3", board_config.aux_3);
 
     cJSON_AddStringToObject(root, "serial1", serial_to_str(board_config.serial_1));
     cJSON_AddStringToObject(root, "serial1Name", board_config.serial_1_name);

@@ -30,6 +30,10 @@ cJSON* json_get_script_config(void);
 
 esp_err_t json_set_script_config(cJSON* root);
 
+cJSON* json_get_time_config(void);
+
+esp_err_t json_set_time_config(cJSON* root);
+
 cJSON* json_get_state(void);
 
 cJSON* json_get_info(void);

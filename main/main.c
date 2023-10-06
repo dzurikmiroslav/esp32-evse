@@ -11,7 +11,6 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_spiffs.h"
-#include "esp_sntp.h"
 #include "driver/gpio.h"
 
 #include "evse.h"
@@ -250,12 +249,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
-
-    //TODO time configuration settings
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-    setenv("TZ", "UTC-2", 1);
-    tzset();
 
     board_config_load();
 

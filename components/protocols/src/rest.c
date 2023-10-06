@@ -246,6 +246,7 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "serial", json_get_serial_config());
             cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
             cJSON_AddItemToObject(root, "script", json_get_script_config());
+            cJSON_AddItemToObject(root, "time", json_get_time_config());
         }
         if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
             root = json_get_evse_config();
@@ -267,6 +268,9 @@ static esp_err_t json_get_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, "/api/v1/config/script") == 0) {
             root = json_get_script_config();
+        }
+         if (strcmp(req->uri, "/api/v1/config/time") == 0) {
+            root = json_get_time_config();
         }
         if (strcmp(req->uri, "/api/v1/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
@@ -300,7 +304,7 @@ static esp_err_t json_post_handler(httpd_req_t* req)
     if (authorize_req(req)) {
         cJSON* root = read_request_json(req);
 
-        esp_err_t ret = ESP_OK;
+        esp_err_t ret = ESP_FAIL;
 
         if (root == NULL) {
             return ESP_FAIL;
@@ -324,8 +328,12 @@ static esp_err_t json_post_handler(httpd_req_t* req)
         if (strcmp(req->uri, "/api/v1/config/script") == 0) {
             ret = json_set_script_config(root);
         }
+        if (strcmp(req->uri, "/api/v1/config/time") == 0) {
+            ret = json_set_time_config(root);
+        }
         if (strcmp(req->uri, "/api/v1/credentials") == 0) {
             set_credentials(root);
+            ret = ESP_OK;
         }
 
         cJSON_Delete(root);
