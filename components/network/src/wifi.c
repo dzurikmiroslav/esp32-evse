@@ -200,7 +200,7 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
     uint16_t ap_count = 0;
     memset(ap_info, 0, sizeof(ap_info));
 
-    esp_err_t e = esp_wifi_scan_start(NULL, true);
+    esp_wifi_scan_start(NULL, true);
     esp_wifi_scan_get_ap_records(&number, ap_info);
     esp_wifi_scan_get_ap_num(&ap_count);
 

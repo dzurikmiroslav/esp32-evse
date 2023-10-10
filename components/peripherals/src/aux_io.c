@@ -14,7 +14,7 @@
 #define MAX_AUX_OUT     4
 #define MAX_AUX_AIN     4
 
-static const char* TAG = "aux";
+//static const char* TAG = "aux";
 
 static int aux_in_count = 0;
 static int aux_out_count = 0;

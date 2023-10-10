@@ -32,8 +32,9 @@ void logger_print(const char* str);
  * 
  * @param str 
  * @param l 
+ * @return int 
  */
-void logger_vprintf(const char* str, va_list l);
+int logger_vprintf(const char* str, va_list l);
 
 /**
  * @brief Get entries count

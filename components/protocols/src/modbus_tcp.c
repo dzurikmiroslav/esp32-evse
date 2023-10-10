@@ -18,7 +18,7 @@
 
 #define TCP_PORT                502
 #define TCP_MAX_CONN            3
-#define TCP_LISTEN_BACKLOG      5
+#define TCP_BACKLOG             5
 #define TCP_BUF_SIZE            (MODBUS_PACKET_SIZE + 7)
 
 #define RESPONSE_TIMEOUT        999
@@ -136,7 +136,7 @@ static int port_bind(void)
     }
     ESP_LOGI(TAG, "Socket bound, port %d", TCP_PORT);
 
-    err = listen(listen_sock, TCP_LISTEN_BACKLOG);
+    err = listen(listen_sock, TCP_BACKLOG);
     if (err != 0) {
         ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
         close(listen_sock);

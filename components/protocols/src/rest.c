@@ -46,7 +46,7 @@ static httpd_handle_t server = NULL;
 static bool authorize_req(httpd_req_t* req)
 {
     if (!strlen(user) && !strlen(password)) {
-        //no authentication
+        // no authentication
         return true;
     } else if (httpd_req_get_hdr_value_len(req, "Authorization") > 0) {
         char authorization_hdr[128];
@@ -184,14 +184,15 @@ void set_credentials(cJSON* root)
 static esp_err_t web_get_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        char* file_name = req->uri + 1;
-        char* file_suffix = strrchr(req->uri, '.');
+        char file_name[HTTPD_MAX_URI_LEN];
+        strcpy(file_name, req->uri + 1);
+        char* file_suffix = strrchr(file_name, '.');
         strcat(file_name, ".gz");
 
         char* file_data;
         uint32_t file_size = web_archive_find(file_name, &file_data);
         if (file_size == 0) {
-            //fallback to index.html
+            // fallback to index.html
             file_size = web_archive_find("index.html.gz", &file_data);
             file_suffix = ".html.gz";
         }
@@ -549,7 +550,7 @@ static esp_err_t script_reload_post_handler(httpd_req_t* req)
 static esp_err_t partition_get_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        char* partition = req->uri + strlen("/api/v1/partition/");
+        const char* partition = req->uri + strlen("/api/v1/partition/");
 
         size_t total = 0, used = 0;
         esp_err_t ret = esp_spiffs_info(partition, &total, &used);
@@ -615,7 +616,7 @@ static esp_err_t partition_get_handler(httpd_req_t* req)
 static esp_err_t fs_file_get_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        char* path = req->uri + strlen("/api/v1/fs");
+        const char* path = req->uri + strlen("/api/v1/fs");
         char* file = strrchr(path, '/') + 1;
 
         FILE* fd = fopen(path, "r");
@@ -658,7 +659,7 @@ static esp_err_t fs_file_get_handler(httpd_req_t* req)
 static esp_err_t fs_file_post_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        char* path = req->uri + strlen("/api/v1/fs");
+        const char* path = req->uri + strlen("/api/v1/fs");
 
         FILE* fd = fopen(path, "w");
         if (fd == NULL) {
@@ -706,7 +707,7 @@ static esp_err_t fs_file_post_handler(httpd_req_t* req)
 static esp_err_t fs_file_delete_handler(httpd_req_t* req)
 {
     if (authorize_req(req)) {
-        char* path = req->uri + strlen("/api/v1/fs");
+        const char* path = req->uri + strlen("/api/v1/fs");
 
         unlink(path);
 
@@ -830,7 +831,7 @@ void rest_init(void)
     ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
-    //ESP_LOGI(TAG, "Credentials user / password: %s / %s", user, password);
+    // ESP_LOGI(TAG, "Credentials user / password: %s / %s", user, password);
 
     httpd_uri_t partition_get_uri = {
         .uri = "/api/v1/partition/*",

@@ -113,7 +113,7 @@ static int m_charging_time(bvm* vm)
 
 static int m_session_time(bvm* vm)
 {
-    be_pushint(vm, energy_meter_get_session_time);
+    be_pushint(vm, energy_meter_get_session_time());
     be_return(vm);
 }
 

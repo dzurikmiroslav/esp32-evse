@@ -336,6 +336,7 @@ void evse_process(void)
                     authorized = true;
                 }
             }
+            // fallthrough
         case EVSE_STATE_B2:
             if (!available) {
                 state = EVSE_STATE_F;
@@ -374,6 +375,7 @@ void evse_process(void)
                     break;
                 }
             }
+            // fallthrough
         case EVSE_STATE_C2:
             if (!enabled || !available) {
                 state = EVSE_STATE_C1;
@@ -419,6 +421,7 @@ void evse_process(void)
                     break;
                 }
             }
+            // fallthrough
         case EVSE_STATE_D2:
             if (!enabled || !available) {
                 state = EVSE_STATE_D1;

@@ -5,6 +5,9 @@
 
 #include "web_archive.h"
 
+#define CPIO_MAGIC          "070707"
+#define CPIO_MAGIC_LENGTH   6
+#define CPIO_TRAILER        "TRAILER!!!"
 
 typedef struct {
     char magic[6];
@@ -51,18 +54,18 @@ static const char* cpio_file_data(cpio_header_t* hdr)
 
 static bool cpio_next(cpio_header_t** hdr)
 {
-    if (strncmp((*hdr)->magic, "070707", 6) != 0) {
+    if (strncmp((*hdr)->magic, CPIO_MAGIC, CPIO_MAGIC_LENGTH) != 0) {
         ESP_LOGE(TAG, "Bad archive format");
         return false;
     }
 
-    *hdr = ((char*)*hdr) + sizeof(cpio_header_t) + cpio_name_size(*hdr) + cpio_file_size(*hdr);
+    *hdr = (cpio_header_t*)(((char*)*hdr) + sizeof(cpio_header_t) + cpio_name_size(*hdr) + cpio_file_size(*hdr));
 
-    if (*hdr >= web_cpio_end) {
+    if (((char*)*hdr) >= web_cpio_end) {
         return false;
     }
 
-    if (strcmp(cpio_file_name(*hdr), "TRAILER!!!") == 0) {
+    if (strcmp(cpio_file_name(*hdr), CPIO_TRAILER) == 0) {
         return false;
     }
 
@@ -76,7 +79,7 @@ size_t web_archive_find(const char* name, char** content)
 
     while (cpio_next(&hdr)) {
         if (strcmp(name, cpio_file_name(hdr)) == 0) {
-            *content = cpio_file_data(hdr);
+            *content = (char*)cpio_file_data(hdr);
             return  cpio_file_size(hdr);
         }
     }
