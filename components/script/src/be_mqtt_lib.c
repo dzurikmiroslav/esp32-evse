@@ -27,7 +27,7 @@ typedef struct
 
 static void event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data)
 {
-    mqtt_ctx_t *ctx = handler_args;
+    mqtt_ctx_t* ctx = handler_args;
 
     esp_mqtt_event_handle_t event = event_data;
     char topic[48];
