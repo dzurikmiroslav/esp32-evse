@@ -57,16 +57,16 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
 static int m_init(bvm* vm)
 {
     int argc = be_top(vm);
-    if ((argc == 1 && be_isstring(vm, 1)) ||
-        (argc == 2 && be_isstring(vm, 1) && be_isstring(vm, 2)) ||
-        (argc == 3 && be_isstring(vm, 1) && be_isstring(vm, 2) && be_isstring(vm, 3))) {
+    if ((argc == 2 && be_isstring(vm, 2)) ||
+        (argc == 3 && be_isstring(vm, 2) && be_isstring(vm, 3)) ||
+        (argc == 4 && be_isstring(vm, 2) && be_isstring(vm, 3) && be_isstring(vm, 4))) {
         esp_mqtt_client_config_t cfg = { 0 };
-        cfg.broker.address.uri = be_tostring(vm, 1);
-        if (argc > 1) {
-            cfg.credentials.username = be_tostring(vm, 2);
-        }
+        cfg.broker.address.uri = be_tostring(vm, 2);
         if (argc > 2) {
-            cfg.credentials.authentication.password = be_tostring(vm, 2);
+            cfg.credentials.username = be_tostring(vm, 3);
+        }
+        if (argc > 3) {
+            cfg.credentials.authentication.password = be_tostring(vm, 4);
         }
 
         mqtt_ctx_t* ctx = (mqtt_ctx_t*)malloc(sizeof(mqtt_ctx_t));
@@ -109,13 +109,11 @@ static int m_connect(bvm* vm)
 }
 
 /* @const_object_info_begin
-class class_mqtt (scope: global, name: Mqtt) {
+class be_class_mqtt (scope: global, name: mqtt) {
     _ctx, var
 
     init, func(m_init)
     connect, func(m_connect)
 }
 @const_object_info_end */
-#include "../generate/be_fixed_class_mqtt.h"
-
-extern const bclass class_mqtt;
+#include "../generate/be_fixed_be_class_mqtt.h"

@@ -11,7 +11,6 @@ be_define_const_str(ENERGY_METER_CUR, "ENERGY_METER_CUR", 1351509274u, 0, 16, &b
 be_define_const_str(ENERGY_METER_CUR_VLT, "ENERGY_METER_CUR_VLT", 1634552099u, 0, 20, &be_const_str_SERIAL_UART);
 be_define_const_str(ENERGY_METER_NONE, "ENERGY_METER_NONE", 799556618u, 0, 17, &be_const_str_class);
 be_define_const_str(Evse, "Evse", 1255518258u, 0, 4, &be_const_str_break);
-be_define_const_str(Mqtt, "Mqtt", 2079076635u, 0, 4, &be_const_str_member);
 be_define_const_str(SERIAL_NONE, "SERIAL_NONE", 1267285320u, 0, 11, &be_const_str_keys);
 be_define_const_str(SERIAL_RS485, "SERIAL_RS485", 1431239208u, 0, 12, &be_const_str_iter);
 be_define_const_str(SERIAL_UART, "SERIAL_UART", 3498043946u, 0, 11, &be_const_str_current);
@@ -90,7 +89,7 @@ be_define_const_str(for, "for", 2901640080u, 54, 3, &be_const_str_remove);
 be_define_const_str(format, "format", 3114108242u, 0, 6, &be_const_str_issubclass);
 be_define_const_str(fromb64, "fromb64", 2717019639u, 0, 7, &be_const_str_session_time);
 be_define_const_str(fromhex, "fromhex", 1847150394u, 0, 7, NULL);
-be_define_const_str(fromptr, "fromptr", 666189689u, 0, 7, NULL);
+be_define_const_str(fromptr, "fromptr", 666189689u, 0, 7, &be_const_str_mqtt);
 be_define_const_str(fromstring, "fromstring", 610302344u, 0, 10, &be_const_str_number);
 be_define_const_str(get, "get", 1410115415u, 0, 3, &be_const_str_str);
 be_define_const_str(getbits, "getbits", 3094168979u, 0, 7, NULL);
@@ -123,6 +122,7 @@ be_define_const_str(map, "map", 3751997361u, 0, 3, &be_const_str_tanh);
 be_define_const_str(member, "member", 719708611u, 0, 6, NULL);
 be_define_const_str(members, "members", 937576464u, 0, 7, &be_const_str_real);
 be_define_const_str(module, "module", 3617558685u, 0, 6, NULL);
+be_define_const_str(mqtt, "mqtt", 353147387u, 0, 4, NULL);
 be_define_const_str(nan, "nan", 797905850u, 0, 3, &be_const_str_sin);
 be_define_const_str(nil, "nil", 228849900u, 63, 3, &be_const_str_tan);
 be_define_const_str(number, "number", 467038368u, 0, 6, NULL);
@@ -199,7 +199,7 @@ static const bstring* const m_string_table[] = {
     (const bstring *)&be_const_str_split,
     (const bstring *)&be_const_str_clear,
     (const bstring *)&be_const_str__X2Elen,
-    (const bstring *)&be_const_str_Mqtt,
+    (const bstring *)&be_const_str_member,
     NULL,
     (const bstring *)&be_const_str_setbits,
     (const bstring *)&be_const_str_asstring,
