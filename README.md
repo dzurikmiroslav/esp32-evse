@@ -82,3 +82,7 @@ ESP32-S2 based EVSE with advanced functionality, three phase energy meter, RS485
 [EasyEDA project](https://oshwlab.com/dzurik.miroslav/esp32s2-diy-evse)
 
 ![ESP32-S2-DA](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/esp32s2da.jpg)
+
+
+[![Watch the video](https://img.youtube.com/vi/r6YkWEet1aA/hqdefault.jpg)](https://www.youtube.com/embed/r6YkWEet1aA)
+
