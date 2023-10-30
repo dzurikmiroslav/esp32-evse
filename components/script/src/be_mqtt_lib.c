@@ -22,6 +22,7 @@ typedef struct
 {
     esp_mqtt_client_handle_t client;
     bvalue connect_cb;
+    bool connected;
     SLIST_HEAD(sub_topics_head, sub_topic_s) sub_topics;
 } mqtt_ctx_t;
 
@@ -35,11 +36,10 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
 
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "Connected");
+        ctx->connected = true;
         xSemaphoreTake(script_mutex, portMAX_DELAY);
-        ESP_LOGW(TAG, "be_top: %d", be_top(script_vm));
-
         bvalue* top = be_incrtop(script_vm);
+    
         *top = ctx->connect_cb;
         script_watchdog_reset();
         int ret = be_pcall(script_vm, 0);
@@ -47,12 +47,10 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
         script_handle_result(script_vm, ret);
 
         be_pop(script_vm, 1);
-
-        ESP_LOGW(TAG, "be_topp: %d", be_top(script_vm));
         xSemaphoreGive(script_mutex);
         break;
     case MQTT_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "Disconnected");
+        ctx->connected = false;
         break;
     case MQTT_EVENT_DATA:
         // memset(topic, 0, sizeof(topic));
@@ -89,6 +87,7 @@ static int m_init(bvm* vm)
         } else {
             mqtt_ctx_t* ctx = (mqtt_ctx_t*)malloc(sizeof(mqtt_ctx_t));
             ctx->client = client;
+            ctx->connected = false;
             SLIST_INIT(&ctx->sub_topics);
 
             be_newcomobj(vm, ctx, &be_commonobj_destroy_generic);
@@ -163,9 +162,12 @@ static int m_publish(bvm* vm)
         be_getmember(vm, 1, "_ctx");
         mqtt_ctx_t* ctx = (mqtt_ctx_t*)be_tocomptr(vm, -1);
 
-        int msg_id = esp_mqtt_client_publish(ctx->client, topic, data, 0, qos, retry);
-
-        be_pushint(vm, msg_id);
+        if (ctx->connected) {
+            int msg_id = esp_mqtt_client_publish(ctx->client, topic, data, 0, qos, retry);
+            be_pushint(vm, msg_id);
+        } else {
+            be_pushint(vm, -1);
+        }
         be_return(vm);
     }
 
