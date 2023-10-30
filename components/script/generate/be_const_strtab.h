@@ -133,6 +133,7 @@ extern const bcstring be_const_str_pop;
 extern const bcstring be_const_str_pow;
 extern const bcstring be_const_str_power;
 extern const bcstring be_const_str_print;
+extern const bcstring be_const_str_publish;
 extern const bcstring be_const_str_push;
 extern const bcstring be_const_str_rad;
 extern const bcstring be_const_str_raise;

@@ -17,7 +17,7 @@ be_define_const_str(SERIAL_UART, "SERIAL_UART", 3498043946u, 0, 11, &be_const_st
 be_define_const_str(STATE_A, "STATE_A", 758070558u, 0, 7, NULL);
 be_define_const_str(STATE_B1, "STATE_B1", 1213924814u, 0, 8, &be_const_str_STATE_E);
 be_define_const_str(STATE_B2, "STATE_B2", 1197147195u, 0, 8, &be_const_str_STATE_F);
-be_define_const_str(STATE_C1, "STATE_C1", 3294099307u, 0, 8, NULL);
+be_define_const_str(STATE_C1, "STATE_C1", 3294099307u, 0, 8, &be_const_str_publish);
 be_define_const_str(STATE_C2, "STATE_C2", 3310876926u, 0, 8, &be_const_str__process);
 be_define_const_str(STATE_D1, "STATE_D1", 3429453092u, 0, 8, &be_const_str_abs);
 be_define_const_str(STATE_D2, "STATE_D2", 3479785949u, 0, 8, &be_const_str_ismethod);
@@ -133,6 +133,7 @@ be_define_const_str(pop, "pop", 1362321360u, 0, 3, NULL);
 be_define_const_str(pow, "pow", 1479764693u, 0, 3, &be_const_str_sinh);
 be_define_const_str(power, "power", 4115604294u, 0, 5, &be_const_str_var);
 be_define_const_str(print, "print", 372738696u, 0, 5, &be_const_str_toptr);
+be_define_const_str(publish, "publish", 264247304u, 0, 7, NULL);
 be_define_const_str(push, "push", 2272264157u, 0, 4, NULL);
 be_define_const_str(rad, "rad", 1358899048u, 0, 3, NULL);
 be_define_const_str(raise, "raise", 1593437475u, 70, 5, NULL);
@@ -279,6 +280,6 @@ static const bstring* const m_string_table[] = {
 
 static const struct bconststrtab m_const_string_table = {
     .size = 83,
-    .count = 189,
+    .count = 190,
     .table = m_string_table
 };

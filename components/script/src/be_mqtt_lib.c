@@ -21,7 +21,7 @@ typedef struct sub_topic_s {
 typedef struct
 {
     esp_mqtt_client_handle_t client;
-    bvalue* connect_cb;
+    bvalue connect_cb;
     SLIST_HEAD(sub_topics_head, sub_topic_s) sub_topics;
 } mqtt_ctx_t;
 
@@ -36,8 +36,20 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected");
-        // vTaskResume(client_task);
-        // subcribe_topics();
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
+        ESP_LOGW(TAG, "be_top: %d", be_top(script_vm));
+
+        bvalue* top = be_incrtop(script_vm);
+        *top = ctx->connect_cb;
+        script_watchdog_reset();
+        int ret = be_pcall(script_vm, 0);
+        script_watchdog_disable();
+        script_handle_result(script_vm, ret);
+
+        be_pop(script_vm, 1);
+
+        ESP_LOGW(TAG, "be_topp: %d", be_top(script_vm));
+        xSemaphoreGive(script_mutex);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "Disconnected");
@@ -56,6 +68,7 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
 
 static int m_init(bvm* vm)
 {
+    ESP_LOGI(TAG, "Init");
     int argc = be_top(vm);
     if ((argc == 2 && be_isstring(vm, 2)) ||
         (argc == 3 && be_isstring(vm, 2) && be_isstring(vm, 3)) ||
@@ -69,15 +82,36 @@ static int m_init(bvm* vm)
             cfg.credentials.authentication.password = be_tostring(vm, 4);
         }
 
-        mqtt_ctx_t* ctx = (mqtt_ctx_t*)malloc(sizeof(mqtt_ctx_t));
-        ctx->client = esp_mqtt_client_init(&cfg);
-        SLIST_INIT(&ctx->sub_topics);
-        be_newcomobj(vm, ctx, &be_commonobj_destroy_generic);
-        be_setmember(vm, 1, "_ctx");
+        esp_mqtt_client_handle_t client = esp_mqtt_client_init(&cfg);
+        if (client == NULL) {
+            be_raise(vm, "mqtt_error", "invalid config");
+            be_return_nil(vm);
+        } else {
+            mqtt_ctx_t* ctx = (mqtt_ctx_t*)malloc(sizeof(mqtt_ctx_t));
+            ctx->client = client;
+            SLIST_INIT(&ctx->sub_topics);
 
-        be_return(vm);
+            be_newcomobj(vm, ctx, &be_commonobj_destroy_generic);
+            be_setmember(vm, 1, "_ctx");
+
+            be_return(vm);
+        }
     }
     be_raise(vm, "type_error", NULL);
+    be_return_nil(vm);
+}
+
+static int m_deinit(bvm* vm)
+{
+    ESP_LOGI(TAG, "Deinit");
+
+    be_getmember(vm, 1, "_ctx");
+    mqtt_ctx_t* ctx = (mqtt_ctx_t*)be_tocomptr(vm, -1);
+
+    if (ctx->client != NULL) {
+        esp_mqtt_client_destroy(ctx->client);
+    }
+
     be_return_nil(vm);
 }
 
@@ -92,7 +126,8 @@ static int m_connect(bvm* vm)
         if (be_isgcobj(cb)) {
             be_gc_fix_set(vm, cb->v.gc, btrue);
         }
-        ctx->connect_cb = cb;
+        ctx->connect_cb = *cb;
+        ESP_LOGW(TAG, "isfun %d", (int)var_isfunction(cb));
 
         if (esp_mqtt_client_register_event(ctx->client, ESP_EVENT_ANY_ID, event_handler, ctx) != ESP_OK) {
             be_raise(vm, "mqtt_error", "cant register handler");
@@ -108,12 +143,45 @@ static int m_connect(bvm* vm)
     be_return(vm);
 }
 
+static int m_publish(bvm* vm)
+{
+    int argc = be_top(vm);
+    if ((argc == 3 && be_isstring(vm, 2) && be_isstring(vm, 3)) ||
+        (argc == 4 && be_isstring(vm, 2) && be_isstring(vm, 3) && be_isint(vm, 4)) ||
+        (argc == 5 && be_isstring(vm, 2) && be_isstring(vm, 3) && be_isint(vm, 4) && be_isint(vm, 5))) {
+        char* topic = be_tostring(vm, 2);
+        char* data = be_tostring(vm, 3);
+        int qos = 1;
+        int retry = 0;
+        if (argc > 3) {
+            qos = be_toint(vm, 4);
+        }
+        if (argc > 4) {
+            retry = be_toint(vm, 5);
+        }
+
+        be_getmember(vm, 1, "_ctx");
+        mqtt_ctx_t* ctx = (mqtt_ctx_t*)be_tocomptr(vm, -1);
+
+        int msg_id = esp_mqtt_client_publish(ctx->client, topic, data, 0, qos, retry);
+
+        be_pushint(vm, msg_id);
+        be_return(vm);
+    }
+
+    be_raise(vm, "type_error", NULL);
+    be_return_nil(vm);
+}
+
 /* @const_object_info_begin
 class be_class_mqtt (scope: global, name: mqtt) {
     _ctx, var
 
     init, func(m_init)
+    deinit, func(m_deinit)
+
     connect, func(m_connect)
+    publish, func(m_publish)
 }
 @const_object_info_end */
 #include "../generate/be_fixed_be_class_mqtt.h"

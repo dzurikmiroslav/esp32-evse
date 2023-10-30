@@ -29,9 +29,11 @@ static TaskHandle_t script_task = NULL;
 
 static SemaphoreHandle_t shutdown_sem = NULL;
 
-static bvm* vm = NULL;
+bvm* script_vm = NULL;
 
-static int heartbeat_counter;
+SemaphoreHandle_t script_mutex = NULL;
+
+static int heartbeat_counter = -1;
 
 static output_buffer_t* output_buffer = NULL;
 
@@ -108,46 +110,50 @@ static void script_task_func(void* param)
     output_buffer_append_str(output_buffer, "berry " BERRY_VERSION "\n");
     xSemaphoreGive(output_mutex);
 
-    vm = be_vm_new();
-    be_set_obs_hook(vm, &obs_hook);
-    comp_set_strict(vm);
+    script_vm = be_vm_new();
+    be_set_obs_hook(script_vm, &obs_hook);
+    comp_set_strict(script_vm);
 
     xSemaphoreTake(output_mutex, portMAX_DELAY);
     output_buffer_append_str(output_buffer, "loading file '/data/main.be'...\n");
     xSemaphoreGive(output_mutex);
 
-    int ret = be_loadfile(vm, "/data/main.be");
+    int ret = be_loadfile(script_vm, "/data/main.be");
     if (ret == 0) {
         script_watchdog_reset();
-        ret = be_pcall(vm, 0);
+        ret = be_pcall(script_vm, 0);
         script_watchdog_disable();
     }
-    
-    script_handle_result(vm, ret);
+
+    script_handle_result(script_vm, ret);
 
     while (shutdown_sem == NULL) {
-        if (be_top(vm) > 1) {
-            ESP_LOGW(TAG, "Berry top: %d", be_top(vm));
+        if (be_top(script_vm) > 1) {
+            ESP_LOGW(TAG, "Berry top: %d", be_top(script_vm));
         }
 
-        be_getglobal(vm, "evse");
-        if (!be_isnil(vm, -1)) {
-            be_getmethod(vm, -1, "_process");
-            if (!be_isnil(vm, -1)) {
-                be_pushvalue(vm, -2);
-                ret = be_pcall(vm, 1);            
-                script_handle_result(vm, ret);                
-                be_pop(vm, 1);
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
+
+        be_getglobal(script_vm, "evse");
+        if (!be_isnil(script_vm, -1)) {
+            be_getmethod(script_vm, -1, "_process");
+            if (!be_isnil(script_vm, -1)) {
+                be_pushvalue(script_vm, -2);
+                ret = be_pcall(script_vm, 1);
+                script_handle_result(script_vm, ret);
+                be_pop(script_vm, 1);
             }
-            be_pop(vm, 1);
+            be_pop(script_vm, 1);
         }
-        be_pop(vm, 1);
+        be_pop(script_vm, 1);
+
+        xSemaphoreGive(script_mutex);
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 
-    be_vm_delete(vm);
-    vm = NULL;
+    be_vm_delete(script_vm);
+    script_vm = NULL;
 
     if (shutdown_sem) {
         xSemaphoreGive(shutdown_sem);
@@ -164,9 +170,9 @@ static void script_stop(void)
         if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
             ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
             vTaskDelete(script_task);
-            if (vm != NULL) {
-                be_vm_delete(vm);
-                vm = NULL;
+            if (script_vm != NULL) {
+                be_vm_delete(script_vm);
+                script_vm = NULL;
             }
         }
 
@@ -177,7 +183,7 @@ static void script_stop(void)
         xSemaphoreTake(output_mutex, portMAX_DELAY);
         output_buffer_delete(output_buffer);
         output_buffer = NULL;
-         xSemaphoreGive(output_mutex);
+        xSemaphoreGive(output_mutex);
     }
 }
 
@@ -195,6 +201,7 @@ void script_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
+    script_mutex = xSemaphoreCreateMutex();
     output_mutex = xSemaphoreCreateMutex();
 
     if (script_is_enabled()) {
