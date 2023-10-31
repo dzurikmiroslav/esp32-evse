@@ -15,7 +15,8 @@ static const char* TAG = "be_mqtt";
 
 typedef struct sub_topic_s {
     SLIST_ENTRY(sub_topic_s) entries;
-    bstring value;
+    int sub_id;
+    bvalue cb;
 } sub_topic_t;
 
 typedef struct
@@ -31,15 +32,15 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
     mqtt_ctx_t* ctx = handler_args;
 
     esp_mqtt_event_handle_t event = event_data;
-    char topic[48];
-    char data[256];
+
+     ESP_LOGW(TAG, "MQTT_EVENT %d %d", (int)event_id,(int) event->msg_id);
 
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
         ctx->connected = true;
         xSemaphoreTake(script_mutex, portMAX_DELAY);
         bvalue* top = be_incrtop(script_vm);
-    
+
         *top = ctx->connect_cb;
         script_watchdog_reset();
         int ret = be_pcall(script_vm, 0);
@@ -53,6 +54,7 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
         ctx->connected = false;
         break;
     case MQTT_EVENT_DATA:
+        ESP_LOGI(TAG, "MQTT_EVENT_DATA %s", event->topic);
         // memset(topic, 0, sizeof(topic));
         // strncpy(topic, event->topic, MIN(event->topic_len, sizeof(topic) - 1));
         // memset(data, 0, sizeof(data));
@@ -126,7 +128,6 @@ static int m_connect(bvm* vm)
             be_gc_fix_set(vm, cb->v.gc, btrue);
         }
         ctx->connect_cb = *cb;
-        ESP_LOGW(TAG, "isfun %d", (int)var_isfunction(cb));
 
         if (esp_mqtt_client_register_event(ctx->client, ESP_EVENT_ANY_ID, event_handler, ctx) != ESP_OK) {
             be_raise(vm, "mqtt_error", "cant register handler");
@@ -135,6 +136,21 @@ static int m_connect(bvm* vm)
             be_raise(vm, "mqtt_error", "cant start");
             ESP_LOGW(TAG, "Cant start");
         }
+    } else {
+        be_raise(vm, "type_error", NULL);
+    }
+
+    be_return(vm);
+}
+
+static int m_connected(bvm* vm)
+{
+    int argc = be_top(vm);
+    if (argc == 1) {
+        be_getmember(vm, 1, "_ctx");
+        mqtt_ctx_t* ctx = (mqtt_ctx_t*)be_tocomptr(vm, -1);
+
+        be_pushbool(vm, ctx->connected);
     } else {
         be_raise(vm, "type_error", NULL);
     }
@@ -168,11 +184,50 @@ static int m_publish(bvm* vm)
         } else {
             be_pushint(vm, -1);
         }
-        be_return(vm);
+    } else {
+        be_raise(vm, "type_error", NULL);
     }
 
-    be_raise(vm, "type_error", NULL);
-    be_return_nil(vm);
+    be_return(vm);
+}
+
+static int m_subscribe(bvm* vm)
+{
+    int argc = be_top(vm);
+    if ((argc == 3 && be_isstring(vm, 2) && be_isfunction(vm, 3)) ||
+        (argc == 4 && be_isstring(vm, 2) && be_isfunction(vm, 3) && be_isint(vm, 3))) {
+        char* topic = be_tostring(vm, 2);
+        bvalue* cb = be_indexof(vm, 2);
+        if (be_isgcobj(cb)) {
+            be_gc_fix_set(vm, cb->v.gc, btrue);
+        }
+        int qos = 0;
+        if (argc > 3) {
+            qos = be_toint(vm, 4);
+        }
+
+        be_getmember(vm, 1, "_ctx");
+        mqtt_ctx_t* ctx = (mqtt_ctx_t*)be_tocomptr(vm, -1);
+
+        if (ctx->connected) {
+            int sub_id = esp_mqtt_client_subscribe(ctx->client, topic, qos);
+
+            sub_topic_t* entry = (sub_topic_t*)malloc(sizeof(sub_topic_t));
+            entry->sub_id = sub_id;
+            entry->cb = *cb;
+            SLIST_INSERT_HEAD(&ctx->sub_topics, entry, entries);
+
+            ESP_LOGW(TAG, "sub_id %d", sub_id);
+
+            be_pushint(vm, sub_id);
+        } else {
+            be_pushint(vm, -1);
+        }
+    } else {
+        be_raise(vm, "type_error", NULL);
+    }
+
+    be_return(vm);
 }
 
 /* @const_object_info_begin
@@ -183,7 +238,9 @@ class be_class_mqtt (scope: global, name: mqtt) {
     deinit, func(m_deinit)
 
     connect, func(m_connect)
+    connected,  func(m_connected)
     publish, func(m_publish)
+    subscribe, func(m_subscribe)
 }
 @const_object_info_end */
 #include "../generate/be_fixed_be_class_mqtt.h"
