@@ -127,12 +127,15 @@ static void script_task_func(void* param)
 
     script_handle_result(script_vm, ret);
 
-    while (shutdown_sem == NULL) {
+    while (true) {
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
+        if (shutdown_sem != NULL) {
+            break;
+        }
+
         if (be_top(script_vm) > 1) {
             ESP_LOGW(TAG, "Berry top: %d", be_top(script_vm));
         }
-
-        xSemaphoreTake(script_mutex, portMAX_DELAY);
 
         be_getglobal(script_vm, "evse");
         if (!be_isnil(script_vm, -1)) {
@@ -165,6 +168,7 @@ static void script_stop(void)
 {
     if (script_task) {
         ESP_LOGI(TAG, "Stopping script");
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
         shutdown_sem = xSemaphoreCreateBinary();
 
         if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
@@ -179,6 +183,7 @@ static void script_stop(void)
         vSemaphoreDelete(shutdown_sem);
         shutdown_sem = NULL;
         script_task = NULL;
+        xSemaphoreGive(script_mutex);
 
         xSemaphoreTake(output_mutex, portMAX_DELAY);
         output_buffer_delete(output_buffer);
