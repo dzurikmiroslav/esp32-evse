@@ -60,7 +60,6 @@ static int m_analog_read(bvm* vm)
     be_return_nil(vm);
 }
 
-
 /* @const_object_info_begin
 module aux (scope: global) {
     write, func(m_write)

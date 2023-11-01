@@ -80,12 +80,12 @@ BERRY_LOCAL const bntvmodule* const be_module_table[] = {
 
 /* user-defined classes declare start */
 /* be_extern_native_class(my_class); */
-be_extern_native_class(mqtt);
+be_extern_native_class(mqtt_client);
 /* user-defined classes declare end */
 
 BERRY_LOCAL bclass_array be_class_table = {
     /* first list are direct classes */
     /* &be_native_class(my_class), */
-    &be_native_class(mqtt),
+    &be_native_class(mqtt_client),
     NULL, /* do not remove */
 };

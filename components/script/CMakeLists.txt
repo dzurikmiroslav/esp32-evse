@@ -3,7 +3,7 @@ set(srcs
     "src/be_board_config_lib.c"
     "src/be_evse_lib.c"
     "src/be_aux_lib.c"
-    "src/be_mqtt_lib.c"
+    "src/be_mqtt_client_lib.c"
     "src/be_modtab.c"
     "src/be_mapping_utils.c"
     "src/be_port.c"
