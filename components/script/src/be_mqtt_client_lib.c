@@ -25,6 +25,8 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
     mqtt_client_ctx_t* ctx = handler_args;
     esp_mqtt_event_handle_t event = event_data;
 
+    ESP_LOGI(TAG, "event_handler %d", (int)event_id);
+
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
         ctx->connected = true;

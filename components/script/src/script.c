@@ -170,6 +170,7 @@ static void script_stop(void)
         ESP_LOGI(TAG, "Stopping script");
         xSemaphoreTake(script_mutex, portMAX_DELAY);
         shutdown_sem = xSemaphoreCreateBinary();
+        xSemaphoreGive(script_mutex);
 
         if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
             ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
@@ -183,7 +184,6 @@ static void script_stop(void)
         vSemaphoreDelete(shutdown_sem);
         shutdown_sem = NULL;
         script_task = NULL;
-        xSemaphoreGive(script_mutex);
 
         xSemaphoreTake(output_mutex, portMAX_DELAY);
         output_buffer_delete(output_buffer);
