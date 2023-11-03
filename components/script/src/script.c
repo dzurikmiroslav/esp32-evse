@@ -130,6 +130,7 @@ static void script_task_func(void* param)
     while (true) {
         xSemaphoreTake(script_mutex, portMAX_DELAY);
         if (shutdown_sem != NULL) {
+            xSemaphoreGive(script_mutex);
             break;
         }
 
