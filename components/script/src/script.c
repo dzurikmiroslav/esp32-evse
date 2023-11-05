@@ -39,18 +39,18 @@ static output_buffer_t* output_buffer = NULL;
 
 static SemaphoreHandle_t output_mutex;
 
-void script_handle_result(bvm* vm, int res)
+void script_handle_result(int res)
 {
     switch (res) {
     case BE_EXCEPTION:
-        be_dumpexcept(vm);
+        be_dumpexcept(script_vm);
         break;
     case BE_EXIT:
-        be_toindex(vm, -1);
+        be_toindex(script_vm, -1);
         break;
     case BE_IO_ERROR:
         be_writestring("error: ");
-        be_writestring(be_tostring(vm, -1));
+        be_writestring(be_tostring(script_vm, -1));
         be_writenewline();
         break;
     case BE_MALLOC_FAIL:
@@ -59,24 +59,6 @@ void script_handle_result(bvm* vm, int res)
     default:
         break;
     }
-
-    // if (ret == BE_EXEC_ERROR) {
-    //     //ESP_LOGW(TAG, "Error: %s", be_tostring(vm, -1));
-    //     output_buffer_append_str(output_buffer, "Error: ");
-    //     output_buffer_append_str(output_buffer, be_tostring(vm, -1));
-    //     output_buffer_append_str(output_buffer, "\n");
-    //     be_pop(vm, 1);
-    // }
-    // if (ret == BE_EXCEPTION) {
-    //     //ESP_LOGW(TAG, "Exception: '%s' - %s", be_tostring(vm, -2), be_tostring(vm, -1));
-    //     output_buffer_append_str(output_buffer, "Exception: '");
-    //     output_buffer_append_str(output_buffer, be_tostring(vm, -2));
-    //     output_buffer_append_str(output_buffer, "' - ");
-    //     output_buffer_append_str(output_buffer, be_tostring(vm, -2));
-    //     output_buffer_append_str(output_buffer, "\n");
-    //     be_pop(vm, 2);
-    // }
-
 }
 
 void script_watchdog_reset(void)
@@ -125,7 +107,7 @@ static void script_task_func(void* param)
         script_watchdog_disable();
     }
 
-    script_handle_result(script_vm, ret);
+    script_handle_result(ret);
 
     while (true) {
         xSemaphoreTake(script_mutex, portMAX_DELAY);
@@ -144,7 +126,7 @@ static void script_task_func(void* param)
             if (!be_isnil(script_vm, -1)) {
                 be_pushvalue(script_vm, -2);
                 ret = be_pcall(script_vm, 1);
-                script_handle_result(script_vm, ret);
+                script_handle_result(ret);
                 be_pop(script_vm, 1);
             }
             be_pop(script_vm, 1);

@@ -9,7 +9,7 @@ extern bvm* script_vm;
 
 extern SemaphoreHandle_t script_mutex;
 
-void script_handle_result(bvm* vm, int ret);
+void script_handle_result(int ret);
 
 void script_watchdog_reset(void);
 

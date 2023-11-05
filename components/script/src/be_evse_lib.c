@@ -190,7 +190,7 @@ static void driver_call_event(bvm* vm, const char* method)
         script_watchdog_reset();
         int ret = be_pcall(vm, 1);
         script_watchdog_disable();
-        script_handle_result(vm, ret);
+        script_handle_result(ret);
         be_pop(vm, 1);
     }
     be_pop(vm, 1);

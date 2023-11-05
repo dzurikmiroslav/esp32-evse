@@ -5,17 +5,14 @@
 #include "be_gc.h"
 #include "be_vm.h"
 #include "be_exec.h"
-#include "esp_log.h"
 #include "mqtt_client.h"
 
 #include "script_utils.h"
 
-static const char* TAG = "be_mqtt_client";
-
 typedef struct
 {
     esp_mqtt_client_handle_t client;
-    bool connected;
+    bool connected : 1;
     bvalue on_connect;
     bvalue on_message;
 } mqtt_client_ctx_t;
@@ -24,8 +21,6 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
 {
     mqtt_client_ctx_t* ctx = handler_args;
     esp_mqtt_event_handle_t event = event_data;
-
-    //ESP_LOGI(TAG, "event_handler %d", (int)event_id);
 
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
@@ -38,7 +33,7 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
             script_watchdog_reset();
             int ret = be_pcall(script_vm, 0);
             script_watchdog_disable();
-            script_handle_result(script_vm, ret);
+            script_handle_result(ret);
 
             be_pop(script_vm, 1);
             xSemaphoreGive(script_mutex);
@@ -58,7 +53,7 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
             script_watchdog_reset();
             int ret = be_pcall(script_vm, 2);
             script_watchdog_disable();
-            script_handle_result(script_vm, ret);
+            script_handle_result(ret);
 
             be_pop(script_vm, 3);
             xSemaphoreGive(script_mutex);
@@ -107,8 +102,6 @@ static int m_init(bvm* vm)
 
 static int m_deinit(bvm* vm)
 {
-    ESP_LOGI(TAG, "Deinit");
-
     be_getmember(vm, 1, ".p");
     mqtt_client_ctx_t* ctx = (mqtt_client_ctx_t*)be_tocomptr(vm, -1);
 
@@ -140,7 +133,6 @@ static int m_connect(bvm* vm)
         }
         if (esp_mqtt_client_start(ctx->client) != ESP_OK) {
             be_raise(vm, "mqtt_error", "cant start");
-            ESP_LOGW(TAG, "Cant start");
         }
     } else {
         be_raise(vm, "type_error", NULL);
@@ -170,8 +162,8 @@ static int m_publish(bvm* vm)
     if ((argc == 3 && be_isstring(vm, 2) && be_isstring(vm, 3)) ||
         (argc == 4 && be_isstring(vm, 2) && be_isstring(vm, 3) && be_isint(vm, 4)) ||
         (argc == 5 && be_isstring(vm, 2) && be_isstring(vm, 3) && be_isint(vm, 4) && be_isint(vm, 5))) {
-        char* topic = be_tostring(vm, 2);
-        char* data = be_tostring(vm, 3);
+        const char* topic = be_tostring(vm, 2);
+        const char* data = be_tostring(vm, 3);
         int qos = 1;
         int retry = 0;
         if (argc > 3) {
@@ -221,7 +213,7 @@ static int m_subscribe(bvm* vm)
     int argc = be_top(vm);
     if ((argc == 2 && be_isstring(vm, 2)) ||
         (argc == 3 && be_isstring(vm, 2) && be_isint(vm, 3))) {
-        char* topic = be_tostring(vm, 2);
+        const char* topic = be_tostring(vm, 2);
         int qos = 0;
         if (argc > 2) {
             qos = be_toint(vm, 3);
