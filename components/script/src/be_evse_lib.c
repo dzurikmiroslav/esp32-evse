@@ -11,6 +11,7 @@
 #include "evse.h"
 #include "energy_meter.h"
 #include "script_utils.h"
+#include "temp_sensor.h"
 
 typedef struct driver_entry_s {
     SLIST_ENTRY(driver_entry_s) entries;
@@ -34,7 +35,7 @@ static int m_init(bvm* vm)
     SLIST_INIT(&ctx->drivers);
 
     be_newcomobj(vm, ctx, &be_commonobj_destroy_generic);
-    be_setmember(vm, 1, "_ctx");
+    be_setmember(vm, 1, ".p");
 
     be_return(vm);
 }
@@ -42,6 +43,12 @@ static int m_init(bvm* vm)
 static int m_state(bvm* vm)
 {
     be_pushint(vm, evse_get_state());
+    be_return(vm);
+}
+
+static int m_error(bvm* vm)
+{
+    be_pushint(vm, evse_get_error());
     be_return(vm);
 }
 
@@ -163,6 +170,18 @@ static int m_current(bvm* vm)
     be_return(vm);
 }
 
+static int m_low_temperature(bvm* vm)
+{
+    be_pushreal(vm, temp_sensor_get_low() / 100);
+    be_return(vm);
+}
+
+static int m_high_temperature(bvm* vm)
+{
+    be_pushreal(vm, temp_sensor_get_high() / 100);
+    be_return(vm);
+}
+
 static void driver_call_event(bvm* vm, const char* method)
 {
     be_getmethod(vm, -1, method);
@@ -171,9 +190,7 @@ static void driver_call_event(bvm* vm, const char* method)
         script_watchdog_reset();
         int ret = be_pcall(vm, 1);
         script_watchdog_disable();
-        if (ret == BE_EXCEPTION) {
-            script_handle_result(vm, ret);
-        }
+        script_handle_result(ret);
         be_pop(vm, 1);
     }
     be_pop(vm, 1);
@@ -181,7 +198,7 @@ static void driver_call_event(bvm* vm, const char* method)
 
 static int m_process(bvm* vm)
 {
-    be_getmember(vm, 1, "_ctx");
+    be_getmember(vm, 1, ".p");
     evse_ctx_t* ctx = (evse_ctx_t*)be_tocomptr(vm, -1);
 
     TickType_t now = xTaskGetTickCount();
@@ -230,7 +247,7 @@ static int m_add_driver(bvm* vm)
 {
     int argc = be_top(vm);
     if (argc == 2 && be_isinstance(vm, 2)) {
-        be_getmember(vm, 1, "_ctx");
+        be_getmember(vm, 1, ".p");
         evse_ctx_t* ctx = (evse_ctx_t*)be_tocomptr(vm, -1);
 
         bvalue* driver = be_indexof(vm, 2);
@@ -252,7 +269,7 @@ static int m_remove_driver(bvm* vm)
 {
     int argc = be_top(vm);
     if (argc == 2 && be_isinstance(vm, 2)) {
-        be_getmember(vm, 1, "_ctx");
+        be_getmember(vm, 1, ".p");
         evse_ctx_t* ctx = (evse_ctx_t*)be_tocomptr(vm, -1);
 
         bvalue* driver = be_indexof(vm, 2);
@@ -261,7 +278,7 @@ static int m_remove_driver(bvm* vm)
         driver_entry_t* entry_tmp;
         SLIST_FOREACH_SAFE(entry, &ctx->drivers, entries, entry_tmp) {
             if (memcmp(&entry->value, driver, sizeof(bvalue)) == 0) {
-                ESP_LOGI("evseber", "remove entry" );
+                ESP_LOGI("evseber", "remove entry");
                 SLIST_REMOVE(&ctx->drivers, entry, driver_entry_s, entries);
                 free((void*)entry);
             }
@@ -286,7 +303,7 @@ static int m_delay(bvm* vm)
 }
 
 /* @const_object_info_begin
-class class_evse (scope: global, name: Evse) {
+class be_class_evse (scope: global, name: evse) {
     STATE_A, int(EVSE_STATE_A)
     STATE_B1, int(EVSE_STATE_B1)
     STATE_B2, int(EVSE_STATE_B2)
@@ -297,13 +314,23 @@ class class_evse (scope: global, name: Evse) {
     STATE_E, int(EVSE_STATE_E)
     STATE_F, int(EVSE_STATE_F)
 
-    _ctx, var
+    ERR_PILOT_FAULT_BIT, int(EVSE_ERR_PILOT_FAULT_BIT)
+    ERR_DIODE_SHORT_BIT, int(EVSE_ERR_DIODE_SHORT_BIT)
+    ERR_LOCK_FAULT_BIT, int(EVSE_ERR_LOCK_FAULT_BIT)
+    ERR_UNLOCK_FAULT_BIT, int(EVSE_ERR_UNLOCK_FAULT_BIT)
+    ERR_RCM_TRIGGERED_BIT, int(EVSE_ERR_RCM_TRIGGERED_BIT)
+    ERR_RCM_SELFTEST_FAULT_BIT, int(EVSE_ERR_RCM_SELFTEST_FAULT_BIT)
+    ERR_TEMPERATURE_HIGH_BIT, int(EVSE_ERR_TEMPERATURE_HIGH_BIT)
+    ERR_TEMPERATURE_FAULT_BIT, int(EVSE_ERR_TEMPERATURE_FAULT_BIT)
+
+    .p, var
 
     init, func(m_init)
 
     _process, func(m_process)
 
     state, func(m_state)
+    error, func(m_error)
     enabled, func(m_enabled)
     set_enabled, func(m_set_enabled)
     available, func(m_available)
@@ -316,6 +343,8 @@ class class_evse (scope: global, name: Evse) {
     consumption, func(m_consumption)
     voltage, func(m_voltage)
     current, func(m_current)
+    high_temperature, func(m_high_temperature)
+    low_temperature, func(m_low_temperature)
 
     add_driver, func(m_add_driver)
     remove_driver, func(m_remove_driver)
@@ -323,12 +352,12 @@ class class_evse (scope: global, name: Evse) {
     delay, func(m_delay)
 }
 @const_object_info_end */
-#include "../generate/be_fixed_class_evse.h"
+#include "../generate/be_fixed_be_class_evse.h"
 
-extern const bclass class_evse;
+extern const bclass be_class_evse;
 
 static int m_module_init(bvm* vm) {
-    be_pushntvclass(vm, &class_evse);
+    be_pushntvclass(vm, &be_class_evse);
     be_call(vm, 0);
     be_return(vm);
 }
