@@ -1,9 +1,11 @@
 set(srcs
     "src/protocols.c"
-    "src/rest.c"
+    "src/http.c"
+    "src/http_rest.c"
+    "src/http_web.c"
+    "src/http_dav.c"
     "src/mqtt.c"
     "src/modbus_tcp.c"
-    "src/web_archive.c"
     "src/date_time.c")
 
 set(embed_files

@@ -19,7 +19,6 @@
 #include "proximity.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
-#include "rest.h"
 #include "temp_sensor.h"
 #include "script.h"
 #include "date_time.h"
