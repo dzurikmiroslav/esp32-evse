@@ -223,7 +223,7 @@ static int m_subscribe(bvm* vm)
         mqtt_client_ctx_t* ctx = (mqtt_client_ctx_t*)be_tocomptr(vm, -1);
 
         if (ctx->connected) {
-            int sub_id = esp_mqtt_client_subscribe(ctx->client, topic, qos);
+            int sub_id = esp_mqtt_client_subscribe_single(ctx->client, topic, qos);
             be_pushint(vm, sub_id);
         } else {
             be_pushint(vm, -1);
