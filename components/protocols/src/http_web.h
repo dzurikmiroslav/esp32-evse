@@ -3,6 +3,8 @@
 
 #include "esp_http_server.h"
 
-esp_err_t http_web_get_handler(httpd_req_t* req);
+size_t http_web_handlers_count(void);
+
+void http_web_add_handlers(httpd_handle_t server);
 
 #endif /* HTTP_WEB_H */

@@ -5,11 +5,9 @@
 
 #include "http.h"
 #include "http_rest.h"
-#include "http_web.h"
 #include "http_dav.h"
+#include "http_web.h"
 
-#define MAX_JSON_SIZE           (50*1024) // 50 KB
-#define MAX_JSON_SIZE_STR       "50KB"
 #define MAX_OPEN_SOCKETS        5
 
 #define NVS_NAMESPACE           "rest"
@@ -86,55 +84,7 @@ void http_set_credentials(const char* _user, const char* _password)
     nvs_commit(nvs);
 }
 
-cJSON* http_read_request_json(httpd_req_t* req)
-{
-    char content_type[32];
-    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
-    if (strcmp(content_type, "application/json") != 0) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not JSON body");
-        return NULL;
-    }
-
-    int total_len = req->content_len;
-
-    if (total_len > MAX_JSON_SIZE) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "JSON size must be less than " MAX_JSON_SIZE_STR "!");
-        return NULL;
-    }
-
-    char* body = (char*)malloc(sizeof(char) * (total_len + 1));
-    if (body == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate memory");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
-        return NULL;
-    }
-
-    int cur_len = 0;
-    int received = 0;
-
-    while (cur_len < total_len) {
-        received = httpd_req_recv(req, body + cur_len, total_len);
-        if (received <= 0) {
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed receive request");
-            free((void*)body);
-            return NULL;
-        }
-        cur_len += received;
-    }
-    body[total_len] = '\0';
-
-    cJSON* root = cJSON_Parse(body);
-
-    free((void*)body);
-
-    if (root == NULL) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not valid JSON");
-        return NULL;
-    }
-
-    return root;
-}
-
+// #include "lwip/sockets.h"
 // static int sess_count = 0;
 
 // static void sess_on_close(httpd_handle_t hd, int sockfd)
@@ -163,7 +113,7 @@ void http_init(void)
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 17;
+    config.max_uri_handlers = http_rest_handlers_count() + http_dav_handlers_count() + http_web_handlers_count();
     // config.max_open_sockets = 3;
     // config.lru_purge_enable = true;
     // config.open_fn = sess_on_open;
@@ -174,122 +124,7 @@ void http_init(void)
 
     // ESP_LOGI(TAG, "Credentials user / password: %s / %s", user, password);
 
-    httpd_uri_t http_rest_partition_get_uri = {
-        .uri = "/api/v1/partition/*",
-        .method = HTTP_GET,
-        .handler = http_rest_partition_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_partition_get_uri));
-
-    httpd_uri_t http_rest_fs_file_get_uri = {
-        .uri = "/api/v1/fs/*",
-        .method = HTTP_GET,
-        .handler = http_rest_fs_file_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_fs_file_get_uri));
-
-    httpd_uri_t http_rest_fs_file_post_uri = {
-        .uri = "/api/v1/fs/*",
-        .method = HTTP_POST,
-        .handler = http_rest_fs_file_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_fs_file_post_uri));
-
-    httpd_uri_t http_rest_fs_file_delete_uri = {
-        .uri = "/api/v1/fs/*",
-        .method = HTTP_DELETE,
-        .handler = http_rest_fs_file_delete_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_fs_file_delete_uri));
-
-    httpd_uri_t http_rest_log_get_uri = {
-        .uri = "/api/v1/log",
-        .method = HTTP_GET,
-        .handler = http_rest_log_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_log_get_uri));
-
-    httpd_uri_t http_rest_script_output_get_uri = {
-        .uri = "/api/v1/script/output",
-        .method = HTTP_GET,
-        .handler = http_rest_script_output_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_script_output_get_uri));
-
-    httpd_uri_t http_rest_get_uri = {
-       .uri = "/api/v1/*",
-       .method = HTTP_GET,
-       .handler = http_rest_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_get_uri));
-
-    httpd_uri_t http_rest_state_post_uri = {
-        .uri = "/api/v1/state/*",
-        .method = HTTP_POST,
-        .handler = http_rest_state_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_state_post_uri));
-
-    httpd_uri_t http_rest_restart_post_uri = {
-        .uri = "/api/v1/restart",
-        .method = HTTP_POST,
-        .handler = http_rest_restart_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_restart_post_uri));
-
-    httpd_uri_t http_rest_firmware_update_post_uri = {
-        .uri = "/api/v1/firmware/update",
-        .method = HTTP_POST,
-        .handler = http_rest_firmware_update_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_firmware_update_post_uri));
-
-    httpd_uri_t http_rest_firmware_upload_post_uri = {
-        .uri = "/api/v1/firmware/upload",
-        .method = HTTP_POST,
-        .handler = http_rest_firmware_upload_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_firmware_upload_post_uri));
-
-    httpd_uri_t http_rest_script_reload_post_uri = {
-        .uri = "/api/v1/script/reload",
-        .method = HTTP_POST,
-        .handler = http_rest_script_reload_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_script_reload_post_uri));
-
-    httpd_uri_t http_rest_post_uri = {
-       .uri = "/api/v1/*",
-       .method = HTTP_POST,
-       .handler = http_rest_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_rest_post_uri));
-
-    httpd_uri_t http_dav_propfind_uri = {
-        .uri = "/dav",
-        .method = HTTP_PROPFIND,
-        .handler = http_dav_propfind_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_dav_propfind_uri));
-
-    httpd_uri_t http_dav_get_uri = {
-        .uri = "/dav/*",
-        .method = HTTP_GET,
-        .handler = http_dav_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_dav_get_uri));
-
-   httpd_uri_t http_dav_options_uri = {
-        .uri = "/dav",
-        .method = HTTP_OPTIONS,
-        .handler = http_dav_options_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_dav_options_uri));
-
-    httpd_uri_t http_web_get_uri = {
-        .uri = "*",
-        .method = HTTP_GET,
-        .handler = http_web_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &http_web_get_uri));
+    http_rest_add_handlers(server);
+    http_dav_add_handlers(server);
+    http_web_add_handlers(server);
 }

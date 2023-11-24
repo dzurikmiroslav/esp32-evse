@@ -87,7 +87,7 @@ static size_t web_archive_find(const char* name, char** content)
     return 0;
 }
 
-esp_err_t http_web_get_handler(httpd_req_t* req)
+static esp_err_t get_handler(httpd_req_t* req)
 {
     if (http_authorize_req(req)) {
         char file_name[HTTPD_MAX_URI_LEN];
@@ -129,4 +129,19 @@ esp_err_t http_web_get_handler(httpd_req_t* req)
     } else {
         return ESP_FAIL;
     }
+}
+
+size_t http_web_handlers_count(void)
+{
+    return 1;
+}
+
+void http_web_add_handlers(httpd_handle_t server)
+{
+    httpd_uri_t get_uri = {
+           .uri = "*",
+           .method = HTTP_GET,
+           .handler = get_handler
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_uri));
 }
