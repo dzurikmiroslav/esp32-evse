@@ -77,12 +77,12 @@ static size_t web_archive_find(const char* name, char** content)
 {
     cpio_header_t* hdr = (cpio_header_t*)web_cpio_start;
 
-    while (cpio_next(&hdr)) {
+    do {
         if (strcmp(name, cpio_file_name(hdr)) == 0) {
             *content = (char*)cpio_file_data(hdr);
             return  cpio_file_size(hdr);
         }
-    }
+    } while (cpio_next(&hdr));
 
     return 0;
 }
