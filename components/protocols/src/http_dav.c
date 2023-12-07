@@ -314,7 +314,6 @@ static esp_err_t put_handler(httpd_req_t* req)
     return ESP_OK;
 }
 
-
 static esp_err_t delete_handler(httpd_req_t* req)
 {
     const char* path = req->uri + DAV_BASE_PATH_LEN;
