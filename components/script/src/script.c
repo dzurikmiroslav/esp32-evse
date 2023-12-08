@@ -8,10 +8,12 @@
 #include "be_vm.h"
 #include "be_module.h"
 #include "be_debug.h"
+#include "duktape.h"
 
 #include "script.h"
 #include "script_utils.h"
 #include "output_buffer.h"
+#include "duk_evse.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
@@ -29,7 +31,9 @@ static TaskHandle_t script_task = NULL;
 
 static SemaphoreHandle_t shutdown_sem = NULL;
 
-bvm* script_vm = NULL;
+//bvm* script_vm = NULL;
+
+static duk_context* ctx = NULL;
 
 SemaphoreHandle_t script_mutex = NULL;
 
@@ -41,24 +45,24 @@ static SemaphoreHandle_t output_mutex;
 
 void script_handle_result(int res)
 {
-    switch (res) {
-    case BE_EXCEPTION:
-        be_dumpexcept(script_vm);
-        break;
-    case BE_EXIT:
-        be_toindex(script_vm, -1);
-        break;
-    case BE_IO_ERROR:
-        be_writestring("error: ");
-        be_writestring(be_tostring(script_vm, -1));
-        be_writenewline();
-        break;
-    case BE_MALLOC_FAIL:
-        be_writestring("error: memory allocation failed.\n");
-        break;
-    default:
-        break;
-    }
+    // switch (res) {
+    // case BE_EXCEPTION:
+    //     be_dumpexcept(script_vm);
+    //     break;
+    // case BE_EXIT:
+    //     be_toindex(script_vm, -1);
+    //     break;
+    // case BE_IO_ERROR:
+    //     be_writestring("error: ");
+    //     be_writestring(be_tostring(script_vm, -1));
+    //     be_writenewline();
+    //     break;
+    // case BE_MALLOC_FAIL:
+    //     be_writestring("error: memory allocation failed.\n");
+    //     break;
+    // default:
+    //     break;
+    // }
 }
 
 void script_watchdog_reset(void)
@@ -73,73 +77,115 @@ void script_watchdog_disable(void)
 
 static void obs_hook(bvm* vm, int event, ...)
 {
-    switch (event) {
-    case BE_OBS_VM_HEARTBEAT:
-        if (heartbeat_counter >= 0) {
-            if (heartbeat_counter++ > HEARTBEAT_THRESHOLD) {
-                be_raise(vm, "timeout_error", "code running for too long");
-            }
-        }
-        break;
-    default:
-        break;
-    }
+    // switch (event) {
+    // case BE_OBS_VM_HEARTBEAT:
+    //     if (heartbeat_counter >= 0) {
+    //         if (heartbeat_counter++ > HEARTBEAT_THRESHOLD) {
+    //             be_raise(vm, "timeout_error", "code running for too long");
+    //         }
+    //     }
+    //     break;
+    // default:
+    //     break;
+    // }
 }
+
+static duk_ret_t native_print(duk_context* ctx)
+{
+    duk_push_string(ctx, " ");
+    duk_insert(ctx, 0);
+    duk_join(ctx, duk_get_top(ctx) - 1);
+    ESP_LOGI(TAG, "%s", duk_safe_to_string(ctx, -1));
+    return 0;
+}
+
 
 static void script_task_func(void* param)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
-    output_buffer_append_str(output_buffer, "berry " BERRY_VERSION "\n");
+    //output_buffer_append_str(output_buffer, "berry " DUK_VERSION "\n");
     xSemaphoreGive(output_mutex);
 
-    script_vm = be_vm_new();
-    be_set_obs_hook(script_vm, &obs_hook);
-    comp_set_strict(script_vm);
+    ctx = duk_create_heap_default();
+    ESP_LOGI(TAG, "ctx %p", ctx);
+    // duk_console_init(ctx, DUK_CONSOLE_STDOUT_ONLY);
+    duk_evse_init(ctx);
 
-    xSemaphoreTake(output_mutex, portMAX_DELAY);
-    output_buffer_append_str(output_buffer, "loading file '/data/main.be'...\n");
-    xSemaphoreGive(output_mutex);
+    ESP_LOGI("duk", "main top0 %d", duk_get_top(ctx));
 
-    int ret = be_loadfile(script_vm, "/data/main.be");
-    if (ret == 0) {
-        script_watchdog_reset();
-        ret = be_pcall(script_vm, 0);
-        script_watchdog_disable();
-    }
-
-    script_handle_result(ret);
+    duk_push_c_function(ctx, native_print, DUK_VARARGS);
+    duk_put_global_string(ctx, "print");
+    
+    ESP_LOGI("duk", "main top1 %d", duk_get_top(ctx));
 
     while (true) {
-        xSemaphoreTake(script_mutex, portMAX_DELAY);
+        //xSemaphoreTake(script_mutex, portMAX_DELAY);
         if (shutdown_sem != NULL) {
-            xSemaphoreGive(script_mutex);
+            // xSemaphoreGive(script_mutex);
             break;
         }
-
-        if (be_top(script_vm) > 1) {
-            ESP_LOGW(TAG, "Berry top: %d", be_top(script_vm));
-        }
-
-        be_getglobal(script_vm, "evse");
-        if (!be_isnil(script_vm, -1)) {
-            be_getmethod(script_vm, -1, "_process");
-            if (!be_isnil(script_vm, -1)) {
-                be_pushvalue(script_vm, -2);
-                ret = be_pcall(script_vm, 1);
-                script_handle_result(ret);
-                be_pop(script_vm, 1);
-            }
-            be_pop(script_vm, 1);
-        }
-        be_pop(script_vm, 1);
-
-        xSemaphoreGive(script_mutex);
-
-        vTaskDelay(pdMS_TO_TICKS(50));
+        //  duk_eval_string(ctx, "print('Hello world from Javascript!');");
+        // duk_eval_string(ctx, "print('yolo')");
+        // 
+        // duk_eval_string(ctx, "evse.func1()");
+        //xSemaphoreGive(script_mutex);
+        duk_peval_string(ctx, "print(evse.enabled)");
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        duk_peval_string(ctx, "evse.enabled = 1 ");
     }
 
-    be_vm_delete(script_vm);
-    script_vm = NULL;
+
+    duk_destroy_heap(ctx);
+    ctx = NULL;
+
+    // script_vm = be_vm_new();
+    // be_set_obs_hook(script_vm, &obs_hook);
+    // comp_set_strict(script_vm);
+
+    // xSemaphoreTake(output_mutex, portMAX_DELAY);
+    // output_buffer_append_str(output_buffer, "loading file '/data/main.be'...\n");
+    // xSemaphoreGive(output_mutex);
+
+    // int ret = be_loadfile(script_vm, "/data/main.be");
+    // if (ret == 0) {
+    //     script_watchdog_reset();
+    //     ret = be_pcall(script_vm, 0);
+    //     script_watchdog_disable();
+    // }
+
+    // script_handle_result(ret);
+
+    // while (true) {
+    //     xSemaphoreTake(script_mutex, portMAX_DELAY);
+    //     if (shutdown_sem != NULL) {
+    //         xSemaphoreGive(script_mutex);
+    //         break;
+    //     }
+
+    //     if (be_top(script_vm) > 1) {
+    //         ESP_LOGW(TAG, "Berry top: %d", be_top(script_vm));
+    //     }
+
+    //     be_getglobal(script_vm, "evse");
+    //     if (!be_isnil(script_vm, -1)) {
+    //         be_getmethod(script_vm, -1, "_process");
+    //         if (!be_isnil(script_vm, -1)) {
+    //             be_pushvalue(script_vm, -2);
+    //             ret = be_pcall(script_vm, 1);
+    //             script_handle_result(ret);
+    //             be_pop(script_vm, 1);
+    //         }
+    //         be_pop(script_vm, 1);
+    //     }
+    //     be_pop(script_vm, 1);
+
+    //     xSemaphoreGive(script_mutex);
+
+    //     vTaskDelay(pdMS_TO_TICKS(50));
+    // }
+
+    // be_vm_delete(script_vm);
+    // script_vm = NULL;
 
     if (shutdown_sem) {
         xSemaphoreGive(shutdown_sem);
@@ -149,30 +195,30 @@ static void script_task_func(void* param)
 
 static void script_stop(void)
 {
-    if (script_task) {
-        ESP_LOGI(TAG, "Stopping script");
-        xSemaphoreTake(script_mutex, portMAX_DELAY);
-        shutdown_sem = xSemaphoreCreateBinary();
-        xSemaphoreGive(script_mutex);
+    // if (script_task) {
+    //     ESP_LOGI(TAG, "Stopping script");
+    //     xSemaphoreTake(script_mutex, portMAX_DELAY);
+    //     shutdown_sem = xSemaphoreCreateBinary();
+    //     xSemaphoreGive(script_mutex);
 
-        if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
-            ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
-            vTaskDelete(script_task);
-            if (script_vm != NULL) {
-                be_vm_delete(script_vm);
-                script_vm = NULL;
-            }
-        }
+    //     if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
+    //         ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
+    //         vTaskDelete(script_task);
+    //         if (script_vm != NULL) {
+    //             be_vm_delete(script_vm);
+    //             script_vm = NULL;
+    //         }
+    //     }
 
-        vSemaphoreDelete(shutdown_sem);
-        shutdown_sem = NULL;
-        script_task = NULL;
+    //     vSemaphoreDelete(shutdown_sem);
+    //     shutdown_sem = NULL;
+    //     script_task = NULL;
 
-        xSemaphoreTake(output_mutex, portMAX_DELAY);
-        output_buffer_delete(output_buffer);
-        output_buffer = NULL;
-        xSemaphoreGive(output_mutex);
-    }
+    //     xSemaphoreTake(output_mutex, portMAX_DELAY);
+    //     output_buffer_delete(output_buffer);
+    //     output_buffer = NULL;
+    //     xSemaphoreGive(output_mutex);
+    // }
 }
 
 void script_start(void)
@@ -199,11 +245,11 @@ void script_init(void)
 
 void script_output_print(const char* buffer, size_t length)
 {
-    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    // xSemaphoreTake(output_mutex, portMAX_DELAY);
 
-    output_buffer_append_buf(output_buffer, buffer, length);
+    // output_buffer_append_buf(output_buffer, buffer, length);
 
-    xSemaphoreGive(output_mutex);
+    // xSemaphoreGive(output_mutex);
 }
 
 uint16_t script_output_count(void)
@@ -227,10 +273,10 @@ bool script_output_read(uint16_t* index, char** str, uint16_t* len)
 
 void script_reload(void)
 {
-    if (script_is_enabled()) {
-        script_stop();
-        script_start();
-    }
+    // if (script_is_enabled()) {
+    //     script_stop();
+    //     script_start();
+    // }
 }
 
 void script_set_enabled(bool enabled)
