@@ -5,7 +5,6 @@
 
 #include "timeout_utils.h"
 #include "wifi.h"
-#include "rest.h"
 
 static void restart_func(void* arg)
 {
