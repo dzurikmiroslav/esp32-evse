@@ -115,7 +115,7 @@ static void script_task_func(void* param)
 
     duk_push_c_function(ctx, native_print, DUK_VARARGS);
     duk_put_global_string(ctx, "print");
-    
+
     ESP_LOGI("duk", "main top1 %d", duk_get_top(ctx));
 
     while (true) {
@@ -129,11 +129,12 @@ static void script_task_func(void* param)
         // 
         // duk_eval_string(ctx, "evse.func1()");
         //xSemaphoreGive(script_mutex);
-        duk_peval_string(ctx, "print(evse.enabled)");
+        duk_peval_string_noresult(ctx, "print(evse.enabled)");
         vTaskDelay(pdMS_TO_TICKS(5000));
-        duk_peval_string(ctx, "evse.enabled = 1 ");
-    }
+        duk_peval_string_noresult(ctx, "evse.enabled = 1 ");
 
+        ESP_LOGI("duk", "main  %d", duk_get_top(ctx));
+    }
 
     duk_destroy_heap(ctx);
     ctx = NULL;

@@ -3,6 +3,19 @@
 #include "evse.h"
 #include "esp_log.h"
 
+
+static duk_ret_t get_state(duk_context* ctx)
+{
+    duk_push_int(ctx, evse_get_state());
+    return 1;
+}
+
+static duk_ret_t get_error(duk_context* ctx)
+{
+    duk_push_uint(ctx, evse_get_error());
+    return 1;
+}
+
 static duk_ret_t get_enabled(duk_context* ctx)
 {
     duk_push_boolean(ctx, evse_is_enabled());
@@ -12,6 +25,18 @@ static duk_ret_t get_enabled(duk_context* ctx)
 static duk_ret_t set_enabled(duk_context* ctx)
 {
     evse_set_enabled(duk_get_boolean(ctx, 0));
+    return 0;
+}
+
+static duk_ret_t get_available(duk_context* ctx)
+{
+    duk_push_boolean(ctx, evse_is_available());
+    return 1;
+}
+
+static duk_ret_t set_available(duk_context* ctx)
+{
+    evse_set_available(duk_get_boolean(ctx, 0));
     return 0;
 }
 
@@ -39,26 +64,32 @@ static const duk_number_list_entry module_consts[] = {
 
 
 static duk_ret_t open_module(duk_context* ctx)
-{   
-    ESP_LOGI("duk", "top0 %d", duk_get_top(ctx));
+{
     duk_push_object(ctx);
 
-     ESP_LOGI("duk", "top1 %d", duk_get_top(ctx));
-     duk_put_number_list(ctx, -1, module_consts);
+    duk_put_number_list(ctx, -1, module_consts);
 
-    ESP_LOGI("duk", "top2 %d", duk_get_top(ctx));
+    duk_push_string(ctx, "state");
+    duk_push_c_function(ctx, get_state, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER);
+
+    duk_push_string(ctx, "error");
+    duk_push_c_function(ctx, get_error, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER);
 
     duk_push_string(ctx, "enabled");
     duk_push_c_function(ctx, get_enabled, 0);
     duk_push_c_function(ctx, set_enabled, 1);
+    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER);
 
-     ESP_LOGI("duk", "top3 %d", duk_get_top(ctx));
-    duk_def_prop(ctx,
-        -4,
-        DUK_DEFPROP_HAVE_GETTER |
-        DUK_DEFPROP_HAVE_SETTER);
+    duk_push_string(ctx, "available");
+    duk_push_c_function(ctx, get_available, 0);
+    duk_push_c_function(ctx, set_available, 1);
+    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER);
 
-      ESP_LOGI("duk", "top4 %d", duk_get_top(ctx));
+    duk_push_string(ctx, "_drivers");
+    duk_push_array(ctx);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_VALUE | DUK_DEFPROP_FORCE);
 
     return 1;
 }
