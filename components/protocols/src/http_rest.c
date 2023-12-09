@@ -5,93 +5,33 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_http_client.h"
-#include "esp_http_server.h"
 #include "esp_ota_ops.h"
 #include "esp_https_ota.h"
 #include "esp_vfs.h"
 #include "esp_spiffs.h"
-#include "nvs.h"
 #include "cJSON.h"
-#include "mbedtls/base64.h"
 
-#include "rest.h"
+#include "http_rest.h"
+#include "http.h"
 #include "json.h"
 #include "ota.h"
 #include "timeout_utils.h"
 #include "evse.h"
 #include "script.h"
 #include "logger.h"
-#include "web_archive.h"
 
+
+#define REST_BASE_PATH           "/api/v1"
+//#define REST_BASE_PATH_LEN       4
 #define SCRATCH_BUFSIZE         1024
-
+#define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
 #define MAX_JSON_SIZE           (50*1024) // 50 KB
 #define MAX_JSON_SIZE_STR       "50KB"
-#define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
-#define MAX_OPEN_SOCKETS        5
 
-#define NVS_NAMESPACE           "rest"
-#define NVS_USER                "user"
-#define NVS_PASSWORD            "password"
+static const char* TAG = "http_rest";
 
-static const char* TAG = "rest";
 
-static nvs_handle_t nvs;
-
-static char user[32];
-static char password[32];
-
-static httpd_handle_t server = NULL;
-
-static bool authorize_req(httpd_req_t* req)
-{
-    if (!strlen(user) && !strlen(password)) {
-        // no authentication
-        return true;
-    } else if (httpd_req_get_hdr_value_len(req, "Authorization") > 0) {
-        char authorization_hdr[128];
-        char authorization[64];
-
-        httpd_req_get_hdr_value_str(req, "Authorization", authorization_hdr, sizeof(authorization_hdr));
-        sscanf(authorization_hdr, "Basic %s", authorization_hdr);
-
-        if (strlen(authorization_hdr) > 0) {
-            size_t olen;
-            if (mbedtls_base64_decode((unsigned char*)authorization, sizeof(authorization), &olen, (unsigned char*)authorization_hdr,
-                strlen(authorization_hdr)) == 0) {
-                authorization[olen] = '\0';
-
-                char req_user[32] = "";
-                char req_password[32] = "";
-
-                char* saveptr;
-                char* token = strtok_r(authorization, ":", &saveptr);
-                if (token != NULL) {
-                    strcpy(req_user, token);
-
-                    token = strtok_r(NULL, ":", &saveptr);
-                    if (token != NULL) {
-                        strcpy(req_password, token);
-                    }
-                }
-
-                if (strcmp(user, req_user) == 0 && strcmp(password, req_password) == 0) {
-                    return true;
-                } else {
-                    ESP_LOGW(TAG, "Failed authorize user : %s", req_user);
-                }
-            }
-        }
-    }
-    httpd_resp_set_status(req, "401");
-    httpd_resp_set_type(req, "text/plain");
-    httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"Users\"");
-    httpd_resp_sendstr(req, "Bad credentials");
-
-    return false;
-}
-
-static cJSON* read_request_json(httpd_req_t* req)
+cJSON* read_request_json(httpd_req_t* req)
 {
     char content_type[32];
     httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
@@ -160,86 +100,41 @@ static cJSON* firmware_check_update()
     return root;
 }
 
-void set_credentials(cJSON* root)
+static void set_credentials(cJSON* root)
 {
+    char* user;
+    char* password;
+
     if (cJSON_IsString(cJSON_GetObjectItem(root, "user"))) {
-        strcpy(user, cJSON_GetObjectItem(root, "user")->valuestring);
+        user = cJSON_GetObjectItem(root, "user")->valuestring;
     } else {
-        user[0] = '\0';
+        user = "";
     }
-    ESP_LOGI(TAG, "Set credentials user: %s", user);
-    nvs_set_str(nvs, NVS_USER, user);
 
     if (cJSON_IsString(cJSON_GetObjectItem(root, "password"))) {
-        strcpy(password, cJSON_GetObjectItem(root, "password")->valuestring);
+        password = cJSON_GetObjectItem(root, "password")->valuestring;
     } else {
-        password[0] = '\0';
+        password = "";
     }
-    nvs_set_str(nvs, NVS_PASSWORD, password);
-    ESP_LOGI(TAG, "Set credentials password: %s", strlen(password) ? "****" : "<none>");
 
-    nvs_commit(nvs);
+    http_set_credentials(user, password);
 }
 
-static esp_err_t web_get_handler(httpd_req_t* req)
+esp_err_t get_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
-        char file_name[HTTPD_MAX_URI_LEN];
-        strcpy(file_name, req->uri + 1);
-        char* file_suffix = strrchr(file_name, '.');
-        strcat(file_name, ".gz");
-
-        char* file_data;
-        uint32_t file_size = web_archive_find(file_name, &file_data);
-        if (file_size == 0) {
-            // fallback to index.html
-            file_size = web_archive_find("index.html.gz", &file_data);
-            file_suffix = ".html.gz";
-        }
-
-        if (file_size > 0) {
-            if (strcmp(file_suffix, ".html.gz") == 0) {
-                httpd_resp_set_type(req, "text/html");
-            } else if (strcmp(file_suffix, ".css.gz") == 0) {
-                httpd_resp_set_type(req, "text/css");
-            } else if (strcmp(file_suffix, ".js.gz") == 0) {
-                httpd_resp_set_type(req, "application/javascript");
-            } else if (strcmp(file_suffix, ".json.gz") == 0) {
-                httpd_resp_set_type(req, "application/json");
-            } else if (strcmp(file_suffix, ".svg.gz") == 0) {
-                httpd_resp_set_type(req, "application/svg+xml");
-            } else if (strcmp(file_suffix, ".ico.gz") == 0) {
-                httpd_resp_set_type(req, "image/x-icon");
-            }
-
-            httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-            httpd_resp_send(req, file_data, file_size);
-        } else {
-            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
-            return ESP_FAIL;
-        }
-
-        return ESP_OK;
-    } else {
-        return ESP_FAIL;
-    }
-}
-
-static esp_err_t json_get_handler(httpd_req_t* req)
-{
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         cJSON* root = NULL;
 
-        if (strcmp(req->uri, "/api/v1/info") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/info") == 0) {
             root = json_get_info();
         }
-        if (strcmp(req->uri, "/api/v1/boardConfig") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/boardConfig") == 0) {
             root = json_get_board_config();
         }
-        if (strcmp(req->uri, "/api/v1/state") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/state") == 0) {
             root = json_get_state();
         }
-        if (strcmp(req->uri, "/api/v1/config") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config") == 0) {
             root = cJSON_CreateObject();
             cJSON_AddItemToObject(root, "evse", json_get_evse_config());
             cJSON_AddItemToObject(root, "wifi", json_get_wifi_config());
@@ -249,31 +144,31 @@ static esp_err_t json_get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "script", json_get_script_config());
             cJSON_AddItemToObject(root, "time", json_get_time_config());
         }
-        if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
             root = json_get_evse_config();
         }
-        if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/wifi") == 0) {
             root = json_get_wifi_config();
         }
-        if (strcmp(req->uri, "/api/v1/config/wifi/scan") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/wifi/scan") == 0) {
             root = json_get_wifi_scan();
         }
-        if (strcmp(req->uri, "/api/v1/config/mqtt") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/mqtt") == 0) {
             root = json_get_mqtt_config();
         }
-        if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/serial") == 0) {
             root = json_get_serial_config();
         }
-        if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/modbus") == 0) {
             root = json_get_modbus_config();
         }
-        if (strcmp(req->uri, "/api/v1/config/script") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
             root = json_get_script_config();
         }
-         if (strcmp(req->uri, "/api/v1/config/time") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/time") == 0) {
             root = json_get_time_config();
         }
-        if (strcmp(req->uri, "/api/v1/firmware/checkUpdate") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
             if (root == NULL) {
                 httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
@@ -300,9 +195,9 @@ static esp_err_t json_get_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t json_post_handler(httpd_req_t* req)
+esp_err_t post_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         cJSON* root = read_request_json(req);
 
         esp_err_t ret = ESP_FAIL;
@@ -311,28 +206,28 @@ static esp_err_t json_post_handler(httpd_req_t* req)
             return ESP_FAIL;
         }
 
-        if (strcmp(req->uri, "/api/v1/config/evse") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
             ret = json_set_evse_config(root);
         }
-        if (strcmp(req->uri, "/api/v1/config/wifi") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/wifi") == 0) {
             ret = json_set_wifi_config(root, true);
         }
-        if (strcmp(req->uri, "/api/v1/config/mqtt") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/mqtt") == 0) {
             ret = json_set_mqtt_config(root);
         }
-        if (strcmp(req->uri, "/api/v1/config/serial") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/serial") == 0) {
             ret = json_set_serial_config(root);
         }
-        if (strcmp(req->uri, "/api/v1/config/modbus") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/modbus") == 0) {
             ret = json_set_modbus_config(root);
         }
-        if (strcmp(req->uri, "/api/v1/config/script") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
             ret = json_set_script_config(root);
         }
-        if (strcmp(req->uri, "/api/v1/config/time") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/config/time") == 0) {
             ret = json_set_time_config(root);
         }
-        if (strcmp(req->uri, "/api/v1/credentials") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/credentials") == 0) {
             set_credentials(root);
             ret = ESP_OK;
         }
@@ -354,9 +249,9 @@ static esp_err_t json_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t restart_post_handler(httpd_req_t* req)
+esp_err_t restart_post_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
         httpd_resp_sendstr(req, "OK");
 
@@ -368,24 +263,24 @@ static esp_err_t restart_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t state_post_handler(httpd_req_t* req)
+esp_err_t state_post_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
 
-        if (strcmp(req->uri, "/api/v1/state/authorize") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/state/authorize") == 0) {
             evse_authorize();
         }
-        if (strcmp(req->uri, "/api/v1/state/enable") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/state/enable") == 0) {
             evse_set_enabled(true);
         }
-        if (strcmp(req->uri, "/api/v1/state/disable") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/state/disable") == 0) {
             evse_set_enabled(false);
         }
-        if (strcmp(req->uri, "/api/v1/state/available") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/state/available") == 0) {
             evse_set_available(true);
         }
-        if (strcmp(req->uri, "/api/v1/state/unavailable") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH"/state/unavailable") == 0) {
             evse_set_available(false);
         }
 
@@ -398,9 +293,9 @@ static esp_err_t state_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t firmware_update_post_handler(httpd_req_t* req)
+esp_err_t firmware_update_post_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         char avl_version[32];
         if (ota_get_available_version(avl_version) == ESP_OK) {
             const esp_app_desc_t* app_desc = esp_app_get_description();
@@ -441,9 +336,9 @@ static esp_err_t firmware_update_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
+esp_err_t firmware_upload_post_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         esp_err_t err;
         esp_ota_handle_t update_handle = 0;
         const esp_partition_t* update_partition = NULL;
@@ -533,9 +428,9 @@ static esp_err_t firmware_upload_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t script_reload_post_handler(httpd_req_t* req)
+esp_err_t script_reload_post_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         script_reload();
 
         httpd_resp_set_type(req, "text/plain");
@@ -547,182 +442,9 @@ static esp_err_t script_reload_post_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t partition_get_handler(httpd_req_t* req)
+esp_err_t log_get_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
-        const char* partition = req->uri + strlen("/api/v1/partition/");
-
-        size_t total = 0, used = 0;
-        esp_err_t ret = esp_spiffs_info(partition, &total, &used);
-        if (ret != ESP_OK) {
-            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to get SPIFFS partition information");
-            return ESP_FAIL;
-        }
-
-        char path[ESP_VFS_PATH_MAX];
-        sprintf(path, "/%s/", partition);
-
-        DIR* dd = opendir(path);
-        if (dd == NULL) {
-            ESP_LOGE(TAG, "Failed to open directory %s", path);
-            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open directory");
-            return ESP_FAIL;
-        }
-
-        cJSON* root = cJSON_CreateObject();
-        cJSON_AddNumberToObject(root, "total", total);
-        cJSON_AddNumberToObject(root, "used", used);
-
-        char entrypath[FILE_PATH_MAX];
-        struct dirent* entry;
-        struct stat entry_stat;
-        const size_t path_len = strlen(path);
-
-        strlcpy(entrypath, path, sizeof(entrypath));
-
-        cJSON* files = cJSON_CreateArray();
-        while ((entry = readdir(dd)) != NULL) {
-            cJSON* item = cJSON_CreateObject();
-
-            cJSON_AddStringToObject(item, "name", entry->d_name);
-
-            strlcpy(entrypath + path_len, entry->d_name, sizeof(entrypath) - path_len);
-
-            if (stat(entrypath, &entry_stat) == -1) {
-                ESP_LOGE(TAG, "Failed to stat %s ", entry->d_name);
-            } else {
-                cJSON_AddNumberToObject(item, "size", entry_stat.st_size);
-            }
-
-            cJSON_AddItemToArray(files, item);
-        }
-
-        cJSON_AddItemToObject(root, "files", files);
-
-        const char* json = cJSON_PrintUnformatted(root);
-        cJSON_Delete(root);
-
-        httpd_resp_set_type(req, "application/json");
-        httpd_resp_sendstr(req, json);
-
-        free((void*)json);
-
-        return ESP_OK;
-    } else {
-        return ESP_FAIL;
-    }
-}
-
-static esp_err_t fs_file_get_handler(httpd_req_t* req)
-{
-    if (authorize_req(req)) {
-        const char* path = req->uri + strlen("/api/v1/fs");
-        char* file = strrchr(path, '/') + 1;
-
-        FILE* fd = fopen(path, "r");
-        if (fd == NULL) {
-            ESP_LOGE(TAG, "Failed to open file %s", path);
-            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
-            return ESP_FAIL;
-        }
-
-        httpd_resp_set_type(req, "application/octet-stream");
-        char content_disp[64];
-        sprintf(content_disp, "attachment; filename=\"%s\"", file);
-        httpd_resp_set_hdr(req, "Content-Disposition", content_disp);
-
-        char buf[SCRATCH_BUFSIZE];
-        size_t len;
-        do {
-            len = fread(buf, sizeof(char), SCRATCH_BUFSIZE, fd);
-            if (len > 0) {
-                if (httpd_resp_send_chunk(req, buf, len) != ESP_OK) {
-                    fclose(fd);
-                    ESP_LOGE(TAG, "File sending failed");
-                    httpd_resp_sendstr_chunk(req, NULL);
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
-                    return ESP_FAIL;
-                }
-            }
-        } while (len != 0);
-
-        fclose(fd);
-
-        httpd_resp_send_chunk(req, NULL, 0);
-
-        return ESP_OK;
-    } else {
-        return ESP_FAIL;
-    }
-}
-
-static esp_err_t fs_file_post_handler(httpd_req_t* req)
-{
-    if (authorize_req(req)) {
-        const char* path = req->uri + strlen("/api/v1/fs");
-
-        FILE* fd = fopen(path, "w");
-        if (fd == NULL) {
-            ESP_LOGE(TAG, "Failed to open file %s", path);
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to open file");
-            return ESP_FAIL;
-        }
-
-        int received = 0;
-        int remaining = req->content_len;
-        char buf[SCRATCH_BUFSIZE];
-
-        while (remaining > 0) {
-            if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
-                fclose(fd);
-
-                ESP_LOGE(TAG, "File receive failed");
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive file");
-                return ESP_FAIL;
-            }
-
-            if (received != fwrite(buf, sizeof(char), received, fd)) {
-                fclose(fd);
-                unlink(path);
-
-                ESP_LOGE(TAG, "File write failed");
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
-                return ESP_FAIL;
-            }
-
-            remaining -= received;
-        }
-
-        fclose(fd);
-
-        httpd_resp_set_type(req, "text/plain");
-        httpd_resp_sendstr(req, "OK");
-
-        return ESP_OK;
-    } else {
-        return ESP_FAIL;
-    }
-}
-
-static esp_err_t fs_file_delete_handler(httpd_req_t* req)
-{
-    if (authorize_req(req)) {
-        const char* path = req->uri + strlen("/api/v1/fs");
-
-        unlink(path);
-
-        httpd_resp_set_type(req, "text/plain");
-        httpd_resp_sendstr(req, "OK");
-
-        return ESP_OK;
-    } else {
-        return ESP_FAIL;
-    }
-}
-
-static esp_err_t log_get_handler(httpd_req_t* req)
-{
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         uint16_t count = logger_count();
         char count_str[16];
         itoa(count, count_str, 10);
@@ -757,9 +479,9 @@ static esp_err_t log_get_handler(httpd_req_t* req)
     }
 }
 
-static esp_err_t script_output_get_handler(httpd_req_t* req)
+esp_err_t script_output_get_handler(httpd_req_t* req)
 {
-    if (authorize_req(req)) {
+    if (http_authorize_req(req)) {
         uint16_t count = script_output_count();
         char count_str[16];
         itoa(count, count_str, 10);
@@ -794,140 +516,73 @@ static esp_err_t script_output_get_handler(httpd_req_t* req)
     }
 }
 
-// static int sess_count = 0;
-
-// static void sess_on_close(httpd_handle_t hd, int sockfd)
-// {
-//     ESP_LOGW(TAG, "close %d (%d)", sockfd, --sess_count);
-//     close(sockfd);
-// }
-
-// static esp_err_t sess_on_open(httpd_handle_t hd, int sockfd)
-// {
-//     ESP_LOGW(TAG, "open %d (%d)", sockfd, ++sess_count);
-//     return ESP_OK;
-// }
-
-void rest_init(void)
+size_t http_rest_handlers_count(void)
 {
-    ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
+    return 9;
+}
 
-    size_t len;
-    if (ESP_OK != nvs_get_str(nvs, NVS_USER, user, &len)) {
-        user[0] = '\0';
-    }
-    if (ESP_OK != nvs_get_str(nvs, NVS_PASSWORD, password, &len)) {
-        password[0] = '\0';
-    }
-
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 14;
-    // config.max_open_sockets = 3;
-    // config.lru_purge_enable = true;
-    // config.open_fn = sess_on_open;
-    // config.close_fn = sess_on_close;
-
-    ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
-    ESP_ERROR_CHECK(httpd_start(&server, &config));
-
-    // ESP_LOGI(TAG, "Credentials user / password: %s / %s", user, password);
-
-    httpd_uri_t partition_get_uri = {
-        .uri = "/api/v1/partition/*",
-        .method = HTTP_GET,
-        .handler = partition_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &partition_get_uri));
-
-    httpd_uri_t fs_file_get_uri = {
-        .uri = "/api/v1/fs/*",
-        .method = HTTP_GET,
-        .handler = fs_file_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_get_uri));
-
-    httpd_uri_t fs_file_post_uri = {
-        .uri = "/api/v1/fs/*",
-        .method = HTTP_POST,
-        .handler = fs_file_post_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_post_uri));
-
-    httpd_uri_t fs_file_delete_uri = {
-        .uri = "/api/v1/fs/*",
-        .method = HTTP_DELETE,
-        .handler = fs_file_delete_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &fs_file_delete_uri));
-
+void http_rest_add_handlers(httpd_handle_t server)
+{
     httpd_uri_t log_get_uri = {
-        .uri = "/api/v1/log",
+        .uri = REST_BASE_PATH"/log",
         .method = HTTP_GET,
         .handler = log_get_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &log_get_uri));
 
     httpd_uri_t script_output_get_uri = {
-        .uri = "/api/v1/script/output",
+        .uri = REST_BASE_PATH"/script/output",
         .method = HTTP_GET,
         .handler = script_output_get_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &script_output_get_uri));
 
-    httpd_uri_t json_get_uri = {
-       .uri = "/api/v1/*",
+    httpd_uri_t get_uri = {
+       .uri = REST_BASE_PATH"/*",
        .method = HTTP_GET,
-       .handler = json_get_handler
+       .handler = get_handler
     };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_get_uri));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_uri));
 
     httpd_uri_t state_post_uri = {
-        .uri = "/api/v1/state/*",
+        .uri = REST_BASE_PATH"/state/*",
         .method = HTTP_POST,
         .handler = state_post_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &state_post_uri));
 
     httpd_uri_t restart_post_uri = {
-        .uri = "/api/v1/restart",
+        .uri = REST_BASE_PATH"/restart",
         .method = HTTP_POST,
         .handler = restart_post_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &restart_post_uri));
 
     httpd_uri_t firmware_update_post_uri = {
-        .uri = "/api/v1/firmware/update",
+        .uri = REST_BASE_PATH"/firmware/update",
         .method = HTTP_POST,
         .handler = firmware_update_post_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_update_post_uri));
 
     httpd_uri_t firmware_upload_post_uri = {
-        .uri = "/api/v1/firmware/upload",
+        .uri = REST_BASE_PATH"/firmware/upload",
         .method = HTTP_POST,
         .handler = firmware_upload_post_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_upload_post_uri));
 
     httpd_uri_t script_reload_post_uri = {
-        .uri = "/api/v1/script/reload",
+        .uri = REST_BASE_PATH"/script/reload",
         .method = HTTP_POST,
         .handler = script_reload_post_handler
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &script_reload_post_uri));
 
-    httpd_uri_t json_post_uri = {
-       .uri = "/api/v1/*",
+    httpd_uri_t post_uri = {
+       .uri = REST_BASE_PATH"/*",
        .method = HTTP_POST,
-       .handler = json_post_handler
+       .handler = post_handler
     };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &json_post_uri));
-
-    httpd_uri_t web_get_uri = {
-        .uri = "*",
-        .method = HTTP_GET,
-        .handler = web_get_handler
-    };
-    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &web_get_uri));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &post_uri));
 }
