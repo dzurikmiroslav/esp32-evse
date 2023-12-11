@@ -8,12 +8,14 @@
 #include "be_vm.h"
 #include "be_module.h"
 #include "be_debug.h"
-#include "duktape.h"
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
 
 #include "script.h"
 #include "script_utils.h"
 #include "output_buffer.h"
-#include "duk_evse.h"
+
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
@@ -33,7 +35,6 @@ static SemaphoreHandle_t shutdown_sem = NULL;
 
 //bvm* script_vm = NULL;
 
-static duk_context* ctx = NULL;
 
 SemaphoreHandle_t script_mutex = NULL;
 
@@ -90,54 +91,14 @@ static void obs_hook(bvm* vm, int event, ...)
     // }
 }
 
-static duk_ret_t native_print(duk_context* ctx)
-{
-    duk_push_string(ctx, " ");
-    duk_insert(ctx, 0);
-    duk_join(ctx, duk_get_top(ctx) - 1);
-    ESP_LOGI(TAG, "%s", duk_safe_to_string(ctx, -1));
-    return 0;
-}
-
-
 static void script_task_func(void* param)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
     //output_buffer_append_str(output_buffer, "berry " DUK_VERSION "\n");
     xSemaphoreGive(output_mutex);
 
-    ctx = duk_create_heap_default();
-    ESP_LOGI(TAG, "ctx %p", ctx);
-    // duk_console_init(ctx, DUK_CONSOLE_STDOUT_ONLY);
-    duk_evse_init(ctx);
-
-    ESP_LOGI("duk", "main top0 %d", duk_get_top(ctx));
-
-    duk_push_c_function(ctx, native_print, DUK_VARARGS);
-    duk_put_global_string(ctx, "print");
-
-    ESP_LOGI("duk", "main top1 %d", duk_get_top(ctx));
-
-    while (true) {
-        //xSemaphoreTake(script_mutex, portMAX_DELAY);
-        if (shutdown_sem != NULL) {
-            // xSemaphoreGive(script_mutex);
-            break;
-        }
-        //  duk_eval_string(ctx, "print('Hello world from Javascript!');");
-        // duk_eval_string(ctx, "print('yolo')");
-        // 
-        // duk_eval_string(ctx, "evse.func1()");
-        //xSemaphoreGive(script_mutex);
-        duk_peval_string_noresult(ctx, "print(evse.enabled)");
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        duk_peval_string_noresult(ctx, "evse.enabled = 1 ");
-
-        ESP_LOGI("duk", "main  %d", duk_get_top(ctx));
-    }
-
-    duk_destroy_heap(ctx);
-    ctx = NULL;
+lua_State *L = luaL_newstate();
+luaL_openlibs(L);
 
     // script_vm = be_vm_new();
     // be_set_obs_hook(script_vm, &obs_hook);

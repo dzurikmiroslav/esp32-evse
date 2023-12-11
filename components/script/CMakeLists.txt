@@ -47,16 +47,46 @@ set(srcs
     "lib/berry/src/be_var.c"
     "lib/berry/src/be_vector.c"
     "lib/berry/src/be_vm.c"
-    "lib/duktape/duktape.c"
-    "src/duk_console.c"
-    "src/duk_evse.c")
+    "lib/lua/lundump.c"
+    "lib/lua/lmem.c"
+    "lib/lua/ltm.c"
+    "lib/lua/linit.c"
+    "lib/lua/lbaselib.c"
+    "lib/lua/lopcodes.c"
+    "lib/lua/lauxlib.c"
+    "lib/lua/lstrlib.c"
+    "lib/lua/lcode.c"
+    "lib/lua/lzio.c"
+    "lib/lua/lvm.c"
+    "lib/lua/ltablib.c"
+    "lib/lua/lapi.c"
+    "lib/lua/lstring.c"
+    "lib/lua/llex.c"
+    "lib/lua/lparser.c"
+    "lib/lua/onelua.c"
+    "lib/lua/lmathlib.c"
+    "lib/lua/liolib.c"
+    "lib/lua/ldump.c"
+    "lib/lua/ltable.c"
+    "lib/lua/loslib.c"
+    "lib/lua/lfunc.c"
+    "lib/lua/lgc.c"
+    "lib/lua/lcorolib.c"
+    "lib/lua/loadlib.c"
+    "lib/lua/lua.c"
+    "lib/lua/lobject.c"
+    "lib/lua/ldo.c"
+    "lib/lua/ldblib.c"
+    "lib/lua/lutf8lib.c"
+    "lib/lua/lstate.c"
+    "lib/lua/lctype.c"
+    "lib/lua/ldebug.c"
+    )
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include" 
-                    PRIV_INCLUDE_DIRS "src" "lib/berry/src" "lib/duktape"
+                    PRIV_INCLUDE_DIRS "src" "lib/berry/src" "lib/lua"
                     PRIV_REQUIRES nvs_flash app_update json mqtt driver esp_http_client esp_netif esp_wifi esp_timer esp_hw_support
                     REQUIRES network config evse peripherals protocols serial logger)
 
 set_source_files_properties(lib/berry_mapping/src/be_cb_module.c PROPERTIES COMPILE_FLAGS -Wno-return-type)
-
-set_source_files_properties(lib/duktape/duktape.c PROPERTIES COMPILE_FLAGS -Wno-maybe-uninitialized)

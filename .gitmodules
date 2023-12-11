@@ -4,3 +4,6 @@
 [submodule "components/script/lib/berry"]
 	path = components/script/lib/berry
 	url = https://github.com/berry-lang/berry
+[submodule "components/script/lib/lua"]
+	path = components/script/lib/lua
+	url = https://github.com/lua/lua.git
