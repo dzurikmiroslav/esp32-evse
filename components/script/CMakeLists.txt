@@ -63,7 +63,6 @@ set(srcs
     "lib/lua/lstring.c"
     "lib/lua/llex.c"
     "lib/lua/lparser.c"
-    "lib/lua/onelua.c"
     "lib/lua/lmathlib.c"
     "lib/lua/liolib.c"
     "lib/lua/ldump.c"
@@ -73,7 +72,6 @@ set(srcs
     "lib/lua/lgc.c"
     "lib/lua/lcorolib.c"
     "lib/lua/loadlib.c"
-    "lib/lua/lua.c"
     "lib/lua/lobject.c"
     "lib/lua/ldo.c"
     "lib/lua/ldblib.c"
@@ -81,6 +79,7 @@ set(srcs
     "lib/lua/lstate.c"
     "lib/lua/lctype.c"
     "lib/lua/ldebug.c"
+    "src/lua_evse.c"
     )
 
 idf_component_register(SRCS "${srcs}"
@@ -90,3 +89,5 @@ idf_component_register(SRCS "${srcs}"
                     REQUIRES network config evse peripherals protocols serial logger)
 
 set_source_files_properties(lib/berry_mapping/src/be_cb_module.c PROPERTIES COMPILE_FLAGS -Wno-return-type)
+
+set_source_files_properties(src/script.c PROPERTIES COMPILE_FLAGS -Wno-unused-value)

@@ -15,7 +15,7 @@
 #include "script.h"
 #include "script_utils.h"
 #include "output_buffer.h"
-
+#include "lua_evse.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
@@ -35,6 +35,7 @@ static SemaphoreHandle_t shutdown_sem = NULL;
 
 //bvm* script_vm = NULL;
 
+static lua_State* L = NULL;
 
 SemaphoreHandle_t script_mutex = NULL;
 
@@ -43,6 +44,7 @@ static int heartbeat_counter = -1;
 static output_buffer_t* output_buffer = NULL;
 
 static SemaphoreHandle_t output_mutex;
+
 
 void script_handle_result(int res)
 {
@@ -76,8 +78,8 @@ void script_watchdog_disable(void)
     heartbeat_counter = -1;
 }
 
-static void obs_hook(bvm* vm, int event, ...)
-{
+//static void obs_hook(bvm* vm, int event, ...)
+//{
     // switch (event) {
     // case BE_OBS_VM_HEARTBEAT:
     //     if (heartbeat_counter >= 0) {
@@ -89,16 +91,35 @@ static void obs_hook(bvm* vm, int event, ...)
     // default:
     //     break;
     // }
-}
+//}
 
 static void script_task_func(void* param)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
-    //output_buffer_append_str(output_buffer, "berry " DUK_VERSION "\n");
+    output_buffer_append_str(output_buffer, LUA_RELEASE "\n");
     xSemaphoreGive(output_mutex);
 
-lua_State *L = luaL_newstate();
-luaL_openlibs(L);
+    L = luaL_newstate();
+    luaL_openlibs(L);
+
+    luaL_requiref(L, "evse", lua_open_evse, 1);
+    lua_pop(L, 1);
+
+    luaL_dofile(L, "/data/main.lua");
+
+    while (true) {
+        if (shutdown_sem != NULL) {
+            break;
+        }
+
+        // ESP_LOGI(TAG, "top=%d", lua_gettop(L));
+        // luaL_dostring(L, "print(evse.STATE_B1)");
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    lua_close(L);
+    L = NULL;
 
     // script_vm = be_vm_new();
     // be_set_obs_hook(script_vm, &obs_hook);
@@ -157,37 +178,35 @@ luaL_openlibs(L);
 
 static void script_stop(void)
 {
-    // if (script_task) {
-    //     ESP_LOGI(TAG, "Stopping script");
-    //     xSemaphoreTake(script_mutex, portMAX_DELAY);
-    //     shutdown_sem = xSemaphoreCreateBinary();
-    //     xSemaphoreGive(script_mutex);
+    if (script_task) {
+        ESP_LOGI(TAG, "Stopping script");
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
+        shutdown_sem = xSemaphoreCreateBinary();
+        xSemaphoreGive(script_mutex);
 
-    //     if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
-    //         ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
-    //         vTaskDelete(script_task);
-    //         if (script_vm != NULL) {
-    //             be_vm_delete(script_vm);
-    //             script_vm = NULL;
-    //         }
-    //     }
+        if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
+            ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
+            vTaskDelete(script_task);
+            if (L != NULL) {
+                lua_close(L);
+                L = NULL;
+            }
+        }
 
-    //     vSemaphoreDelete(shutdown_sem);
-    //     shutdown_sem = NULL;
-    //     script_task = NULL;
+        vSemaphoreDelete(shutdown_sem);
+        shutdown_sem = NULL;
+        script_task = NULL;
 
-    //     xSemaphoreTake(output_mutex, portMAX_DELAY);
-    //     output_buffer_delete(output_buffer);
-    //     output_buffer = NULL;
-    //     xSemaphoreGive(output_mutex);
-    // }
+        // xSemaphoreTake(output_mutex, portMAX_DELAY);
+        // output_buffer_delete(output_buffer);
+        // output_buffer = NULL;
+        // xSemaphoreGive(output_mutex);
+    }
 }
 
 void script_start(void)
 {
     if (!script_task) {
-        output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
-
         ESP_LOGI(TAG, "Starting script");
         xTaskCreate(script_task_func, "script_task", 4 * 1024, NULL, 5, &script_task);
     }
@@ -199,6 +218,7 @@ void script_init(void)
 
     script_mutex = xSemaphoreCreateMutex();
     output_mutex = xSemaphoreCreateMutex();
+    output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
 
     if (script_is_enabled()) {
         script_start();
@@ -207,15 +227,16 @@ void script_init(void)
 
 void script_output_print(const char* buffer, size_t length)
 {
-    // xSemaphoreTake(output_mutex, portMAX_DELAY);
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
 
-    // output_buffer_append_buf(output_buffer, buffer, length);
+    output_buffer_append_buf(output_buffer, buffer, length);
 
-    // xSemaphoreGive(output_mutex);
+    xSemaphoreGive(output_mutex);
 }
 
 uint16_t script_output_count(void)
 {
+    //TODO output_buffer always not null
     return output_buffer != NULL ? output_buffer->count : 0;
 }
 
@@ -224,6 +245,7 @@ bool script_output_read(uint16_t* index, char** str, uint16_t* len)
     xSemaphoreTake(output_mutex, portMAX_DELAY);
 
     bool has_next = false;
+    //TODO output_buffer always not null
     if (output_buffer != NULL) {
         has_next = output_buffer_read(output_buffer, index, str, len);
     }
@@ -235,10 +257,10 @@ bool script_output_read(uint16_t* index, char** str, uint16_t* len)
 
 void script_reload(void)
 {
-    // if (script_is_enabled()) {
-    //     script_stop();
-    //     script_start();
-    // }
+    if (script_is_enabled()) {
+        script_stop();
+        script_start();
+    }
 }
 
 void script_set_enabled(bool enabled)
