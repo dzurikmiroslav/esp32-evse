@@ -15,7 +15,7 @@
 #include "script.h"
 #include "script_utils.h"
 #include "output_buffer.h"
-#include "lua_evse.h"
+#include "lua_evse_lib.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
