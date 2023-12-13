@@ -787,8 +787,9 @@
 
 void script_output_print(const char* buffer, size_t length);
 
-#define lua_writestring(s,l)   script_output_print(s, l)
+#define lua_writestring(s,l)   		script_output_print(s, l)
 
+#define lua_writestringerror(s,l)   script_output_print(s, l)
 
 
 #endif

@@ -105,7 +105,17 @@ static void script_task_func(void* param)
     luaL_requiref(L, "evse", lua_open_evse, 1);
     lua_pop(L, 1);
 
-    luaL_dofile(L, "/data/main.lua");
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    output_buffer_append_str(output_buffer, "loading file '/data/main.lua'...\n");
+    xSemaphoreGive(output_mutex);
+
+    if (luaL_dofile(L, "/data/main.lua")) {
+        xSemaphoreTake(output_mutex, portMAX_DELAY);
+        output_buffer_append_str(output_buffer, lua_tostring(L, lua_gettop(L)));
+        output_buffer_append_str(output_buffer, "\n");
+        lua_pop(L, 1);
+        xSemaphoreGive(output_mutex);
+    }
 
     while (true) {
         if (shutdown_sem != NULL) {

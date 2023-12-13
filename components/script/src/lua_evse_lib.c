@@ -118,7 +118,32 @@ static int l_get_high_temperature(lua_State* L)
     return 1;
 }
 
+static int l_add_driver(lua_State* L)
+{
+    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be table");
+
+    ESP_LOGI("YOLO", "top %d", lua_gettop(L));
+
+    lua_getglobal(L, "evse");
+    lua_getfield(L, -1, "__drivers");
+    int len = lua_rawlen(L, -1);
+
+  //  lua_insert(L, -3);
+     lua_pushstring(L, "aaa");
+    lua_rawseti(L, -2, len + 1);
+
+    // ESP_LOGI("YOLO", "top %d", lua_gettop(L));
+
+    // ESP_LOGI("YOLO", "val %d", (int)lua_tointeger(L, -1));
+
+//    lua_settable()
+
+
+    return 0;
+}
+
 static const luaL_Reg lib[] = {
+    //states
     {"STATEA",  NULL},
     {"STATEB1", NULL},
     {"STATEB2", NULL},
@@ -128,6 +153,7 @@ static const luaL_Reg lib[] = {
     {"STATED2", NULL},
     {"STATEE",  NULL},
     {"STATEF",  NULL},
+    // error bits
     {"ERRPILOTFAULTBIT",        NULL},
     {"ERRDIODESHORTBIT",        NULL},
     {"ERRLOCKFAULTBIT",         NULL},
@@ -136,6 +162,7 @@ static const luaL_Reg lib[] = {
     {"ERRRCMSELFTESTFAULTBIT",  NULL},
     {"ERRTEMPERATUREHIGHBIT",   NULL},
     {"ERRTEMPERATUREFAULTBIT",  NULL},
+    // methods
     {"getstate",            l_get_state},
     {"geterror",            l_get_error},
     {"getenabled",          l_get_enabled},
@@ -152,6 +179,9 @@ static const luaL_Reg lib[] = {
     {"getcurrent",          l_get_current},
     {"getlowtemperature",   l_get_low_temperature},
     {"gethightemperature",  l_get_high_temperature},
+    {"adddriver",           l_add_driver},
+    // private fields
+    {"__drivers",           NULL},
     {NULL, NULL}
 };
 
@@ -209,6 +239,9 @@ int lua_open_evse(lua_State* L)
 
     lua_pushinteger(L, EVSE_ERR_TEMPERATURE_FAULT_BIT);
     lua_setfield(L, -2, "ERRTEMPERATUREFAULTBIT");
+
+    lua_newtable(L);
+    lua_setfield(L, -2, "__drivers");
 
     return 1;
 }
