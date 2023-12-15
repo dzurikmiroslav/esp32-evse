@@ -15,7 +15,7 @@
 #include "script.h"
 #include "script_utils.h"
 #include "output_buffer.h"
-#include "lua_evse_lib.h"
+#include "l_evse_lib.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
@@ -96,22 +96,22 @@ void script_watchdog_disable(void)
 static void script_task_func(void* param)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
-    output_buffer_append_str(output_buffer, LUA_RELEASE "\n");
+    output_buffer_append_str(output_buffer, LUA_COPYRIGHT "\n");
     xSemaphoreGive(output_mutex);
 
     L = luaL_newstate();
     luaL_openlibs(L);
 
-    luaL_requiref(L, "evse", lua_open_evse, 1);
+    luaL_requiref(L, "evse", luaopen_evse, 1);
     lua_pop(L, 1);
 
     xSemaphoreTake(output_mutex, portMAX_DELAY);
-    output_buffer_append_str(output_buffer, "loading file '/data/main.lua'...\n");
+    output_buffer_append_str(output_buffer, "loading file '/data/init.lua'...\n");
     xSemaphoreGive(output_mutex);
 
-    if (luaL_dofile(L, "/data/main.lua")) {
+    if (luaL_dofile(L, "/data/init.lua") != LUA_OK) {
         xSemaphoreTake(output_mutex, portMAX_DELAY);
-        output_buffer_append_str(output_buffer, lua_tostring(L, lua_gettop(L)));
+        output_buffer_append_str(output_buffer, lua_tostring(L, -1));
         output_buffer_append_str(output_buffer, "\n");
         lua_pop(L, 1);
         xSemaphoreGive(output_mutex);
@@ -122,8 +122,16 @@ static void script_task_func(void* param)
             break;
         }
 
-        // ESP_LOGI(TAG, "top=%d", lua_gettop(L));
-        // luaL_dostring(L, "print(evse.STATE_B1)");
+        lua_getglobal(L, "evse");
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "__process");
+            if (lua_isfunction(L, -1)) {
+                if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+                    ESP_LOGE(TAG, "%s", lua_tostring(L, -1));
+                }
+            }
+        }
+        lua_pop(L, lua_gettop(L));
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }
@@ -206,11 +214,6 @@ static void script_stop(void)
         vSemaphoreDelete(shutdown_sem);
         shutdown_sem = NULL;
         script_task = NULL;
-
-        // xSemaphoreTake(output_mutex, portMAX_DELAY);
-        // output_buffer_delete(output_buffer);
-        // output_buffer = NULL;
-        // xSemaphoreGive(output_mutex);
     }
 }
 
@@ -246,20 +249,14 @@ void script_output_print(const char* buffer, size_t length)
 
 uint16_t script_output_count(void)
 {
-    //TODO output_buffer always not null
-    return output_buffer != NULL ? output_buffer->count : 0;
+    return output_buffer->count;
 }
 
 bool script_output_read(uint16_t* index, char** str, uint16_t* len)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
 
-    bool has_next = false;
-    //TODO output_buffer always not null
-    if (output_buffer != NULL) {
-        has_next = output_buffer_read(output_buffer, index, str, len);
-    }
-
+    bool has_next = output_buffer_read(output_buffer, index, str, len);
     xSemaphoreGive(output_mutex);
 
     return has_next;

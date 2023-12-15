@@ -79,7 +79,8 @@ set(srcs
     "lib/lua/lstate.c"
     "lib/lua/lctype.c"
     "lib/lua/ldebug.c"
-    "src/lua_evse_lib.c"
+    "src/l_evse_lib.c"
+    "src/l_mqtt_lib.c"
     )
 
 idf_component_register(SRCS "${srcs}"

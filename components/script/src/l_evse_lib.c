@@ -4,7 +4,7 @@
 #include "lua.h"
 #include "lauxlib.h"
 
-#include "lua_evse_lib.h"
+#include "l_evse_lib.h"
 #include "evse.h"
 #include "energy_meter.h"
 #include "script_utils.h"
@@ -118,27 +118,88 @@ static int l_get_high_temperature(lua_State* L)
     return 1;
 }
 
+static void call_field_event(lua_State* L, const char* event)
+{
+    lua_getfield(L, -1, event);
+    if (lua_isfunction(L, -1)) {
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+            const char* msg = lua_tostring(L, -1);
+            lua_writestring(msg, strlen(msg));
+            lua_writestring("\n", 1);
+            lua_pop(L, 1);
+        }
+    } else {
+        lua_pop(L, 1);
+    }
+}
+
+static int l_process(lua_State* L)
+{
+    TickType_t now = xTaskGetTickCount();
+    TickType_t prev;
+
+    lua_getglobal(L, "evse");
+
+    lua_getfield(L, -1, "__tick100ms");
+    prev = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    bool every_100ms = now - prev >= pdMS_TO_TICKS(100);
+
+    lua_getfield(L, -1, "__tick250ms");
+    prev = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    bool every_250ms = now - prev >= pdMS_TO_TICKS(250);
+
+    lua_getfield(L, -1, "__tick1s");
+    prev = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    bool every_1s = now - prev >= pdMS_TO_TICKS(1000);
+
+    if (every_100ms) {
+        lua_pushinteger(L, now);
+        lua_setfield(L, -2, "__tick100ms");
+    }
+    if (every_250ms) {
+        lua_pushinteger(L, now);
+        lua_setfield(L, -2, "__tick250ms");
+    }
+    if (every_1s) {
+        lua_pushinteger(L, now);
+        lua_setfield(L, -2, "__tick1s");
+    }
+
+    lua_getfield(L, -1, "__drivers");
+    int len = lua_rawlen(L, -1);
+    for (int i = 1; i <= len; i++) {
+        lua_rawgeti(L, -1, i);
+        if (lua_istable(L, -1)) {
+            if (every_100ms) {
+                call_field_event(L, "every100ms");
+            }
+            if (every_250ms) {
+                call_field_event(L, "every250ms");
+            }
+            if (every_1s) {
+                call_field_event(L, "every1s");
+            }
+        } else {
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+    }
+
+    return 0;
+}
+
 static int l_add_driver(lua_State* L)
 {
-    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be table");
-
-    ESP_LOGI("YOLO", "top %d", lua_gettop(L));
+    luaL_argcheck(L, lua_istable(L, 1), 1, "Must be table");
 
     lua_getglobal(L, "evse");
     lua_getfield(L, -1, "__drivers");
-    int len = lua_rawlen(L, -1);
-
-  //  lua_insert(L, -3);
-     lua_pushstring(L, "aaa");
-    lua_rawseti(L, -2, len + 1);
-
-    // ESP_LOGI("YOLO", "top %d", lua_gettop(L));
-
-    // ESP_LOGI("YOLO", "val %d", (int)lua_tointeger(L, -1));
-
-//    lua_settable()
-
-
+    lua_pushvalue(L, 1);
+    lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
+    
     return 0;
 }
 
@@ -180,12 +241,17 @@ static const luaL_Reg lib[] = {
     {"getlowtemperature",   l_get_low_temperature},
     {"gethightemperature",  l_get_high_temperature},
     {"adddriver",           l_add_driver},
+    // private methods
+    {"__process",           l_process},
     // private fields
     {"__drivers",           NULL},
+    {"__tick100ms",         NULL},
+    {"__tick250ms",         NULL},
+    {"__tick1s",            NULL},
     {NULL, NULL}
 };
 
-int lua_open_evse(lua_State* L)
+int luaopen_evse(lua_State* L)
 {
     luaL_newlib(L, lib);
 
@@ -242,6 +308,17 @@ int lua_open_evse(lua_State* L)
 
     lua_newtable(L);
     lua_setfield(L, -2, "__drivers");
+
+    TickType_t now = xTaskGetTickCount();
+
+    lua_pushinteger(L, now);
+    lua_setfield(L, -2, "__tick100ms");
+
+    lua_pushinteger(L, now);
+    lua_setfield(L, -2, "__tick250ms");
+
+    lua_pushinteger(L, now);
+    lua_setfield(L, -2, "__tick1s");
 
     return 1;
 }
