@@ -106,7 +106,7 @@ static void script_task_func(void* param)
     luaL_requiref(L, "evse", luaopen_evse, 1);
     lua_pop(L, 1);
 
-    luaL_requiref(L, "mqtt", luaopen_mqtt, 1);
+    luaL_requiref(L, "mqtt", luaopen_mqtt, 0);
     lua_pop(L, 1);
 
     xSemaphoreTake(output_mutex, portMAX_DELAY);
@@ -114,8 +114,6 @@ static void script_task_func(void* param)
     xSemaphoreGive(output_mutex);
 
     if (luaL_dofile(L, "/data/init.lua") != LUA_OK) {
-        ESP_LOGW(TAG, "Err execute main");
-         vTaskDelay(pdMS_TO_TICKS(1000)); //todo remove
         xSemaphoreTake(output_mutex, portMAX_DELAY);
         output_buffer_append_str(output_buffer, lua_tostring(L, -1));
         output_buffer_append_str(output_buffer, "\n");
@@ -200,13 +198,23 @@ static void script_task_func(void* param)
     vTaskDelete(NULL);
 }
 
+void scrip_lock(lua_State* L)
+{
+    xSemaphoreTake(script_mutex, portMAX_DELAY);
+}
+
+void scrip_unlock(lua_State* L)
+{
+    xSemaphoreGive(script_mutex);
+}
+
 static void script_stop(void)
 {
     if (script_task) {
         ESP_LOGI(TAG, "Stopping script");
-        xSemaphoreTake(script_mutex, portMAX_DELAY);
+        // xSemaphoreTake(script_mutex, portMAX_DELAY);
         shutdown_sem = xSemaphoreCreateBinary();
-        xSemaphoreGive(script_mutex);
+        // xSemaphoreGive(script_mutex);
 
         if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
             ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
@@ -227,7 +235,7 @@ void script_start(void)
 {
     if (!script_task) {
         ESP_LOGI(TAG, "Starting script");
-        xTaskCreate(script_task_func, "script_task", 4 * 1024, NULL, 5, &script_task);
+        xTaskCreate(script_task_func, "script_task", 6 * 1024, NULL, 5, &script_task);
     }
 }
 
@@ -239,10 +247,9 @@ void script_init(void)
     output_mutex = xSemaphoreCreateMutex();
     output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
 
-//todo remove
-    // if (script_is_enabled()) {
-    //     script_start();
-    // }
+    if (script_is_enabled()) {
+        script_start();
+    }
 }
 
 void script_output_print(const char* buffer, size_t length)

@@ -794,5 +794,11 @@ void script_output_print(const char* buffer, size_t length);
 #define LUA_PATH_DEFAULT  \
 		"/data/?.lua;" "/data/?/init.lua"
 
+// void scrip_lock();
+// void scrip_unlock();
+
+// #define lua_lock(L)		scrip_lock()
+// #define lua_unlock(L)	scrip_unlock()
+
 #endif
 
