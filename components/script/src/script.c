@@ -16,6 +16,7 @@
 #include "script_utils.h"
 #include "output_buffer.h"
 #include "l_evse_lib.h"
+#include "l_mqtt_lib.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
@@ -105,11 +106,16 @@ static void script_task_func(void* param)
     luaL_requiref(L, "evse", luaopen_evse, 1);
     lua_pop(L, 1);
 
+    luaL_requiref(L, "mqtt", luaopen_mqtt, 1);
+    lua_pop(L, 1);
+
     xSemaphoreTake(output_mutex, portMAX_DELAY);
     output_buffer_append_str(output_buffer, "loading file '/data/init.lua'...\n");
     xSemaphoreGive(output_mutex);
 
     if (luaL_dofile(L, "/data/init.lua") != LUA_OK) {
+        ESP_LOGW(TAG, "Err execute main");
+         vTaskDelay(pdMS_TO_TICKS(1000)); //todo remove
         xSemaphoreTake(output_mutex, portMAX_DELAY);
         output_buffer_append_str(output_buffer, lua_tostring(L, -1));
         output_buffer_append_str(output_buffer, "\n");
@@ -233,9 +239,10 @@ void script_init(void)
     output_mutex = xSemaphoreCreateMutex();
     output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
 
-    if (script_is_enabled()) {
-        script_start();
-    }
+//todo remove
+    // if (script_is_enabled()) {
+    //     script_start();
+    // }
 }
 
 void script_output_print(const char* buffer, size_t length)
