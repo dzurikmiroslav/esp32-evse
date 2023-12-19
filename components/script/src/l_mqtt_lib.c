@@ -10,6 +10,9 @@ typedef struct
 {
     esp_mqtt_client_handle_t client;
     bool connected : 1;
+    lua_State* L;
+    int self_ref;
+    int on_connect_ref;
     // bvalue on_connect;
     // bvalue on_message;
 } client_userdata_t;
@@ -23,6 +26,13 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
         userdata->connected = true;
+        ESP_LOGI("event_handler", "connected!");
+        lua_State* L = lua_newthread(userdata->L);
+
+        lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->self_ref);
+        lua_call(L, 1, 0);
+
         // if (var_isfunction(&ctx->on_connect)) {
         //     xSemaphoreTake(script_mutex, portMAX_DELAY);
         //     bvalue* top = be_incrtop(script_vm);
@@ -90,15 +100,15 @@ static int l_client(lua_State* L)
         client_userdata_t* userdata = (client_userdata_t*)lua_newuserdatauv(L, sizeof(client_userdata_t), 0);
         luaL_setmetatable(L, "mqtt.client");
 
+        userdata->L = L;
         userdata->client = client;
         userdata->connected = false;
-        // var_setnil(&ctx->on_connect);
-        // var_setnil(&ctx->on_message);
 
-        // be_newcomobj(vm, ctx, &be_commonobj_destroy_generic);
-        // be_setmember(vm, 1, ".p");
+        luaL_unref(L, LUA_REGISTRYINDEX, userdata->self_ref);
+        lua_pushvalue(L, 1);
+        userdata->self_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-        // be_return(vm);
+        userdata->on_connect_ref = LUA_NOREF;
         return 1;
     }
 }
@@ -109,14 +119,38 @@ static int l_client_connect(lua_State* L)
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
     if (esp_mqtt_client_register_event(userdata->client, ESP_EVENT_ANY_ID, event_handler, userdata) != ESP_OK) {
-         luaL_error(L, "Ccant register handler");
+        luaL_error(L, "Cant register handler");
     }
     if (esp_mqtt_client_start(userdata->client) != ESP_OK) {
-         luaL_error(L, "Cant start config");
+        luaL_error(L, "Cant start config");
     }
 
     return 0;
 }
+
+static int l_client_on(lua_State* L)
+{
+    ESP_LOGI("lm", "on");
+
+    client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
+
+    luaL_argcheck(L, lua_isstring(L, 2), 2, "Must be string");
+
+    luaL_argcheck(L, lua_isfunction(L, 3), 3, "Must be function");
+
+    static const char* const name[] = { "connect",   NULL };
+
+    switch (luaL_checkoption(L, 2, NULL, name)) {
+    case 0:
+        luaL_unref(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
+        userdata->on_connect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        ESP_LOGI("lm", "on_connect_ref %d", userdata->on_connect_ref);
+        break;
+    }
+
+    return 0;
+}
+
 
 static int l_client_gc(lua_State* L)
 {
@@ -136,18 +170,27 @@ static const luaL_Reg lib[] = {
 
 static const luaL_Reg client_fields[] = {
     {"connect",     l_client_connect},
+    {"on",          l_client_on},
     {NULL, NULL}
 };
-
 
 static const luaL_Reg client_metadata[] = {
     {"__index",     NULL},
     {"__gc",        l_client_gc},
     {"__close",     l_client_gc},
     // {"__tostring",  l_client_tostring},
-     {NULL, NULL}
+    {NULL, NULL}
 };
 
+// static const luaL_Reg client_fields[] = {
+//     {"connect",     l_client_connect},
+//     {"on",          l_client_on},
+//     {"__index",     NULL},
+//     {"__gc",        l_client_gc},
+//     {"__close",     l_client_gc},
+//     // {"__tostring",  l_client_tostring},
+//     {NULL, NULL}
+// };
 
 int luaopen_mqtt(lua_State* L)
 {
@@ -160,39 +203,11 @@ int luaopen_mqtt(lua_State* L)
     lua_setfield(L, -2, "__index");
     lua_pop(L, 1);
 
+    // luaL_newmetatable(L, "mqtt.client");
+    // luaL_setfuncs(L, client_fields, 0);
+    // lua_pushvalue(L, -1);
+    // lua_setfield(L, -1, "__index");
+    // lua_pop(L, 1);
+
     return 1;
 }
-
-/*
-main:
---evse.adddriver( require ("tb"))
-
-local ok, mod = pcall(require, "tb")
-
-local counter = 0
-evse.adddriver({
-    every1s = function()
-        print(evse, mqtt)
-        print("TB every 1s", counter)
-        counter = counter + 1
-    end
-})
-
---print('count driver ', #evse.__drivers)
-
-print (evse)
-
-tb:
-local counter = 0
-
--- local mqtt = require("mqtt")
-
-return {
-    every1s = function()
-        print(evse == nil)
-        -- print("TB every 1s", counter)
-        counter = counter + 1
-    end
-}
-
-*/
