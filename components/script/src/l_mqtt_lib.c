@@ -13,8 +13,7 @@ typedef struct
     lua_State* L;
     int self_ref;
     int on_connect_ref;
-    // bvalue on_connect;
-    // bvalue on_message;
+    int on_message_ref;
 } client_userdata_t;
 
 
@@ -26,28 +25,18 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
     switch (event_id) {
     case MQTT_EVENT_CONNECTED:
         userdata->connected = true;
-        ESP_LOGI("event_handler", "connected!");
         lua_State* L = lua_newthread(userdata->L);
-
         lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
         lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->self_ref);
-        lua_call(L, 1, 0);
-
-        // if (var_isfunction(&ctx->on_connect)) {
-        //     xSemaphoreTake(script_mutex, portMAX_DELAY);
-        //     bvalue* top = be_incrtop(script_vm);
-        //     *top = ctx->on_connect;
-
-        //     script_watchdog_reset();
-        //     int ret = be_pcall(script_vm, 0);
-        //     script_watchdog_disable();
-        //     script_handle_result(ret);
-
-        //     be_pop(script_vm, 1);
-        //     xSemaphoreGive(script_mutex);
-        // }
+        if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+            const char* err = lua_tostring(L, -1);
+            lua_writestring(err, strlen(err));
+            lua_writeline();
+            lua_pop(L, 1);
+        }
         break;
     case MQTT_EVENT_DISCONNECTED:
+        ESP_LOGI("event_handler", "disconnected!");
         userdata->connected = false;
         break;
     case MQTT_EVENT_DATA:
@@ -76,26 +65,18 @@ static int l_client(lua_State* L)
 {
     int argc = lua_gettop(L);
 
-    luaL_argcheck(L, lua_isstring(L, 1), 1, "Must be string");
-    if (argc > 1) {
-        luaL_argcheck(L, lua_isstring(L, 2), 2, "Must be string");
-    }
-    if (argc > 2) {
-        luaL_argcheck(L, lua_isstring(L, 3), 3, "Must be string");
-    }
-
     esp_mqtt_client_config_t cfg = { 0 };
-    cfg.broker.address.uri = lua_tostring(L, 1);
+    cfg.broker.address.uri = luaL_checkstring(L, 1);
     if (argc > 1) {
-        cfg.credentials.username = lua_tostring(L, 2);
+        cfg.credentials.username = luaL_checkstring(L, 2);
     }
     if (argc > 2) {
-        cfg.credentials.authentication.password = lua_tostring(L, 3);
+        cfg.credentials.authentication.password = luaL_checkstring(L, 3);
     }
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&cfg);
     if (client == NULL) {
-        return luaL_error(L, "Invalid config");
+        return luaL_error(L, "Invalid params");
     } else {
         client_userdata_t* userdata = (client_userdata_t*)lua_newuserdatauv(L, sizeof(client_userdata_t), 0);
         luaL_setmetatable(L, "mqtt.client");
@@ -103,19 +84,17 @@ static int l_client(lua_State* L)
         userdata->L = L;
         userdata->client = client;
         userdata->connected = false;
-
         luaL_unref(L, LUA_REGISTRYINDEX, userdata->self_ref);
         lua_pushvalue(L, 1);
         userdata->self_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
         userdata->on_connect_ref = LUA_NOREF;
+        userdata->on_message_ref = LUA_NOREF;
         return 1;
     }
 }
 
 static int l_client_connect(lua_State* L)
 {
-    ESP_LOGI("lm", "connect");
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
     if (esp_mqtt_client_register_event(userdata->client, ESP_EVENT_ANY_ID, event_handler, userdata) != ESP_OK) {
@@ -128,37 +107,74 @@ static int l_client_connect(lua_State* L)
     return 0;
 }
 
-static int l_client_on(lua_State* L)
+static int l_client_disconnect(lua_State* L)
 {
-    ESP_LOGI("lm", "on");
-
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
-    luaL_argcheck(L, lua_isstring(L, 2), 2, "Must be string");
-
-    luaL_argcheck(L, lua_isfunction(L, 3), 3, "Must be function");
-
-    static const char* const name[] = { "connect",   NULL };
-
-    switch (luaL_checkoption(L, 2, NULL, name)) {
-    case 0:
-        luaL_unref(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
-        userdata->on_connect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        ESP_LOGI("lm", "on_connect_ref %d", userdata->on_connect_ref);
-        break;
+    if (userdata->client != NULL) {
+        if (esp_mqtt_client_disconnect(userdata->client) != ESP_OK) {
+            luaL_error(L, "Disconnect error");
+        }
     }
 
     return 0;
 }
 
+static int l_client_set_onconnect(lua_State* L)
+{
+    int argc = lua_gettop(L);
+
+    luaL_argexpected(L, lua_isfunction(L, 2), 2, "function");
+
+    client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
+
+    luaL_unref(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
+    userdata->on_connect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    return 0;
+}
+
+static int l_client_subscribe(lua_State* L)
+{
+    int argc = lua_gettop(L);
+
+    client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
+
+    const char* topic = luaL_checkstring(L, 2);
+    int qos = 0;
+    if (argc > 2) {
+        qos = luaL_checkinteger(L, 3);
+    }
+
+    if (userdata->connected) {
+        int sub_id = esp_mqtt_client_subscribe_single(userdata->client, topic, qos);
+        lua_pushinteger(L, sub_id);
+    } else {
+        lua_pushinteger(L, -1);
+    }
+
+    return 1;
+}
 
 static int l_client_gc(lua_State* L)
 {
+    ESP_LOGW("lm", "l_client_gc");
+
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
     if (userdata->client != NULL) {
         esp_mqtt_client_destroy(userdata->client);
+        userdata->client = NULL;
     }
+
+    luaL_unref(L, LUA_REGISTRYINDEX, userdata->self_ref);
+    userdata->self_ref = LUA_NOREF;
+
+    luaL_unref(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
+    userdata->on_connect_ref = LUA_NOREF;
+
+    luaL_unref(L, LUA_REGISTRYINDEX, userdata->on_message_ref);
+    userdata->on_message_ref = LUA_NOREF;
 
     return 0;
 }
@@ -169,8 +185,10 @@ static const luaL_Reg lib[] = {
 };
 
 static const luaL_Reg client_fields[] = {
-    {"connect",     l_client_connect},
-    {"on",          l_client_on},
+    {"connect",         l_client_connect},
+    {"disconnect",      l_client_disconnect},
+    {"subscribe",       l_client_subscribe},
+    {"setonconnect",    l_client_set_onconnect},
     {NULL, NULL}
 };
 

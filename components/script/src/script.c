@@ -5,15 +5,11 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "nvs.h"
-#include "be_vm.h"
-#include "be_module.h"
-#include "be_debug.h"
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 
 #include "script.h"
-#include "script_utils.h"
 #include "output_buffer.h"
 #include "l_evse_lib.h"
 #include "l_mqtt_lib.h"
@@ -94,11 +90,12 @@ void script_watchdog_disable(void)
     // }
 //}
 
+#define LOADING_MSG     "loading file '/data/init.lua'..."
+
 static void script_task_func(void* param)
 {
-    xSemaphoreTake(output_mutex, portMAX_DELAY);
-    output_buffer_append_str(output_buffer, LUA_COPYRIGHT "\n");
-    xSemaphoreGive(output_mutex);
+    lua_writestring(LUA_COPYRIGHT, strlen(LUA_COPYRIGHT));
+    lua_writeline();
 
     L = luaL_newstate();
     luaL_openlibs(L);
@@ -109,16 +106,15 @@ static void script_task_func(void* param)
     luaL_requiref(L, "mqtt", luaopen_mqtt, 0);
     lua_pop(L, 1);
 
-    xSemaphoreTake(output_mutex, portMAX_DELAY);
-    output_buffer_append_str(output_buffer, "loading file '/data/init.lua'...\n");
-    xSemaphoreGive(output_mutex);
+    lua_writestring(LOADING_MSG, strlen(LOADING_MSG));
+    lua_writeline();
+
 
     if (luaL_dofile(L, "/data/init.lua") != LUA_OK) {
-        xSemaphoreTake(output_mutex, portMAX_DELAY);
-        output_buffer_append_str(output_buffer, lua_tostring(L, -1));
-        output_buffer_append_str(output_buffer, "\n");
+        const char* err = lua_tostring(L, -1);
+        lua_writestring(err, strlen(err));
+        lua_writeline();
         lua_pop(L, 1);
-        xSemaphoreGive(output_mutex);
     }
 
     while (true) {
@@ -131,7 +127,9 @@ static void script_task_func(void* param)
             lua_getfield(L, -1, "__process");
             if (lua_isfunction(L, -1)) {
                 if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-                    ESP_LOGE(TAG, "%s", lua_tostring(L, -1));
+                    const char* err = lua_tostring(L, -1);
+                    lua_writestring(err, strlen(err));
+                    lua_writeline();
                 }
             }
         }
@@ -252,11 +250,11 @@ void script_init(void)
     }
 }
 
-void script_output_print(const char* buffer, size_t length)
+void script_output_append_buf(const char* str, uint16_t len)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
 
-    output_buffer_append_buf(output_buffer, buffer, length);
+    output_buffer_append_buf(output_buffer, str, len);
 
     xSemaphoreGive(output_mutex);
 }

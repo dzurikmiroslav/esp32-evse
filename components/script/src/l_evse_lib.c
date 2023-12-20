@@ -1,4 +1,5 @@
 #include <math.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lua.h"
@@ -7,7 +8,6 @@
 #include "l_evse_lib.h"
 #include "evse.h"
 #include "energy_meter.h"
-#include "script_utils.h"
 #include "temp_sensor.h"
 
 #include "esp_log.h"
@@ -123,9 +123,9 @@ static void call_field_event(lua_State* L, const char* event)
     lua_getfield(L, -1, event);
     if (lua_isfunction(L, -1)) {
         if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-            const char* msg = lua_tostring(L, -1);
-            lua_writestring(msg, strlen(msg));
-            lua_writestring("\n", 1);
+            const char* err = lua_tostring(L, -1);
+            lua_writestring(err, strlen(err));
+            lua_writeline();
             lua_pop(L, 1);
         }
     } else {
@@ -199,7 +199,7 @@ static int l_add_driver(lua_State* L)
     lua_getfield(L, -1, "__drivers");
     lua_pushvalue(L, 1);
     lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
-    
+
     return 0;
 }
 
