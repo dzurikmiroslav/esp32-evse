@@ -13,6 +13,7 @@
 #include "output_buffer.h"
 #include "l_evse_lib.h"
 #include "l_mqtt_lib.h"
+#include "l_json_lib.h"
 
 #define START_TIMEOUT           1000
 #define SHUTDOWN_TIMEOUT        1000
@@ -104,6 +105,9 @@ static void script_task_func(void* param)
     lua_pop(L, 1);
 
     luaL_requiref(L, "mqtt", luaopen_mqtt, 0);
+    lua_pop(L, 1);
+
+    luaL_requiref(L, "json", luaopen_json, 0);
     lua_pop(L, 1);
 
     lua_writestring(LOADING_MSG, strlen(LOADING_MSG));

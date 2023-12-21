@@ -6,6 +6,8 @@
 
 #include "esp_log.h"
 
+static const char* TAG = "l_mqtt";
+
 typedef struct
 {
     esp_mqtt_client_handle_t client;
@@ -59,20 +61,18 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
 
 static int l_client(lua_State* L)
 {
-    int argc = lua_gettop(L);
-
     esp_mqtt_client_config_t cfg = { 0 };
     cfg.broker.address.uri = luaL_checkstring(L, 1);
-    if (argc > 1) {
+    if (!lua_isnoneornil(L, 2)) {
         cfg.credentials.username = luaL_checkstring(L, 2);
     }
-    if (argc > 2) {
+    if (!lua_isnoneornil(L, 3)) {
         cfg.credentials.authentication.password = luaL_checkstring(L, 3);
     }
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&cfg);
     if (client == NULL) {
-        return luaL_error(L, "invalid params");
+        luaL_error(L, "invalid params");
     } else {
         client_userdata_t* userdata = (client_userdata_t*)lua_newuserdatauv(L, sizeof(client_userdata_t), 0);
         luaL_setmetatable(L, "mqtt.client");
@@ -82,8 +82,9 @@ static int l_client(lua_State* L)
         userdata->connected = false;
         userdata->on_connect_ref = LUA_NOREF;
         userdata->on_message_ref = LUA_NOREF;
-        return 1;
     }
+
+    return 1;
 }
 
 static int l_client_connect(lua_State* L)
@@ -91,10 +92,10 @@ static int l_client_connect(lua_State* L)
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
     if (esp_mqtt_client_register_event(userdata->client, ESP_EVENT_ANY_ID, event_handler, userdata) != ESP_OK) {
-        return luaL_error(L, "cant register handler");
+        luaL_error(L, "cant register handler");
     }
     if (esp_mqtt_client_start(userdata->client) != ESP_OK) {
-        return luaL_error(L, "cant start config");
+        luaL_error(L, "cant start config");
     }
 
     return 0;
@@ -115,7 +116,7 @@ static int l_client_disconnect(lua_State* L)
 
 static int l_client_set_on_connect(lua_State* L)
 {
-    luaL_argexpected(L, lua_isfunction(L, 2), 2, "function");
+    luaL_checktype(L, 2, LUA_TFUNCTION);
 
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
@@ -127,7 +128,7 @@ static int l_client_set_on_connect(lua_State* L)
 
 static int l_client_set_on_message(lua_State* L)
 {
-    luaL_argexpected(L, lua_isfunction(L, 2), 2, "function");
+    luaL_checktype(L, 2, LUA_TFUNCTION);
 
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
@@ -139,13 +140,11 @@ static int l_client_set_on_message(lua_State* L)
 
 static int l_client_subscribe(lua_State* L)
 {
-    int argc = lua_gettop(L);
-
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
     const char* topic = luaL_checkstring(L, 2);
     int qos = 0;
-    if (argc > 2) {
+    if (!lua_isnoneornil(L, 3)) {
         qos = luaL_checkinteger(L, 3);
     }
 
@@ -170,18 +169,16 @@ static int l_client_unsubscribe(lua_State* L)
 
 static int l_client_publish(lua_State* L)
 {
-    int argc = lua_gettop(L);
-
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
     const char* topic = luaL_checkstring(L, 2);
     const char* data = luaL_checkstring(L, 3);
     int qos = 1;
-    if (argc > 3) {
+    if (!lua_isnoneornil(L, 4)) {
         qos = luaL_checkinteger(L, 4);
     }
     int retry = 0;
-    if (argc > 4) {
+    if (!lua_isnoneornil(L, 5)) {
         retry = luaL_checkinteger(L, 5);
     }
 
@@ -229,7 +226,6 @@ static const luaL_Reg client_metadata[] = {
     {"__gc",        l_client_gc},
     {NULL, NULL}
 };
-
 
 int luaopen_mqtt(lua_State* L)
 {

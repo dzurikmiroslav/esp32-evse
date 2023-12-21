@@ -5,4 +5,10 @@
 
 int luaopen_evse(lua_State* L);
 
+void l_evse_init(void);
+
+void l_evse_process(lua_State* L);
+
+void l_evse_deinit(void);
+
 #endif /* L_EVSE_LIB_H_ */

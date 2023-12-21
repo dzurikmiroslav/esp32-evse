@@ -34,6 +34,7 @@ set(srcs
     "src/script.c"
     "src/l_evse_lib.c"
     "src/l_mqtt_lib.c"
+    "src/l_json_lib.c"
     )
 
 idf_component_register(SRCS "${srcs}"
