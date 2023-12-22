@@ -17,7 +17,6 @@ typedef struct
     int on_message_ref;
 } client_userdata_t;
 
-
 static void event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data)
 {
     client_userdata_t* userdata = handler_args;

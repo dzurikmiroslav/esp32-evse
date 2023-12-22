@@ -787,19 +787,11 @@
 
 void script_output_append_buf(const char *str, uint16_t len);
 
-#define lua_writestring(s,l)   		script_output_append_buf(s, l)
-#define lua_writeline()				script_output_append_buf("\n", 1)
+#define lua_writestring(s,l)	script_output_append_buf(s, l)
+#define lua_writeline()			script_output_append_buf("\n", 1)
 
-// #define lua_writestringerror(s,l)   script_output_append_buf(s, l)
-
-#define LUA_PATH_DEFAULT  \
-		"/data/?.lua;" "/data/?/init.lua"
-
-// void scrip_lock();
-// void scrip_unlock();
-
-// #define lua_lock(L)		scrip_lock()
-// #define lua_unlock(L)	scrip_unlock()
+#undef LUA_PATH_DEFAULT
+#define LUA_PATH_DEFAULT		"/data/?.lua;" "/data/?/init.lua"
 
 #endif
 

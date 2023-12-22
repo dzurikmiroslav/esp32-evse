@@ -2,7 +2,6 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "sys/queue.h"
 #include "lua.h"
 #include "lauxlib.h"
 
@@ -13,37 +12,15 @@
 
 #include "esp_log.h"
 
-typedef struct driver_entry_s {
-    SLIST_ENTRY(driver_entry_s) entries;
-    int ref;
-} driver_entry_t;
-
 typedef struct
 {
     TickType_t tick_100ms;
     TickType_t tick_250ms;
     TickType_t tick_1s;
-    SLIST_HEAD(drivers_head, driver_entry_s) drivers;
-} evse_ctx_t;
+    int drivers_ref;
+} evse_userdata_t;
 
-static evse_ctx_t* ctx = NULL;
-
-void l_evse_init(void)
-{
-    ctx = (evse_ctx_t*)malloc(sizeof(evse_ctx_t));
-    ctx->tick_100ms = 0;
-    ctx->tick_250ms = 0;
-    ctx->tick_1s = 0;
-    SLIST_INIT(&ctx->drivers);
-}
-
-void l_evse_deinit(void)
-{
-    //todo clean drivers
-
-    free((void*)ctx);
-    ctx = NULL;
-}
+static int userdata_ref = LUA_NOREF;
 
 static int l_get_state(lua_State* L)
 {
@@ -151,6 +128,21 @@ static int l_get_high_temperature(lua_State* L)
     return 1;
 }
 
+static int l_add_driver(lua_State* L)
+{
+    luaL_argcheck(L, lua_istable(L, 1), 1, "Must be table");
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
+    evse_userdata_t* userdata = lua_touserdata(L, -1);
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
+
+    lua_pushvalue(L, 1);
+    lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
+
+    return 0;
+}
+
 static void call_field_event(lua_State* L, const char* event)
 {
     lua_getfield(L, -1, event);
@@ -166,143 +158,54 @@ static void call_field_event(lua_State* L, const char* event)
     }
 }
 
-static int l_process(lua_State* L)
-{
-    TickType_t now = xTaskGetTickCount();
-    TickType_t prev;
-
-    lua_getglobal(L, "evse");
-
-    lua_getfield(L, -1, "__tick100ms");
-    prev = lua_tointeger(L, -1);
-    lua_pop(L, 1);
-    bool every_100ms = now - prev >= pdMS_TO_TICKS(100);
-
-    lua_getfield(L, -1, "__tick250ms");
-    prev = lua_tointeger(L, -1);
-    lua_pop(L, 1);
-    bool every_250ms = now - prev >= pdMS_TO_TICKS(250);
-
-    lua_getfield(L, -1, "__tick1s");
-    prev = lua_tointeger(L, -1);
-    lua_pop(L, 1);
-    bool every_1s = now - prev >= pdMS_TO_TICKS(1000);
-
-    if (every_100ms) {
-        lua_pushinteger(L, now);
-        lua_setfield(L, -2, "__tick100ms");
-    }
-    if (every_250ms) {
-        lua_pushinteger(L, now);
-        lua_setfield(L, -2, "__tick250ms");
-    }
-    if (every_1s) {
-        lua_pushinteger(L, now);
-        lua_setfield(L, -2, "__tick1s");
-    }
-
-    lua_getfield(L, -1, "__drivers");
-    int len = lua_rawlen(L, -1);
-    for (int i = 1; i <= len; i++) {
-        lua_rawgeti(L, -1, i);
-        if (lua_istable(L, -1)) {
-            if (every_100ms) {
-                call_field_event(L, "every100ms");
-            }
-            if (every_250ms) {
-                call_field_event(L, "every250ms");
-            }
-            if (every_1s) {
-                call_field_event(L, "every1s");
-            }
-        } else {
-            lua_pop(L, 1);
-        }
-        lua_pop(L, 1);
-    }
-
-    return 0;
-}
-
-static void driver_call_event(lua_State* L, const char* method)
-{
-    lua_getfield(L, -1, method);
-
-    if (lua_isfunction(L, -1)) {
-        be_pushvalue(vm, -2);
-
-        int ret = be_pcall(vm, 1);
-
-        
-    }
-    be_pop(vm, 1);
-}
-
 void l_evse_process(lua_State* L)
 {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
+    evse_userdata_t* userdata = lua_touserdata(L, -1);
+
     TickType_t now = xTaskGetTickCount();
 
     bool every_100ms = false;
-    if (now - ctx->tick_100ms >= pdMS_TO_TICKS(100)) {
-        ctx->tick_100ms = now;
+    if (now - userdata->tick_100ms >= pdMS_TO_TICKS(100)) {
+        userdata->tick_100ms = now;
         every_100ms = true;
     }
 
     bool every_250ms = false;
-    if (now - ctx->tick_250ms >= pdMS_TO_TICKS(250)) {
-        ctx->tick_250ms = now;
+    if (now - userdata->tick_250ms >= pdMS_TO_TICKS(250)) {
+        userdata->tick_250ms = now;
         every_250ms = true;
     }
 
     bool every_1s = false;
-    if (now - ctx->tick_1s >= pdMS_TO_TICKS(1000)) {
-        ctx->tick_1s = now;
+    if (now - userdata->tick_1s >= pdMS_TO_TICKS(1000)) {
+        userdata->tick_1s = now;
         every_1s = true;
     }
 
-    driver_entry_t* driver;
-    SLIST_FOREACH(driver, &ctx->drivers, entries) {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, driver->ref);
-        driver_call_event(L, "loop");
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
+
+    int len = lua_rawlen(L, -1);
+    for (int i = 1; i <= len; i++) {
+        lua_rawgeti(L, -1, i);
+
         if (every_100ms) {
-            driver_call_event(L, "every100ms");
+            call_field_event(L, "every100ms");
         }
         if (every_250ms) {
-            driver_call_event(L, "every250ms");
+            call_field_event(L, "every250ms");
         }
         if (every_1s) {
-            driver_call_event(L, "every1s");
+            call_field_event(L, "every1s");
         }
 
         lua_pop(L, 1);
     }
+
+    lua_pop(L, 1);
+
+    lua_pop(L, 1);
 }
-
-static int l_add_driver(lua_State* L)
-{
-    luaL_checktype(L, 1, LUA_TTABLE);
-
-    driver_entry_t* entry = (driver_entry_t*)malloc(sizeof(driver_entry_t));
-    entry->ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    SLIST_INSERT_HEAD(&ctx->drivers, entry, entries);
-
-    // luaL_argcheck(L, lua_istable(L, 1), 1, "Must be table");
-
-    // lua_getglobal(L, "evse");
-    // lua_getfield(L, -1, "__drivers");
-    // lua_pushvalue(L, 1);
-    // lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
-
-    return 0;
-}
-
-static int l_gc(lua_State* L)
-{
-    ESP_LOGW("levse", "l_gc");
-
-    return 0;
-}
-
 
 static const luaL_Reg lib[] = {
     //states
@@ -342,14 +245,6 @@ static const luaL_Reg lib[] = {
     {"getlowtemperature",   l_get_low_temperature},
     {"gethightemperature",  l_get_high_temperature},
     {"adddriver",           l_add_driver},
-
-    // private methods
-    {"__process",           l_process},
-    // private fields
-    {"__drivers",           NULL},
-    {"__tick100ms",         NULL},
-    {"__tick250ms",         NULL},
-    {"__tick1s",            NULL},
     {NULL, NULL}
 };
 
@@ -408,19 +303,16 @@ int luaopen_evse(lua_State* L)
     lua_pushinteger(L, EVSE_ERR_TEMPERATURE_FAULT_BIT);
     lua_setfield(L, -2, "ERRTEMPERATUREFAULTBIT");
 
-    lua_newtable(L);
-    lua_setfield(L, -2, "__drivers");
+    evse_userdata_t* userdata = (evse_userdata_t*)lua_newuserdatauv(L, sizeof(evse_userdata_t), 0);
+    userdata_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     TickType_t now = xTaskGetTickCount();
+    userdata->tick_100ms = now;
+    userdata->tick_250ms = now;
+    userdata->tick_1s = now;
 
-    lua_pushinteger(L, now);
-    lua_setfield(L, -2, "__tick100ms");
-
-    lua_pushinteger(L, now);
-    lua_setfield(L, -2, "__tick250ms");
-
-    lua_pushinteger(L, now);
-    lua_setfield(L, -2, "__tick1s");
+    lua_newtable(L);
+    userdata->drivers_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 1;
 }

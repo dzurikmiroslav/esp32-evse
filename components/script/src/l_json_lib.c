@@ -81,7 +81,7 @@ static int l_parse(lua_State* L)
     cJSON* root = cJSON_Parse(str);
 
     if (root == NULL) {
-        return luaL_error(L, "cant parse json");
+        luaL_error(L, "cant parse json");
     }
 
     parse_child(L, root);
@@ -100,9 +100,11 @@ static int l_stringify(lua_State* L)
         luaL_checktype(L, 2, LUA_TBOOLEAN);
         format = lua_toboolean(L, 2);
     }
+
     lua_pushvalue(L, 1);
     cJSON* root = serialize_child(L);
     lua_pop(L, 1);
+    
     char* json;
     if (format) {
         json = cJSON_Print(root);
