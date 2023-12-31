@@ -3,7 +3,7 @@
 #include "lauxlib.h"
 
 #include "l_mqtt_lib.h"
-
+#include "script_utils.h"
 #include "esp_log.h"
 
 static const char* TAG = "l_mqtt";
@@ -26,22 +26,25 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
     case MQTT_EVENT_CONNECTED:
         userdata->connected = true;
         if (userdata->on_connect_ref != LUA_NOREF) {
-            lua_State* L = lua_newthread(userdata->L);
+            xSemaphoreTake(script_mutex, portMAX_DELAY);
+            lua_State* L = userdata->L;
             lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->on_connect_ref);
             if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
                 const char* err = lua_tostring(L, -1);
                 lua_writestring(err, strlen(err));
                 lua_writeline();
             }
-            lua_closethread(L, userdata->L);
+            xSemaphoreGive(script_mutex);
         }
         break;
     case MQTT_EVENT_DISCONNECTED:
         userdata->connected = false;
         break;
     case MQTT_EVENT_DATA:
+        ESP_LOGW("LM", "data");
         if (userdata->on_message_ref != LUA_NOREF) {
-            lua_State* L = lua_newthread(userdata->L);
+            xSemaphoreTake(script_mutex, portMAX_DELAY);
+            lua_State* L = userdata->L;
             lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->on_message_ref);
             lua_pushlstring(L, event->topic, event->topic_len);
             lua_pushlstring(L, event->data, event->data_len);
@@ -50,7 +53,7 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
                 lua_writestring(err, strlen(err));
                 lua_writeline();
             }
-            lua_closethread(L, userdata->L);
+            xSemaphoreGive(script_mutex);
         }
         break;
     default:

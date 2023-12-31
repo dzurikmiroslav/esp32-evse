@@ -10,6 +10,7 @@
 #include "lauxlib.h"
 
 #include "script.h"
+#include "script_utils.h"
 #include "output_buffer.h"
 #include "l_evse_lib.h"
 #include "l_mqtt_lib.h"
@@ -39,12 +40,15 @@ static output_buffer_t* output_buffer = NULL;
 
 static SemaphoreHandle_t output_mutex;
 
+SemaphoreHandle_t script_mutex = NULL;
+
 static void script_task_func(void* param)
 {
     lua_writestring(LUA_COPYRIGHT, strlen(LUA_COPYRIGHT));
     lua_writeline();
 
     L = luaL_newstate();
+
     luaL_openlibs(L);
 
     luaL_requiref(L, "evse", luaopen_evse, 1);
@@ -62,6 +66,9 @@ static void script_task_func(void* param)
     luaL_requiref(L, "boardconfig", luaopen_board_config, 0);
     lua_pop(L, 1);
 
+    lua_gc(L, LUA_GCSETPAUSE, 110);
+    lua_gc(L, LUA_GCSETSTEPMUL, 200);
+
     const char* loading_msg = "loading file '/data/init.lua'...";
     lua_writestring(loading_msg, strlen(loading_msg));
     lua_writeline();
@@ -77,7 +84,14 @@ static void script_task_func(void* param)
         if (shutdown_sem != NULL) {
             break;
         }
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
         l_evse_process(L);
+        xSemaphoreGive(script_mutex);
+
+        int top = lua_gettop(L);
+        if (top != 0) {
+            ESP_LOGW(TAG, "top is %d, %d", top, lua_type(L, top));
+        }
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }
@@ -101,6 +115,7 @@ static void script_stop(void)
             ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
             vTaskDelete(script_task);
             if (L != NULL) {
+                xSemaphoreGive(script_mutex);
                 lua_close(L);
                 L = NULL;
             }
@@ -126,6 +141,7 @@ void script_init(void)
 
     output_mutex = xSemaphoreCreateMutex();
     output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
+    script_mutex = xSemaphoreCreateMutex();
 
     if (script_is_enabled()) {
         script_start();

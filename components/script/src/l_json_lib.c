@@ -86,7 +86,7 @@ static int l_parse(lua_State* L)
 
     parse_child(L, root);
 
-    cJSON_free(root);
+    cJSON_Delete(root);
 
     return 1;
 }
@@ -112,7 +112,7 @@ static int l_stringify(lua_State* L)
         json = cJSON_PrintUnformatted(root);
     }
 
-    cJSON_free(root);
+    cJSON_Delete(root);
 
     lua_pushstring(L, json);
 

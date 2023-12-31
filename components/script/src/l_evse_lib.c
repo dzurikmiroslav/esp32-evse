@@ -189,6 +189,7 @@ void l_evse_process(lua_State* L)
     for (int i = 1; i <= len; i++) {
         lua_rawgeti(L, -1, i);
 
+        call_field_event(L, "loop");
         if (every_100ms) {
             call_field_event(L, "every100ms");
         }
