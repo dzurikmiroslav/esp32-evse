@@ -5,7 +5,7 @@
 
 #include "l_json_lib.h"
 
-static void parse_child(lua_State* L, cJSON* obj)
+static void decode_child(lua_State* L, cJSON* obj)
 {
     if (cJSON_IsBool(obj)) {
         lua_pushboolean(L, cJSON_IsTrue(obj));
@@ -18,7 +18,7 @@ static void parse_child(lua_State* L, cJSON* obj)
         cJSON* child = obj->child;
         while (child) {
             lua_pushstring(L, child->string);
-            parse_child(L, child);
+            decode_child(L, child);
             lua_settable(L, -3);
 
             child = child->next;
@@ -28,7 +28,7 @@ static void parse_child(lua_State* L, cJSON* obj)
         cJSON* child = obj->child;
         int array_index = 1;
         while (child) {
-            parse_child(L, child);
+            decode_child(L, child);
             lua_rawseti(L, -2, array_index++);
 
             child = child->next;
@@ -38,7 +38,7 @@ static void parse_child(lua_State* L, cJSON* obj)
     }
 }
 
-static cJSON* serialize_child(lua_State* L)
+static cJSON* encode_child(lua_State* L)
 {
     cJSON* obj;
 
@@ -55,7 +55,7 @@ static cJSON* serialize_child(lua_State* L)
             obj = cJSON_CreateArray();
             for (int i = 1; i <= len; i++) {
                 lua_rawgeti(L, -1, i);
-                cJSON_AddItemToArray(obj, serialize_child(L));
+                cJSON_AddItemToArray(obj, encode_child(L));
                 lua_pop(L, 1);
             }
         } else {
@@ -63,7 +63,7 @@ static cJSON* serialize_child(lua_State* L)
             obj = cJSON_CreateObject();
             lua_pushnil(L);
             while (lua_next(L, -2)) {
-                cJSON_AddItemToObject(obj, lua_tostring(L, -2), serialize_child(L));
+                cJSON_AddItemToObject(obj, lua_tostring(L, -2), encode_child(L));
                 lua_pop(L, 1);
             }
         }
@@ -74,24 +74,24 @@ static cJSON* serialize_child(lua_State* L)
     return obj;
 }
 
-static int l_parse(lua_State* L)
+static int l_decode(lua_State* L)
 {
     const char* str = luaL_checkstring(L, 1);
 
     cJSON* root = cJSON_Parse(str);
 
     if (root == NULL) {
-        luaL_error(L, "cant parse json");
+        luaL_error(L, "cant decode json");
     }
 
-    parse_child(L, root);
+    decode_child(L, root);
 
     cJSON_Delete(root);
 
     return 1;
 }
 
-static int l_stringify(lua_State* L)
+static int l_encode(lua_State* L)
 {
     luaL_checkany(L, 1);
 
@@ -102,7 +102,7 @@ static int l_stringify(lua_State* L)
     }
 
     lua_pushvalue(L, 1);
-    cJSON* root = serialize_child(L);
+    cJSON* root = encode_child(L);
     lua_pop(L, 1);
     
     char* json;
@@ -122,8 +122,8 @@ static int l_stringify(lua_State* L)
 }
 
 static const luaL_Reg lib[] = {
-    {"parse",       l_parse},
-    {"stringify",   l_stringify},
+    {"decode",      l_decode},
+    {"encode",      l_encode},
     {NULL, NULL}
 };
 
