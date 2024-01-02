@@ -1,6 +1,3 @@
 [submodule "components/api/lib/cAT"]
 	path = components/api/lib/cAT
 	url = https://github.com/marcinbor85/cAT
-[submodule "components/script/lib/berry"]
-	path = components/script/lib/berry
-	url = https://github.com/berry-lang/berry

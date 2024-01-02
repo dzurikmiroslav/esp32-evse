@@ -8,14 +8,14 @@
 #define evse_state_is_session(state)        (state >= EVSE_STATE_B1 && state <= EVSE_STATE_D2)
 #define evse_state_is_charging(state)       (state == EVSE_STATE_C2 || state == EVSE_STATE_D2)
 
-#define EVSE_ERR_PILOT_FAULT_BIT            BIT0
-#define EVSE_ERR_DIODE_SHORT_BIT            BIT1
-#define EVSE_ERR_LOCK_FAULT_BIT             BIT2
-#define EVSE_ERR_UNLOCK_FAULT_BIT           BIT3
-#define EVSE_ERR_RCM_TRIGGERED_BIT          BIT4
-#define EVSE_ERR_RCM_SELFTEST_FAULT_BIT     BIT5
-#define EVSE_ERR_TEMPERATURE_HIGH_BIT       BIT6
-#define EVSE_ERR_TEMPERATURE_FAULT_BIT      BIT7
+#define EVSE_ERR_PILOT_FAULT_BIT            (1UL << 0)
+#define EVSE_ERR_DIODE_SHORT_BIT            (1UL << 1)
+#define EVSE_ERR_LOCK_FAULT_BIT             (1UL << 2)
+#define EVSE_ERR_UNLOCK_FAULT_BIT           (1UL << 3)
+#define EVSE_ERR_RCM_TRIGGERED_BIT          (1UL << 4)
+#define EVSE_ERR_RCM_SELFTEST_FAULT_BIT     (1UL << 5)
+#define EVSE_ERR_TEMPERATURE_HIGH_BIT       (1UL << 6)
+#define EVSE_ERR_TEMPERATURE_FAULT_BIT      (1UL << 7)
 
 #define EVSE_ERR_AUTO_CLEAR_BITS            (EVSE_ERR_PILOT_FAULT_BIT | EVSE_ERR_DIODE_SHORT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT | EVSE_ERR_RCM_SELFTEST_FAULT_BIT)
 

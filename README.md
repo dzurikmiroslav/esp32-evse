@@ -11,9 +11,9 @@ J1772 EVSE firmware for ESP32 based devices.
  - OTA update
  - Integrated energy meter
  - [REST](https://github.com/dzurikmiroslav/esp32-evse/wiki/Rest) API
- - MQTT API
+ - WebDAV
  - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
- - [Scripting](https://github.com/dzurikmiroslav/esp32-evse/wiki/Script)
+ - [Lua scripting](https://github.com/dzurikmiroslav/esp32-evse/wiki/Lua)
  - [Nextion HMI](https://github.com/dzurikmiroslav/esp32-evse/wiki/Nextion)
 
 ### Device definition method
