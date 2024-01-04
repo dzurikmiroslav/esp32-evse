@@ -6,7 +6,7 @@ set(srcs
     "src/http_dav.c"
     "src/mqtt.c"
     "src/modbus_tcp.c"
-    "src/date_time.c")
+    "src/scheduler.c")
 
 set(embed_files
     "web.cpio"

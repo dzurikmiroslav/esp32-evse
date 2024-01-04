@@ -21,7 +21,7 @@
 #include "modbus_tcp.h"
 #include "temp_sensor.h"
 #include "script.h"
-#include "date_time.h"
+#include "scheduler.h"
 
 #define RETURN_ON_ERROR(x) do {                 \
         esp_err_t err_rc_ = (x);                \
@@ -298,30 +298,48 @@ esp_err_t json_set_script_config(cJSON* root)
     return ESP_OK;
 }
 
-cJSON* json_get_time_config(void)
+cJSON* json_get_scheduler_config(void)
 {
     cJSON* root = cJSON_CreateObject();
     char str[64];
 
-    cJSON_AddBoolToObject(root, "ntpEnabled", date_time_is_ntp_enabled());
-    date_time_get_ntp_server(str);
+    cJSON_AddBoolToObject(root, "ntpEnabled", scheduler_is_ntp_enabled());
+    scheduler_get_ntp_server(str);
     cJSON_AddStringToObject(root, "ntpServer", str);
-    cJSON_AddBoolToObject(root, "ntpFromDhcp", date_time_is_ntp_from_dhcp());
-    date_time_get_timezone(str);
+    cJSON_AddBoolToObject(root, "ntpFromDhcp", scheduler_is_ntp_from_dhcp());
+    scheduler_get_timezone(str);
     cJSON_AddStringToObject(root, "timezone", str);
+
+    cJSON* schedulers = cJSON_CreateArray();
+
+    for (int i = 0; i < SCHEDULER_ID_MAX; i++) {
+        cJSON* scheduler = cJSON_CreateObject();
+        cJSON_AddStringToObject(scheduler, "action", scheduler_action_to_str(scheduler_get_action(i)));
+
+        uint32_t* day_values = scheduler_get_days(i);
+
+        cJSON* days = cJSON_CreateArray();
+        for (int d = 0; d < 7; d++) {
+            cJSON_AddItemToArray(days, cJSON_CreateNumber(day_values[d]));
+        }
+        cJSON_AddItemToObject(scheduler, "days", days);
+
+        cJSON_AddItemToArray(schedulers, scheduler);
+    }
+    cJSON_AddItemToObject(root, "schedulers", schedulers);
 
     return root;
 }
 
-esp_err_t json_set_time_config(cJSON* root)
+esp_err_t json_set_scheduler_config(cJSON* root)
 {
     char* ntp_server = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ntpServer"));
     bool ntp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(root, "ntpEnabled"));
     bool ntp_from_dhcp = cJSON_IsTrue(cJSON_GetObjectItem(root, "ntpFromDhcp"));
     char* timezone = cJSON_GetStringValue(cJSON_GetObjectItem(root, "timezone"));
 
-    date_time_set_ntp_config(ntp_enabled, ntp_server, ntp_from_dhcp);
-    return date_time_set_timezone(timezone);
+    scheduler_set_ntp_config(ntp_enabled, ntp_server, ntp_from_dhcp);
+    return scheduler_set_timezone(timezone);
 }
 
 cJSON* json_get_state(void)

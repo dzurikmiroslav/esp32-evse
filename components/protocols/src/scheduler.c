@@ -5,19 +5,23 @@
 #include "esp_netif_sntp.h"
 #include "nvs.h"
 
-#include "date_time.h"
+#include "scheduler.h"
 
-#define NVS_NAMESPACE           "date_time"
+#define NVS_NAMESPACE           "scheduler"
 #define NVS_NTP_ENABLED         "ntp_en"
 #define NVS_NTP_SERVER          "ntp_server"
 #define NVS_NTP_FROM_DHCP       "ntp_from_dhcp"
 #define NVS_TIMEZONE            "timezone"
 
-static const char* TAG = "date_time";
+static const char* TAG = "scheduler";
 
 static nvs_handle nvs;
 
 static char ntp_server[64]; // if renew_servers_after_new_IP = false, will be used static string reference
+
+static scheduler_action_t actions[SCHEDULER_ID_MAX] = { 0 };
+
+static uint32_t days[SCHEDULER_ID_MAX][7] = { 0 };
 
 static const char* tz_data[][2] = {
 #include "tz_data.h"
@@ -41,12 +45,12 @@ static const char* find_tz(const char* name)
     return NULL;
 }
 
-void date_time_init(void)
+void scheduler_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    if (date_time_is_ntp_enabled()) {
-        date_time_get_ntp_server(ntp_server);
+    if (scheduler_is_ntp_enabled()) {
+        scheduler_get_ntp_server(ntp_server);
 
         esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(ntp_server);
 
@@ -57,9 +61,9 @@ void date_time_init(void)
     }
 
     char str[64];
-    date_time_get_timezone(str);
-    const char *tz = find_tz(str);
-    if (tz) { 
+    scheduler_get_timezone(str);
+    const char* tz = find_tz(str);
+    if (tz) {
         setenv("TZ", tz, 1);
         tzset();
     } else {
@@ -67,28 +71,51 @@ void date_time_init(void)
     }
 }
 
-bool date_time_is_ntp_enabled(void)
+scheduler_action_t scheduler_get_action(uint8_t id)
+{
+    return actions[id];
+}
+
+uint32_t* scheduler_get_days(uint8_t id)
+{
+    return days[id];
+}
+
+esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days)
+{
+    if (id < 0 || id >= SCHEDULER_ID_MAX) {
+        ESP_LOGE(TAG, "Scheduler id out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    actions[id] = action;
+    memcpy(days[id], days, sizeof(uint32_t) * 7);
+
+    return ESP_OK;
+}
+
+bool scheduler_is_ntp_enabled(void)
 {
     uint8_t value = false;
     nvs_get_u8(nvs, NVS_NTP_ENABLED, &value);
     return value;
 }
 
-void date_time_get_ntp_server(char* value)
+void scheduler_get_ntp_server(char* value)
 {
     size_t len = 64;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_NTP_SERVER, value, &len);
 }
 
-bool date_time_is_ntp_from_dhcp(void)
+bool scheduler_is_ntp_from_dhcp(void)
 {
     uint8_t value = false;
     nvs_get_u8(nvs, NVS_NTP_FROM_DHCP, &value);
     return value;
 }
 
-esp_err_t date_time_set_ntp_config(bool enabled, const char* server, bool from_dhcp)
+esp_err_t scheduler_set_ntp_config(bool enabled, const char* server, bool from_dhcp)
 {
     esp_err_t ret = ESP_OK;
 
@@ -109,7 +136,7 @@ esp_err_t date_time_set_ntp_config(bool enabled, const char* server, bool from_d
     return ret;
 }
 
-void date_time_get_timezone(char* value)
+void scheduler_get_timezone(char* value)
 {
     size_t len = 64;
     value[0] = '\0';
@@ -117,7 +144,7 @@ void date_time_get_timezone(char* value)
     nvs_get_str(nvs, NVS_TIMEZONE, value, &len);
 }
 
-esp_err_t date_time_set_timezone(const char* value)
+esp_err_t scheduler_set_timezone(const char* value)
 {
     const char* tz = find_tz(value);
 
@@ -130,7 +157,55 @@ esp_err_t date_time_set_timezone(const char* value)
         return ESP_OK;
     } else {
         ESP_LOGW(TAG, "Unknown timezone %s", value);
-        
+
         return ESP_ERR_INVALID_ARG;
     }
+}
+
+
+/*
+ SCHEDULER_ACTION_NONE,
+    SCHEDULER_ACTION_ENABLE,
+    SCHEDULER_ACTION_AVAILABLE,
+    SCHEDULER_ACTION_CHARGING_CURRENT_6A,
+    SCHEDULER_ACTION_CHARGING_CURRENT_8A,
+    SCHEDULER_ACTION_CHARGING_CURRENT_10A
+    */
+const char* scheduler_action_to_str(scheduler_action_t action)
+{
+    switch (action)
+    {
+    case SCHEDULER_ACTION_ENABLE:
+        return "enable";
+    case SCHEDULER_ACTION_AVAILABLE:
+        return "available";
+    case SCHEDULER_ACTION_CHARGING_CURRENT_6A:
+        return "ch_cur_6a";
+    case SCHEDULER_ACTION_CHARGING_CURRENT_8A:
+        return "ch_cur_8a";
+    case SCHEDULER_ACTION_CHARGING_CURRENT_10A:
+        return "ch_cur_10a";
+    default:
+        return "none";
+    }
+}
+
+scheduler_action_t scheduler_str_to_action(const char* str)
+{
+    if (!strcmp(str, "enable")) {
+        return SCHEDULER_ACTION_ENABLE;
+    }
+    if (!strcmp(str, "available")) {
+        return SCHEDULER_ACTION_AVAILABLE;
+    }
+    if (!strcmp(str, "ch_cur_6a")) {
+        return SCHEDULER_ACTION_CHARGING_CURRENT_6A;
+    }
+    if (!strcmp(str, "ch_cur_8a")) {
+        return SCHEDULER_ACTION_CHARGING_CURRENT_8A;
+    }
+    if (!strcmp(str, "ch_cur_10a")) {
+        return SCHEDULER_ACTION_CHARGING_CURRENT_10A;
+    }
+    return SCHEDULER_ACTION_NONE;
 }

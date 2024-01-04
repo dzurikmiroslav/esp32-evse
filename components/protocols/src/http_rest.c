@@ -142,7 +142,7 @@ esp_err_t get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "serial", json_get_serial_config());
             cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
             cJSON_AddItemToObject(root, "script", json_get_script_config());
-            cJSON_AddItemToObject(root, "time", json_get_time_config());
+            cJSON_AddItemToObject(root, "scheduler", json_get_scheduler_config());
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
             root = json_get_evse_config();
@@ -165,8 +165,8 @@ esp_err_t get_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
             root = json_get_script_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/time") == 0) {
-            root = json_get_time_config();
+        if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
+            root = json_get_scheduler_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
@@ -224,8 +224,8 @@ esp_err_t post_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
             ret = json_set_script_config(root);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/time") == 0) {
-            ret = json_set_time_config(root);
+        if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
+            ret = json_set_scheduler_config(root);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/credentials") == 0) {
             set_credentials(root);
