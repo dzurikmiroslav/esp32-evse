@@ -12,6 +12,7 @@
 #define NVS_NTP_SERVER          "ntp_server"
 #define NVS_NTP_FROM_DHCP       "ntp_from_dhcp"
 #define NVS_TIMEZONE            "timezone"
+#define NVS_SCHEDULERS          "schedulers"
 
 static const char* TAG = "scheduler";
 
@@ -19,9 +20,13 @@ static nvs_handle nvs;
 
 static char ntp_server[64]; // if renew_servers_after_new_IP = false, will be used static string reference
 
-static scheduler_action_t actions[SCHEDULER_ID_MAX] = { 0 };
+static uint8_t count = 0;
 
-static uint32_t days[SCHEDULER_ID_MAX][7] = { 0 };
+// static scheduler_action_t actions[SCHEDULER_ID_MAX] = { 0 };
+
+// static uint32_t days[SCHEDULER_ID_MAX][7] = { 0 };
+
+static scheduler_t* schedulers = NULL;
 
 static const char* tz_data[][2] = {
 #include "tz_data.h"
@@ -69,30 +74,62 @@ void scheduler_init(void)
     } else {
         ESP_LOGW(TAG, "Unknown timezone %s", str);
     }
+
+    size_t schedulers_size = 0;
+    nvs_get_blob(nvs, NVS_SCHEDULERS, NULL, &schedulers_size);
+    if (schedulers_size > 0) {
+        if (schedulers_size % sizeof(scheduler_t) > 0) {
+            ESP_LOGW(TAG, "Scheduler NVS incompatible size, schedulers will be cleared");
+        } else {
+            count = schedulers_size / sizeof(scheduler_t);
+            schedulers = (scheduler_t*)malloc(sizeof(scheduler_t) * count);
+            nvs_get_blob(nvs, NVS_SCHEDULERS, (void*)&schedulers, &schedulers_size);
+        }
+    }
 }
 
-scheduler_action_t scheduler_get_action(uint8_t id)
+uint8_t scheduler_get_schedulers_count(void)
 {
-    return actions[id];
+    return count;
 }
 
-uint32_t* scheduler_get_days(uint8_t id)
+scheduler_t* scheduler_get_schedulers(void)
 {
-    return days[id];
+    return schedulers;
 }
 
-esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days)
+void scheduler_set_schedulers(scheduler_t *_schedulers, uint8_t _count)
 {
-    if (id < 0 || id >= SCHEDULER_ID_MAX) {
-        ESP_LOGE(TAG, "Scheduler id out of range");
-        return ESP_ERR_INVALID_ARG;
+    if (schedulers != NULL) {
+        free((void*)schedulers);
     }
 
-    actions[id] = action;
-    memcpy(days[id], days, sizeof(uint32_t) * 7);
-
-    return ESP_OK;
+   schedulers = _schedulers;
+    count = _count;
 }
+
+// scheduler_action_t scheduler_get_action(uint8_t id)
+// {
+//     return actions[id];
+// }
+
+// uint32_t* scheduler_get_days(uint8_t id)
+// {
+//     return days[id];
+// }
+
+// esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days)
+// {
+//     if (id < 0 || id >= SCHEDULER_ID_MAX) {
+//         ESP_LOGE(TAG, "Scheduler id out of range");
+//         return ESP_ERR_INVALID_ARG;
+//     }
+
+//     actions[id] = action;
+//     memcpy(days[id], days, sizeof(uint32_t) * 7);
+
+//     return ESP_OK;
+// }
 
 bool scheduler_is_ntp_enabled(void)
 {
@@ -162,15 +199,6 @@ esp_err_t scheduler_set_timezone(const char* value)
     }
 }
 
-
-/*
- SCHEDULER_ACTION_NONE,
-    SCHEDULER_ACTION_ENABLE,
-    SCHEDULER_ACTION_AVAILABLE,
-    SCHEDULER_ACTION_CHARGING_CURRENT_6A,
-    SCHEDULER_ACTION_CHARGING_CURRENT_8A,
-    SCHEDULER_ACTION_CHARGING_CURRENT_10A
-    */
 const char* scheduler_action_to_str(scheduler_action_t action)
 {
     switch (action)

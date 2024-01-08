@@ -21,37 +21,64 @@ typedef enum
 } scheduler_action_t;
 
 /**
+ * @brief Scheduler
+ * 
+ */
+typedef struct
+{
+    scheduler_action_t action;
+    union {
+        struct  {
+            uint32_t sun;
+            uint32_t mon;
+            uint32_t tue;
+            uint32_t wed;
+            uint32_t thu;
+            uint32_t fri;
+            uint32_t sat;            
+        } week;
+        uint32_t order[7];
+    } days;
+} scheduler_t;
+
+/**
  * @brief Initialize scheduler
  *
  */
 void scheduler_init(void);
 
-/**
- * @brief Return scheduler action
- *
- * @param id up to SCHEDULER_ID_MAX
- * @return scheduler_action_t
- */
-scheduler_action_t scheduler_get_action(uint8_t id);
+// /**
+//  * @brief Return scheduler action
+//  *
+//  * @param id up to SCHEDULER_ID_MAX
+//  * @return scheduler_action_t
+//  */
+// scheduler_action_t scheduler_get_action(uint8_t id);
 
-/**
- * @brief Return scheduler days hour bit flags
- *
- * @param id
- * @return uint32_t* array with length of 7
- */
-uint32_t* scheduler_get_days(uint8_t id);
+// /**
+//  * @brief Return scheduler days hour bit flags
+//  *
+//  * @param id
+//  * @return uint32_t* array with length of 7
+//  */
+// uint32_t* scheduler_get_days(uint8_t id);
 
-/**
- * @brief Set scheduler config
- *
- * @param id up to SCHEDULER_ID_MAX
- * @param enabled
- * @param days
- * @param action
- * @return esp_err_t
- */
-esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days);
+// /**
+//  * @brief Set scheduler config
+//  *
+//  * @param id up to SCHEDULER_ID_MAX
+//  * @param enabled
+//  * @param days
+//  * @param action
+//  * @return esp_err_t
+//  */
+// esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days);
+
+uint8_t scheduler_get_schedulers_count(void);
+
+scheduler_t* scheduler_get_schedulers(void);
+
+void scheduler_set_schedulers(scheduler_t *schedulers, uint8_t count);
 
 /**
  * @brief Return true if NTP is enabled, stored in NVS
@@ -102,9 +129,9 @@ esp_err_t scheduler_set_timezone(const char* value);
 
 /**
  * @brief Format to string value
- * 
- * @param action 
- * @return const char* 
+ *
+ * @param action
+ * @return const char*
  */
 const char* scheduler_action_to_str(scheduler_action_t action);
 

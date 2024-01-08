@@ -310,23 +310,24 @@ cJSON* json_get_scheduler_config(void)
     scheduler_get_timezone(str);
     cJSON_AddStringToObject(root, "timezone", str);
 
-    cJSON* schedulers = cJSON_CreateArray();
-
-    for (int i = 0; i < SCHEDULER_ID_MAX; i++) {
+    cJSON* schedulers_array = cJSON_CreateArray();
+    int schedulers_count = scheduler_get_schedulers_count();
+    scheduler_t* schedulers = scheduler_get_schedulers();
+    for (int i = 0; i < schedulers_count; i++) {
         cJSON* scheduler = cJSON_CreateObject();
-        cJSON_AddStringToObject(scheduler, "action", scheduler_action_to_str(scheduler_get_action(i)));
+        cJSON_AddStringToObject(scheduler, "action", scheduler_action_to_str(schedulers[i].action));
 
-        uint32_t* day_values = scheduler_get_days(i);
+        cJSON_AddNumberToObject(scheduler, "mon", schedulers[i].days.week.mon);
+        cJSON_AddNumberToObject(scheduler, "tue", schedulers[i].days.week.tue);
+        cJSON_AddNumberToObject(scheduler, "wed", schedulers[i].days.week.wed);
+        cJSON_AddNumberToObject(scheduler, "thu", schedulers[i].days.week.thu);
+        cJSON_AddNumberToObject(scheduler, "fri", schedulers[i].days.week.fri);
+        cJSON_AddNumberToObject(scheduler, "sat", schedulers[i].days.week.sat);
+        cJSON_AddNumberToObject(scheduler, "sun", schedulers[i].days.week.sun);
 
-        cJSON* days = cJSON_CreateArray();
-        for (int d = 0; d < 7; d++) {
-            cJSON_AddItemToArray(days, cJSON_CreateNumber(day_values[d]));
-        }
-        cJSON_AddItemToObject(scheduler, "days", days);
-
-        cJSON_AddItemToArray(schedulers, scheduler);
+        cJSON_AddItemToArray(schedulers_array, scheduler);
     }
-    cJSON_AddItemToObject(root, "schedulers", schedulers);
+    cJSON_AddItemToObject(root, "schedulers", schedulers_array);
 
     return root;
 }
@@ -339,6 +340,29 @@ esp_err_t json_set_scheduler_config(cJSON* root)
     char* timezone = cJSON_GetStringValue(cJSON_GetObjectItem(root, "timezone"));
 
     scheduler_set_ntp_config(ntp_enabled, ntp_server, ntp_from_dhcp);
+
+
+    cJSON* schedulers_array = cJSON_GetObjectItem(root, "schedulers");
+    if (cJSON_IsArray(schedulers_array)) {
+        uint8_t count = cJSON_GetArraySize(schedulers_array);
+        scheduler_t* schedulers = (scheduler_t*)malloc(sizeof(scheduler_t) * count);
+        int i = 0;
+        cJSON* item = NULL;
+        cJSON_ArrayForEach(item, schedulers_array) {
+            schedulers[i].action = scheduler_str_to_action(cJSON_GetStringValue(cJSON_GetObjectItem(item, "action")));
+            schedulers[i].days.week.mon = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "mon"));
+            schedulers[i].days.week.tue = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "tue"));
+            schedulers[i].days.week.wed = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "wed"));
+            schedulers[i].days.week.thu = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "thu"));
+            schedulers[i].days.week.fri = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "fri"));
+            schedulers[i].days.week.sat = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "sat"));
+            schedulers[i].days.week.sun = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "sun"));
+            i++;
+        };
+
+        scheduler_set_schedulers(schedulers, count);
+    }
+
     return scheduler_set_timezone(timezone);
 }
 
