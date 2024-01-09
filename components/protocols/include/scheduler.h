@@ -21,7 +21,7 @@ typedef enum
 } scheduler_action_t;
 
 /**
- * @brief Scheduler
+ * @brief Scheduler schedule
  * 
  */
 typedef struct
@@ -39,7 +39,7 @@ typedef struct
         } week;
         uint32_t order[7];
     } days;
-} scheduler_t;
+} scheduler_schedule_t;
 
 /**
  * @brief Initialize scheduler
@@ -47,38 +47,11 @@ typedef struct
  */
 void scheduler_init(void);
 
-// /**
-//  * @brief Return scheduler action
-//  *
-//  * @param id up to SCHEDULER_ID_MAX
-//  * @return scheduler_action_t
-//  */
-// scheduler_action_t scheduler_get_action(uint8_t id);
+uint8_t scheduler_get_schedule_count(void);
 
-// /**
-//  * @brief Return scheduler days hour bit flags
-//  *
-//  * @param id
-//  * @return uint32_t* array with length of 7
-//  */
-// uint32_t* scheduler_get_days(uint8_t id);
+scheduler_schedule_t* scheduler_get_schedules(void);
 
-// /**
-//  * @brief Set scheduler config
-//  *
-//  * @param id up to SCHEDULER_ID_MAX
-//  * @param enabled
-//  * @param days
-//  * @param action
-//  * @return esp_err_t
-//  */
-// esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days);
-
-uint8_t scheduler_get_schedulers_count(void);
-
-scheduler_t* scheduler_get_schedulers(void);
-
-void scheduler_set_schedulers(scheduler_t *schedulers, uint8_t count);
+void scheduler_set_schedule_config(const scheduler_schedule_t *schedules, uint8_t count);
 
 /**
  * @brief Return true if NTP is enabled, stored in NVS
@@ -139,7 +112,7 @@ const char* scheduler_action_to_str(scheduler_action_t action);
  * @brief Parse from string value
  *
  * @param str
- * @return scheduler_action_t
+ * @return scheduler_task_action_t
  */
 scheduler_action_t scheduler_str_to_action(const char* str);
 

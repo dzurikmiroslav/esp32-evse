@@ -12,21 +12,19 @@
 #define NVS_NTP_SERVER          "ntp_server"
 #define NVS_NTP_FROM_DHCP       "ntp_from_dhcp"
 #define NVS_TIMEZONE            "timezone"
-#define NVS_SCHEDULERS          "schedulers"
+#define NVS_SCHEDULES           "schedules"
 
 static const char* TAG = "scheduler";
 
 static nvs_handle nvs;
 
+static TaskHandle_t schduler_task = NULL;
+
 static char ntp_server[64]; // if renew_servers_after_new_IP = false, will be used static string reference
 
-static uint8_t count = 0;
+static uint8_t schedule_count = 0;
 
-// static scheduler_action_t actions[SCHEDULER_ID_MAX] = { 0 };
-
-// static uint32_t days[SCHEDULER_ID_MAX][7] = { 0 };
-
-static scheduler_t* schedulers = NULL;
+static scheduler_schedule_t* schedules = NULL;
 
 static const char* tz_data[][2] = {
 #include "tz_data.h"
@@ -48,6 +46,15 @@ static const char* find_tz(const char* name)
         }
     }
     return NULL;
+}
+ 
+
+static void scheduler_task_func(void* param)
+{
+    while (true) {
+        
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }
 
 void scheduler_init(void)
@@ -75,61 +82,46 @@ void scheduler_init(void)
         ESP_LOGW(TAG, "Unknown timezone %s", str);
     }
 
-    size_t schedulers_size = 0;
-    nvs_get_blob(nvs, NVS_SCHEDULERS, NULL, &schedulers_size);
-    if (schedulers_size > 0) {
-        if (schedulers_size % sizeof(scheduler_t) > 0) {
-            ESP_LOGW(TAG, "Scheduler NVS incompatible size, schedulers will be cleared");
+    size_t size = 0;
+    nvs_get_blob(nvs, NVS_SCHEDULES, NULL, &size);
+    if (size > 0) {
+        if (size % sizeof(scheduler_schedule_t) > 0) {
+            ESP_LOGW(TAG, "Schedules NVS incompatible size, schedules will be cleared");
         } else {
-            count = schedulers_size / sizeof(scheduler_t);
-            schedulers = (scheduler_t*)malloc(sizeof(scheduler_t) * count);
-            nvs_get_blob(nvs, NVS_SCHEDULERS, (void*)&schedulers, &schedulers_size);
+            schedule_count = size / sizeof(scheduler_schedule_t);
+            schedules = (scheduler_schedule_t*)malloc(sizeof(scheduler_schedule_t) * schedule_count);
+            nvs_get_blob(nvs, NVS_SCHEDULES, (void*)schedules, &size);
         }
     }
+
+    xTaskCreate(scheduler_task_func, "scheduler_task", 2 * 1024, NULL, 1, &scheduler_task);
 }
 
-uint8_t scheduler_get_schedulers_count(void)
+uint8_t scheduler_get_schedule_count(void)
 {
-    return count;
+    return schedule_count;
 }
 
-scheduler_t* scheduler_get_schedulers(void)
+scheduler_schedule_t* scheduler_get_schedules(void)
 {
-    return schedulers;
+    return schedules;
 }
 
-void scheduler_set_schedulers(scheduler_t *_schedulers, uint8_t _count)
+void scheduler_set_schedule_config(const scheduler_schedule_t* _schedules, uint8_t count)
 {
-    if (schedulers != NULL) {
-        free((void*)schedulers);
+    schedule_count = count;
+    if (schedule_count > 0) {
+        size_t size = sizeof(scheduler_schedule_t) * schedule_count;
+        schedules = (scheduler_schedule_t*)realloc((void*)schedules, size);
+        memcpy((void*)schedules, _schedules, size);
+        nvs_set_blob(nvs, NVS_SCHEDULES, (void*)schedules, size);
+    } else {
+        free((void*)schedules);
+        nvs_erase_key(nvs, NVS_SCHEDULES);
     }
 
-   schedulers = _schedulers;
-    count = _count;
+    nvs_commit(nvs);
 }
-
-// scheduler_action_t scheduler_get_action(uint8_t id)
-// {
-//     return actions[id];
-// }
-
-// uint32_t* scheduler_get_days(uint8_t id)
-// {
-//     return days[id];
-// }
-
-// esp_err_t scheduler_set_config(uint8_t id, scheduler_action_t action, uint32_t* days)
-// {
-//     if (id < 0 || id >= SCHEDULER_ID_MAX) {
-//         ESP_LOGE(TAG, "Scheduler id out of range");
-//         return ESP_ERR_INVALID_ARG;
-//     }
-
-//     actions[id] = action;
-//     memcpy(days[id], days, sizeof(uint32_t) * 7);
-
-//     return ESP_OK;
-// }
 
 bool scheduler_is_ntp_enabled(void)
 {
@@ -168,6 +160,7 @@ esp_err_t scheduler_set_ntp_config(bool enabled, const char* server, bool from_d
         nvs_set_u8(nvs, NVS_NTP_ENABLED, enabled);
         nvs_set_str(nvs, NVS_NTP_SERVER, server);
         nvs_set_u8(nvs, NVS_NTP_FROM_DHCP, from_dhcp);
+        nvs_commit(nvs);
     }
 
     return ret;
