@@ -107,6 +107,8 @@ static void scheduler_task_func(void* param)
         for (uint8_t i = 0; i < schedule_count; i++) {
             uint32_t day = schedules[i].days.order[timeinfo.tm_wday];
 
+            ESP_LOGI(TAG, "day %d sched %d", (int)day, (int)(1 << timeinfo.tm_hour));
+
             if (day & (1 << timeinfo.tm_hour)) {
                 if (!trigged_schedules[i]) {
                     rising_edge_action(schedules[i].action);
@@ -121,10 +123,12 @@ static void scheduler_task_func(void* param)
         }
 
         timeinfo.tm_sec = 0;
+        timeinfo.tm_min = 0;
         time_t next = mktime(&timeinfo);
-        next += 60;
+        next += 3600;
 
         int delta = next - now;
+        ESP_LOGI(TAG, "Scheduler will delay %d", delta);
         ulTaskNotifyTakeIndexed(0, pdTRUE, pdMS_TO_TICKS(delta * 1000));
     }
 }
