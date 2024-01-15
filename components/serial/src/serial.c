@@ -7,7 +7,6 @@
 #include "board_config.h"
 #include "serial.h"
 #include "serial_logger.h"
-#include "serial_at.h"
 #include "serial_modbus.h"
 #include "serial_nextion.h"
 
@@ -35,9 +34,6 @@ static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t 
     case SERIAL_MODE_LOG:
         serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
         break;
-    case SERIAL_MODE_AT:
-        serial_at_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
-        break;
     case SERIAL_MODE_MODBUS:
         serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
         break;
@@ -54,9 +50,6 @@ static void serial_stop(serial_id_t id)
     switch (modes[id]) {
     case SERIAL_MODE_LOG:
         serial_logger_stop();
-        break;
-    case SERIAL_MODE_AT:
-        serial_at_stop();
         break;
     case SERIAL_MODE_MODBUS:
         serial_modbus_stop();
@@ -259,8 +252,6 @@ const char* serial_mode_to_str(serial_mode_t mode)
 {
     switch (mode)
     {
-    case SERIAL_MODE_AT:
-        return "at";
     case SERIAL_MODE_LOG:
         return "log";
     case SERIAL_MODE_MODBUS:
@@ -274,9 +265,6 @@ const char* serial_mode_to_str(serial_mode_t mode)
 
 serial_mode_t serial_str_to_mode(const char* str)
 {
-    if (!strcmp(str, "at")) {
-        return SERIAL_MODE_AT;
-    }
     if (!strcmp(str, "log")) {
         return SERIAL_MODE_LOG;
     }

@@ -16,7 +16,7 @@
 #include "evse.h"
 #include "peripherals.h"
 #include "led.h"
-#include "api.h"
+#include "modbus.h"
 #include "protocols.h"
 #include "serial.h"
 #include "board_config.h"
@@ -254,7 +254,7 @@ void app_main(void)
 
     wifi_init();
     peripherals_init();
-    api_init();
+    modbus_init();
     serial_init();
     protocols_init();
     evse_init();

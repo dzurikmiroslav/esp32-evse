@@ -7,10 +7,8 @@
 #include "esp_chip_info.h"
 #include "esp_mac.h"
 
-#include "json.h"
-#include "mqtt.h"
+#include "http_json.h"
 #include "wifi.h"
-#include "timeout_utils.h"
 #include "evse.h"
 #include "board_config.h"
 #include "energy_meter.h"
@@ -30,7 +28,16 @@
         }                                       \
     } while(0)
 
-cJSON* json_get_evse_config(void)
+typedef struct
+{
+    bool enabled;
+    bool ssid_blank;
+    char ssid[32];
+    bool password_blank;
+    char password[64];
+} wifi_set_config_arg_t;
+
+cJSON* http_json_get_evse_config(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -59,7 +66,7 @@ cJSON* json_get_evse_config(void)
     return json;
 }
 
-esp_err_t json_set_evse_config(cJSON* json)
+esp_err_t http_json_set_evse_config(cJSON* json)
 {
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "maxChargingCurrent"))) {
         RETURN_ON_ERROR(evse_set_max_charging_current(cJSON_GetObjectItem(json, "maxChargingCurrent")->valuedouble));
@@ -124,7 +131,7 @@ esp_err_t json_set_evse_config(cJSON* json)
     return ESP_OK;
 }
 
-cJSON* json_get_wifi_config(void)
+cJSON* http_json_get_wifi_config(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -137,7 +144,50 @@ cJSON* json_get_wifi_config(void)
     return json;
 }
 
-esp_err_t json_set_wifi_config(cJSON* json, bool timeout)
+static void wifi_set_config_func(void* arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)arg;
+    wifi_set_config(config->enabled, config->ssid_blank ? NULL : config->ssid, config->password_blank ? NULL : config->password);
+    free((void*)config);
+
+    vTaskDelete(NULL);
+}
+
+static esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const char* password)
+{
+    if (enabled) {
+        if (ssid == NULL || strlen(ssid) == 0) {
+            char old_ssid[32];
+            wifi_get_ssid(old_ssid);
+            if (strlen(old_ssid) == 0) {
+                return ESP_ERR_INVALID_ARG;
+            }
+        }
+    }
+
+    wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)malloc(sizeof(wifi_set_config_arg_t));
+    config->enabled = enabled;
+    if (ssid == NULL || ssid[0] == '\0') {
+        config->ssid_blank = true;
+    } else {
+        config->ssid_blank = false;
+        strcpy(config->ssid, ssid);
+    }
+    if (password == NULL || password[0] == '\0') {
+        config->password_blank = true;
+    } else {
+        config->password_blank = false;
+        strcpy(config->password, password);
+    }
+
+    xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*)config, 10, NULL);
+
+    return ESP_OK;
+}
+
+esp_err_t http_json_set_wifi_config(cJSON* json, bool timeout)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
     char* ssid = cJSON_GetStringValue(cJSON_GetObjectItem(json, "ssid"));
@@ -148,10 +198,9 @@ esp_err_t json_set_wifi_config(cJSON* json, bool timeout)
     } else {
         return wifi_set_config(enabled, ssid, password);
     }
-
 }
 
-cJSON* json_get_wifi_scan(void)
+cJSON* http_json_get_wifi_scan(void)
 {
     cJSON* json = cJSON_CreateArray();
 
@@ -168,39 +217,7 @@ cJSON* json_get_wifi_scan(void)
     return json;
 }
 
-cJSON* json_get_mqtt_config(void)
-{
-    cJSON* json = cJSON_CreateObject();
-
-    char str[64];
-
-    cJSON_AddBoolToObject(json, "enabled", mqtt_get_enabled());
-    mqtt_get_server(str);
-    cJSON_AddStringToObject(json, "server", str);
-    mqtt_get_base_topic(str);
-    cJSON_AddStringToObject(json, "baseTopic", str);
-    mqtt_get_user(str);
-    cJSON_AddStringToObject(json, "user", str);
-    mqtt_get_password(str);
-    cJSON_AddStringToObject(json, "password", str);
-    cJSON_AddNumberToObject(json, "periodicity", mqtt_get_periodicity());
-
-    return json;
-}
-
-esp_err_t json_set_mqtt_config(cJSON* json)
-{
-    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
-    char* server = cJSON_GetStringValue(cJSON_GetObjectItem(json, "server"));
-    char* base_topic = cJSON_GetStringValue(cJSON_GetObjectItem(json, "baseTopic"));
-    char* user = cJSON_GetStringValue(cJSON_GetObjectItem(json, "user"));
-    char* password = cJSON_GetStringValue(cJSON_GetObjectItem(json, "password"));
-    uint16_t periodicity = cJSON_GetNumberValue(cJSON_GetObjectItem(json, "periodicity"));
-
-    return mqtt_set_config(enabled, server, base_topic, user, password, periodicity);
-}
-
-cJSON* json_get_serial_config(void)
+cJSON* http_json_get_serial_config(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -229,7 +246,7 @@ cJSON* json_get_serial_config(void)
     return json;
 }
 
-esp_err_t json_set_serial_config(cJSON* json)
+esp_err_t http_json_set_serial_config(cJSON* json)
 {
     char mode_name[16];
     char baud_rate_name[16];
@@ -261,7 +278,7 @@ esp_err_t json_set_serial_config(cJSON* json)
     return ESP_OK;
 }
 
-cJSON* json_get_modbus_config(void)
+cJSON* http_json_get_modbus_config(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -271,7 +288,7 @@ cJSON* json_get_modbus_config(void)
     return json;
 }
 
-esp_err_t json_set_modbus_config(cJSON* json)
+esp_err_t http_json_set_modbus_config(cJSON* json)
 {
     bool tcp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "tcpEnabled"));
     uint8_t unit_id = cJSON_GetObjectItem(json, "unitId")->valuedouble;
@@ -280,7 +297,7 @@ esp_err_t json_set_modbus_config(cJSON* json)
     return modbus_set_unit_id(unit_id);
 }
 
-cJSON* json_get_script_config(void)
+cJSON* http_json_get_script_config(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -289,7 +306,7 @@ cJSON* json_get_script_config(void)
     return json;
 }
 
-esp_err_t json_set_script_config(cJSON* json)
+esp_err_t http_json_set_script_config(cJSON* json)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
 
@@ -298,7 +315,7 @@ esp_err_t json_set_script_config(cJSON* json)
     return ESP_OK;
 }
 
-cJSON* json_get_scheduler_config(void)
+cJSON* http_json_get_scheduler_config(void)
 {
     cJSON* json = cJSON_CreateObject();
     char str[64];
@@ -332,7 +349,7 @@ cJSON* json_get_scheduler_config(void)
     return json;
 }
 
-esp_err_t json_set_scheduler_config(cJSON* json)
+esp_err_t http_json_set_scheduler_config(cJSON* json)
 {
     char* ntp_server = cJSON_GetStringValue(cJSON_GetObjectItem(json, "ntpServer"));
     bool ntp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "ntpEnabled"));
@@ -345,7 +362,7 @@ esp_err_t json_set_scheduler_config(cJSON* json)
     if (cJSON_IsArray(schedules_json)) {
         uint8_t count = cJSON_GetArraySize(schedules_json);
         scheduler_schedule_t* schedules = (scheduler_schedule_t*)malloc(sizeof(scheduler_schedule_t) * count);
-        
+
         uint8_t i = 0;
         cJSON* item = NULL;
         cJSON_ArrayForEach(item, schedules_json) {
@@ -369,7 +386,7 @@ esp_err_t json_set_scheduler_config(cJSON* json)
     return ESP_OK;
 }
 
-cJSON* json_get_state(void)
+cJSON* http_json_get_state(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -424,7 +441,7 @@ cJSON* json_get_state(void)
     return json;
 }
 
-cJSON* json_get_info(void)
+cJSON* http_json_get_info(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -478,7 +495,7 @@ static const char* serial_to_str(board_config_serial_t serial)
     }
 }
 
-cJSON* json_get_board_config(void)
+cJSON* http_json_get_board_config(void)
 {
     cJSON* json = cJSON_CreateObject();
 

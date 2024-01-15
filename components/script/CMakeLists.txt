@@ -42,5 +42,5 @@ set(srcs
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include" 
                     PRIV_INCLUDE_DIRS "src" "lib/lua"
-                    PRIV_REQUIRES nvs_flash app_update json mqtt driver esp_http_client esp_netif esp_wifi esp_timer esp_hw_support
-                    REQUIRES network config evse peripherals protocols serial logger)
+                    PRIV_REQUIRES nvs_flash app_update json mqtt esp_timer
+                    REQUIRES config evse peripherals protocols serial logger)

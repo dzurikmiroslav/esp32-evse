@@ -8,28 +8,40 @@
 #include "esp_ota_ops.h"
 #include "esp_https_ota.h"
 #include "esp_vfs.h"
-#include "esp_spiffs.h"
 #include "cJSON.h"
 
 #include "http_rest.h"
 #include "http.h"
-#include "json.h"
-#include "ota.h"
-#include "timeout_utils.h"
+#include "http_json.h"
 #include "evse.h"
 #include "script.h"
 #include "logger.h"
 
 
-#define REST_BASE_PATH           "/api/v1"
-//#define REST_BASE_PATH_LEN       4
+#define REST_BASE_PATH          "/api/v1"
 #define SCRATCH_BUFSIZE         1024
 #define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
 #define MAX_JSON_SIZE           (50*1024) // 50 KB
 #define MAX_JSON_SIZE_STR       "50KB"
+#define OTA_VERSION_URL         "https://dzurikmiroslav.github.io/esp32-evse/firmware/version.txt"
+#define OTA_FIRMWARE_URL        "https://dzurikmiroslav.github.io/esp32-evse/firmware/"
 
 static const char* TAG = "http_rest";
 
+extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
+extern const char server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
+
+static void restart_func(void* arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    esp_restart();
+    vTaskDelete(NULL);
+}
+
+static void timeout_restart()
+{
+    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
+}
 
 cJSON* read_request_json(httpd_req_t* req)
 {
@@ -80,6 +92,61 @@ cJSON* read_request_json(httpd_req_t* req)
     return root;
 }
 
+
+static void http_client_cleanup(esp_http_client_handle_t client)
+{
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+}
+
+static esp_err_t ota_get_available_version(char* version)
+{
+    esp_http_client_config_t config = {
+        .url = OTA_VERSION_URL,
+        .cert_pem = server_cert_pem_start
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        return err;
+    }
+
+    int content_length = esp_http_client_fetch_headers(client);
+    if (content_length > 0) {
+        esp_http_client_read(client, version, content_length);
+        version[content_length] = '\0';
+        http_client_cleanup(client);
+        return ESP_OK;
+    } else {
+        http_client_cleanup(client);
+        ESP_LOGI(TAG, "No firmware available");
+        return ESP_ERR_NOT_FOUND;
+    }
+}
+
+static bool ota_is_newer_version(const char* actual, const char* available)
+{
+    // available version has no suffix eg: vX.X.X-beta
+
+    char actual_trimed[32];
+    strcpy(actual_trimed, actual);
+
+    char* saveptr;
+    strtok_r(actual_trimed, "-", &saveptr);
+    bool actual_has_suffix = strtok_r(NULL, "-", &saveptr);
+
+    int diff = strcmp(available, actual_trimed);
+    if (diff == 0) {
+        return actual_has_suffix;
+    } else {
+        return diff > 0;
+    }
+}
+
 static cJSON* firmware_check_update()
 {
     cJSON* root = NULL;
@@ -126,47 +193,43 @@ esp_err_t get_handler(httpd_req_t* req)
         cJSON* root = NULL;
 
         if (strcmp(req->uri, REST_BASE_PATH"/info") == 0) {
-            root = json_get_info();
+            root = http_json_get_info();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/boardConfig") == 0) {
-            root = json_get_board_config();
+            root = http_json_get_board_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/state") == 0) {
-            root = json_get_state();
+            root = http_json_get_state();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config") == 0) {
             root = cJSON_CreateObject();
-            cJSON_AddItemToObject(root, "evse", json_get_evse_config());
-            cJSON_AddItemToObject(root, "wifi", json_get_wifi_config());
-            cJSON_AddItemToObject(root, "mqtt", json_get_mqtt_config());
-            cJSON_AddItemToObject(root, "serial", json_get_serial_config());
-            cJSON_AddItemToObject(root, "modbus", json_get_modbus_config());
-            cJSON_AddItemToObject(root, "script", json_get_script_config());
-            cJSON_AddItemToObject(root, "scheduler", json_get_scheduler_config());
+            cJSON_AddItemToObject(root, "evse", http_json_get_evse_config());
+            cJSON_AddItemToObject(root, "wifi", http_json_get_wifi_config());
+            cJSON_AddItemToObject(root, "serial", http_json_get_serial_config());
+            cJSON_AddItemToObject(root, "modbus", http_json_get_modbus_config());
+            cJSON_AddItemToObject(root, "script", http_json_get_script_config());
+            cJSON_AddItemToObject(root, "scheduler", http_json_get_scheduler_config());
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
-            root = json_get_evse_config();
+            root = http_json_get_evse_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/wifi") == 0) {
-            root = json_get_wifi_config();
+            root = http_json_get_wifi_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/wifi/scan") == 0) {
-            root = json_get_wifi_scan();
-        }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/mqtt") == 0) {
-            root = json_get_mqtt_config();
+            root = http_json_get_wifi_scan();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/serial") == 0) {
-            root = json_get_serial_config();
+            root = http_json_get_serial_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/modbus") == 0) {
-            root = json_get_modbus_config();
+            root = http_json_get_modbus_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
-            root = json_get_script_config();
+            root = http_json_get_script_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
-            root = json_get_scheduler_config();
+            root = http_json_get_scheduler_config();
         }
         if (strcmp(req->uri, REST_BASE_PATH"/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
@@ -207,25 +270,22 @@ esp_err_t post_handler(httpd_req_t* req)
         }
 
         if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
-            ret = json_set_evse_config(root);
+            ret = http_json_set_evse_config(root);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/wifi") == 0) {
-            ret = json_set_wifi_config(root, true);
-        }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/mqtt") == 0) {
-            ret = json_set_mqtt_config(root);
+            ret = http_json_set_wifi_config(root, true);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/serial") == 0) {
-            ret = json_set_serial_config(root);
+            ret = http_json_set_serial_config(root);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/modbus") == 0) {
-            ret = json_set_modbus_config(root);
+            ret = http_json_set_modbus_config(root);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
-            ret = json_set_script_config(root);
+            ret = http_json_set_script_config(root);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
-            ret = json_set_scheduler_config(root);
+            ret = http_json_set_scheduler_config(root);
         }
         if (strcmp(req->uri, REST_BASE_PATH"/credentials") == 0) {
             set_credentials(root);
