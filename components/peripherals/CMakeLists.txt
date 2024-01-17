@@ -16,4 +16,4 @@ set(srcs
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include"
                     PRIV_REQUIRES nvs_flash driver esp_adc esp_timer
-                    REQUIRES config evse api)
+                    REQUIRES config evse)

@@ -2,17 +2,16 @@
 #include <math.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_ota_ops.h"
 #include "nvs.h"
 
 #include "modbus.h"
-#include "wifi.h"
 #include "evse.h"
 #include "energy_meter.h"
 #include "socket_lock.h"
-#include "timeout_utils.h"
 #include "temp_sensor.h"
 
 #define MODBUS_REG_STATE                100
@@ -36,7 +35,6 @@
 #define MODBUS_REG_EMETER_L1_CUR        213 // 2 word
 #define MODBUS_REG_EMETER_L2_CUR        215 // 2 word
 #define MODBUS_REG_EMETER_L3_CUR        217 // 2 word
-
 
 #define MODBUS_REG_SOCKET_OUTLET        300
 #define MODBUS_REG_RCM                  301
@@ -81,6 +79,18 @@ static const char* TAG = "modbus";
 static nvs_handle nvs;
 
 static uint8_t unit_id = 1;
+
+static void restart_func(void* arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    esp_restart();
+    vTaskDelete(NULL);
+}
+
+static void timeout_restart()
+{
+    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
+}
 
 void modbus_init(void)
 {
