@@ -15,6 +15,7 @@ J1772 EVSE firmware for ESP32 based devices.
  - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
  - [Lua scripting](https://github.com/dzurikmiroslav/esp32-evse/wiki/Lua)
  - [Nextion HMI](https://github.com/dzurikmiroslav/esp32-evse/wiki/Nextion)
+ - Scheduler
 
 ### Device definition method
 
@@ -86,3 +87,10 @@ ESP32-S2 based EVSE with advanced functionality, three phase energy meter, RS485
 Quick demonstration video
 
 [![Quick demonstration video](https://img.youtube.com/vi/r6YkWEet1aA/hqdefault.jpg)](https://www.youtube.com/shorts/r6YkWEet1aA)
+
+## Donations
+
+esp32-evse firmware is free, but costs money to develop harware and time to develop software.
+This gift to the developer would demonstrate your appreciation of this software & hardware and help its future development.
+
+[![GitHub Sponsors](https://img.shields.io/badge/donate-GitHub_Sponsors-blue)](https://github.com/sponsors/dzurikmiroslav)
