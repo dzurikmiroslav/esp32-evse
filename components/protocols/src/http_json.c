@@ -328,9 +328,9 @@ cJSON* http_json_get_scheduler_config(void)
     cJSON_AddStringToObject(json, "timezone", str);
 
     cJSON* schedules_json = cJSON_CreateArray();
-    uint8_t schedules_count = scheduler_get_schedule_count();
+    uint8_t num_of_schedules = scheduler_get_num_of_schedules();
     scheduler_schedule_t* schedules = scheduler_get_schedules();
-    for (uint8_t i = 0; i < schedules_count; i++) {
+    for (uint8_t i = 0; i < num_of_schedules; i++) {
         cJSON* schedule_json = cJSON_CreateObject();
         cJSON_AddStringToObject(schedule_json, "action", scheduler_action_to_str(schedules[i].action));
 

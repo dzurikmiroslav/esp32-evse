@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include "esp_err.h"
 
-#define SCHEDULER_ID_MAX    5
-
 /**
  * @brief Scheduler actions
  *
@@ -46,11 +44,27 @@ typedef struct
  */
 void scheduler_init(void);
 
-uint8_t scheduler_get_schedule_count(void);
+/**
+ * @brief Return number of shedulers
+ * 
+ * @return uint8_t 
+ */
+uint8_t scheduler_get_num_of_schedules(void);
 
+/**
+ * @brief Return shedulers array
+ * 
+ * @return scheduler_schedule_t* 
+ */
 scheduler_schedule_t* scheduler_get_schedules(void);
 
-void scheduler_set_schedule_config(const scheduler_schedule_t *schedules, uint8_t count);
+/**
+ * @brief Set schedulers config
+ * 
+ * @param schedules 
+ * @param num_of_schedules 
+ */
+void scheduler_set_schedule_config(const scheduler_schedule_t *schedules, uint8_t num_of_schedules);
 
 /**
  * @brief Return true if NTP is enabled, stored in NVS
