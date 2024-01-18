@@ -90,7 +90,7 @@ Quick demonstration video
 
 ## Donations
 
-esp32-evse firmware is free, but costs money to develop harware and time to develop software.
+ESP32 EVSE firmware is free, but costs money to develop harware and time to develop software.
 This gift to the developer would demonstrate your appreciation of this software & hardware and help its future development.
 
 [![GitHub Sponsors](https://img.shields.io/badge/donate-GitHub_Sponsors-blue)](https://github.com/sponsors/dzurikmiroslav)
