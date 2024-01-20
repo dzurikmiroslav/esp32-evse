@@ -1,5 +1,6 @@
 #include <string.h>
 #include <dirent.h>
+#include <time.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include "esp_err.h"
@@ -201,6 +202,9 @@ esp_err_t get_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH"/state") == 0) {
             root = http_json_get_state();
         }
+        if (strcmp(req->uri, REST_BASE_PATH"/time") == 0) {
+            root = http_json_get_time();
+        }
         if (strcmp(req->uri, REST_BASE_PATH"/config") == 0) {
             root = cJSON_CreateObject();
             cJSON_AddItemToObject(root, "evse", http_json_get_evse_config());
@@ -290,6 +294,9 @@ esp_err_t post_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH"/credentials") == 0) {
             set_credentials(root);
             ret = ESP_OK;
+        }
+        if (strcmp(req->uri, REST_BASE_PATH"/time") == 0) {
+            ret = http_json_set_time(root);
         }
 
         cJSON_Delete(root);

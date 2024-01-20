@@ -45,14 +45,20 @@ typedef struct
 void scheduler_init(void);
 
 /**
- * @brief Return number of shedulers
+ * @brief Execute schedules after change time
+ * 
+ */
+void scheduler_execute_schedules(void);
+
+/**
+ * @brief Return number of schedulers
  * 
  * @return uint8_t 
  */
-uint8_t scheduler_get_num_of_schedules(void);
+uint8_t scheduler_get_schedule_count(void);
 
 /**
- * @brief Return shedulers array
+ * @brief Return schedulers array
  * 
  * @return scheduler_schedule_t* 
  */
@@ -62,9 +68,9 @@ scheduler_schedule_t* scheduler_get_schedules(void);
  * @brief Set schedulers config
  * 
  * @param schedules 
- * @param num_of_schedules 
+ * @param schedule_count 
  */
-void scheduler_set_schedule_config(const scheduler_schedule_t *schedules, uint8_t num_of_schedules);
+void scheduler_set_schedule_config(const scheduler_schedule_t *schedules, uint8_t schedule_count);
 
 /**
  * @brief Return true if NTP is enabled, stored in NVS

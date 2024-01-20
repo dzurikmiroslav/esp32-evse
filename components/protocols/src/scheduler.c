@@ -28,7 +28,7 @@ static TaskHandle_t scheduler_task = NULL;
 
 static char ntp_server[64]; // if renew_servers_after_new_IP = false, will be used static string reference
 
-static uint8_t num_of_schedules = 0;
+static uint8_t schedule_count = 0;
 
 static scheduler_schedule_t* schedules = NULL;
 
@@ -58,8 +58,8 @@ static const char* find_tz(const char* name)
 
 void ntp_sync_cb(struct timeval* tv)
 {
-    ESP_LOGI(TAG, "NTP sync");
-    xTaskNotifyGive(scheduler_task);
+    ESP_LOGD(TAG, "NTP sync");
+    scheduler_execute_schedules();
 }
 
 static void on_action(scheduler_action_t action)
@@ -111,7 +111,7 @@ static void scheduler_task_func(void* param)
         struct tm timeinfo = { 0 };
         localtime_r(&now, &timeinfo);
 
-        for (uint8_t i = 0; i < num_of_schedules; i++) {
+        for (uint8_t i = 0; i < schedule_count; i++) {
             uint32_t day = schedules[i].days.order[timeinfo.tm_wday];
             if (day & (1 << timeinfo.tm_hour)) {
                 if (schedules_state[i] != STATE_ON) {
@@ -171,12 +171,12 @@ void scheduler_init(void)
         if (size % sizeof(scheduler_schedule_t) > 0) {
             ESP_LOGW(TAG, "Schedules NVS incompatible size, schedules will be cleared");
         } else {
-            num_of_schedules = size / sizeof(scheduler_schedule_t);
-            schedules = (scheduler_schedule_t*)malloc(sizeof(scheduler_schedule_t) * num_of_schedules);
+            schedule_count = size / sizeof(scheduler_schedule_t);
+            schedules = (scheduler_schedule_t*)malloc(sizeof(scheduler_schedule_t) * schedule_count);
             nvs_get_blob(nvs, NVS_SCHEDULES, (void*)schedules, &size);
 
-            schedules_state = (uint8_t*)realloc((void*)schedules_state, sizeof(uint8_t) * num_of_schedules);
-            memset((void*)schedules_state, STATE_NONE, sizeof(uint8_t) * num_of_schedules);
+            schedules_state = (uint8_t*)realloc((void*)schedules_state, sizeof(uint8_t) * schedule_count);
+            memset((void*)schedules_state, STATE_NONE, sizeof(uint8_t) * schedule_count);
         }
     }
 
@@ -185,9 +185,14 @@ void scheduler_init(void)
     xTaskCreate(scheduler_task_func, "scheduler_task", 2 * 1024, NULL, 1, &scheduler_task);
 }
 
-uint8_t scheduler_get_num_of_schedules(void)
+void scheduler_execute_schedules(void)
 {
-    return num_of_schedules;
+    xTaskNotifyGive(scheduler_task);
+}
+
+uint8_t scheduler_get_schedule_count(void)
+{
+    return schedule_count;
 }
 
 scheduler_schedule_t* scheduler_get_schedules(void)
@@ -199,12 +204,12 @@ void scheduler_set_schedule_config(const scheduler_schedule_t* _schedules, uint8
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    num_of_schedules = _num_of_schedules;
-    if (num_of_schedules > 0) {
-        schedules_state = (uint8_t*)realloc((void*)schedules_state, sizeof(uint8_t) * num_of_schedules);
-        memset((void*)schedules_state, STATE_NONE, sizeof(uint8_t) * num_of_schedules);
+    schedule_count = _num_of_schedules;
+    if (schedule_count > 0) {
+        schedules_state = (uint8_t*)realloc((void*)schedules_state, sizeof(uint8_t) * schedule_count);
+        memset((void*)schedules_state, STATE_NONE, sizeof(uint8_t) * schedule_count);
 
-        size_t size = sizeof(scheduler_schedule_t) * num_of_schedules;
+        size_t size = sizeof(scheduler_schedule_t) * schedule_count;
         schedules = (scheduler_schedule_t*)realloc((void*)schedules, size);
         memcpy((void*)schedules, _schedules, size);
         nvs_set_blob(nvs, NVS_SCHEDULES, (void*)schedules, size);

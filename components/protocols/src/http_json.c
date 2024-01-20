@@ -1,4 +1,5 @@
 #include <string.h>
+#include <sys/time.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_wifi.h"
@@ -328,9 +329,9 @@ cJSON* http_json_get_scheduler_config(void)
     cJSON_AddStringToObject(json, "timezone", str);
 
     cJSON* schedules_json = cJSON_CreateArray();
-    uint8_t num_of_schedules = scheduler_get_num_of_schedules();
+    uint8_t schedule_count = scheduler_get_schedule_count();
     scheduler_schedule_t* schedules = scheduler_get_schedules();
-    for (uint8_t i = 0; i < num_of_schedules; i++) {
+    for (uint8_t i = 0; i < schedule_count; i++) {
         cJSON* schedule_json = cJSON_CreateObject();
         cJSON_AddStringToObject(schedule_json, "action", scheduler_action_to_str(schedules[i].action));
 
@@ -364,16 +365,16 @@ esp_err_t http_json_set_scheduler_config(cJSON* json)
         scheduler_schedule_t* schedules = (scheduler_schedule_t*)malloc(sizeof(scheduler_schedule_t) * count);
 
         uint8_t i = 0;
-        cJSON* item = NULL;
-        cJSON_ArrayForEach(item, schedules_json) {
-            schedules[i].action = scheduler_str_to_action(cJSON_GetStringValue(cJSON_GetObjectItem(item, "action")));
-            schedules[i].days.week.mon = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "mon"));
-            schedules[i].days.week.tue = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "tue"));
-            schedules[i].days.week.wed = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "wed"));
-            schedules[i].days.week.thu = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "thu"));
-            schedules[i].days.week.fri = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "fri"));
-            schedules[i].days.week.sat = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "sat"));
-            schedules[i].days.week.sun = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "sun"));
+        cJSON* schedule_json = NULL;
+        cJSON_ArrayForEach(schedule_json, schedules_json) {
+            schedules[i].action = scheduler_str_to_action(cJSON_GetStringValue(cJSON_GetObjectItem(schedule_json, "action")));
+            schedules[i].days.week.mon = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "mon"));
+            schedules[i].days.week.tue = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "tue"));
+            schedules[i].days.week.wed = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "wed"));
+            schedules[i].days.week.thu = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "thu"));
+            schedules[i].days.week.fri = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "fri"));
+            schedules[i].days.week.sat = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "sat"));
+            schedules[i].days.week.sun = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "sun"));
             i++;
         };
 
@@ -382,6 +383,30 @@ esp_err_t http_json_set_scheduler_config(cJSON* json)
     }
 
     RETURN_ON_ERROR(scheduler_set_timezone(timezone));
+
+    return ESP_OK;
+}
+
+cJSON* http_json_get_time(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return cJSON_CreateNumber(tv.tv_sec);
+}
+
+esp_err_t http_json_set_time(cJSON* json)
+{
+    if (cJSON_IsNumber(json)) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        tv.tv_sec = cJSON_GetNumberValue(json);
+        settimeofday(&tv, NULL);
+        
+        scheduler_execute_schedules();
+    } else {
+        return ESP_ERR_INVALID_ARG;
+    }
 
     return ESP_OK;
 }

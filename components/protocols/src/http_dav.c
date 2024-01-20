@@ -89,17 +89,14 @@ static void propfind_response_directory(httpd_req_t* req, const char* path)
     httpd_resp_send_chunk(req, "</href>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<propstat>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<prop>\n", HTTPD_RESP_USE_STRLEN);
-    if (total > 0 && used > 0) {
-        sprintf(str, "%zu", used);
-        httpd_resp_send_chunk(req, "<quota-used-bytes>", HTTPD_RESP_USE_STRLEN);
-        httpd_resp_send_chunk(req, str, HTTPD_RESP_USE_STRLEN);
-        httpd_resp_send_chunk(req, "</quota-used-bytes>\n", HTTPD_RESP_USE_STRLEN);
-
-        sprintf(str, "%zu", total - used);
-        httpd_resp_send_chunk(req, "<quota-available-bytes>", HTTPD_RESP_USE_STRLEN);
-        httpd_resp_send_chunk(req, str, HTTPD_RESP_USE_STRLEN);
-        httpd_resp_send_chunk(req, "</quota-available-bytes>\n", HTTPD_RESP_USE_STRLEN);
-    }
+    sprintf(str, "%zu", used);
+    httpd_resp_send_chunk(req, "<quota-used-bytes>", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, str, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "</quota-used-bytes>\n", HTTPD_RESP_USE_STRLEN);
+    sprintf(str, "%zu", total - used);
+    httpd_resp_send_chunk(req, "<quota-available-bytes>", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, str, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "</quota-available-bytes>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<resourcetype><collection/></resourcetype>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "</prop>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<status>HTTP/1.1 200 OK</status>\n", HTTPD_RESP_USE_STRLEN);
@@ -134,8 +131,6 @@ static void propfind_response_file(httpd_req_t* req, const char* path)
 
 static esp_err_t options_handler(httpd_req_t* req)
 {
-    //ESP_LOGI(TAG, "http_dav_options_handler %s", req->uri);
-
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
@@ -168,8 +163,6 @@ static esp_err_t options_handler(httpd_req_t* req)
 static esp_err_t propfind_handler(httpd_req_t* req)
 {
     const char* path = req->uri + DAV_BASE_PATH_LEN;
-
-    // ESP_LOGI(TAG, "http_dav_propfind_handler %s", req->uri);
 
     if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
         //directories
@@ -246,6 +239,8 @@ static esp_err_t get_handler(httpd_req_t* req)
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
         return ESP_FAIL;
     }
+
+    httpd_resp_set_type(req, "application/octet-stream");
 
     if (req->method == HTTP_GET) {
         char buf[SCRATCH_BUFSIZE];
