@@ -316,6 +316,19 @@ esp_err_t http_json_set_script_config(cJSON* json)
     return ESP_OK;
 }
 
+#include "esp_log.h"
+
+cJSON* http_json_get_script_drivers_config(void)
+{
+    cJSON* json = cJSON_CreateArray();
+
+    uint8_t count = script_get_driver_count();
+
+    ESP_LOGI("SCR", "driver count %d", count);
+
+    return json;
+}
+
 cJSON* http_json_get_scheduler_config(void)
 {
     cJSON* json = cJSON_CreateObject();

@@ -2,6 +2,7 @@
 #define SCRIPT_H_
 
 #include "esp_err.h"
+#include "cJSON.h"
 
 /**
  * @brief Initialize script VM
@@ -47,6 +48,10 @@ uint16_t script_output_count(void);
  * @return false When no entry left
  */
 bool script_output_read(uint16_t *index, char **str, uint16_t* len);
+
+uint8_t script_get_driver_count(void);
+
+cJSON* script_read_config(uint8_t index);
 
 
 #endif /* SCRIPT_H_ */

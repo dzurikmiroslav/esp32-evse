@@ -232,6 +232,9 @@ esp_err_t get_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
             root = http_json_get_script_config();
         }
+        if (strcmp(req->uri, REST_BASE_PATH"/config/script/driver") == 0) {
+            root = http_json_get_script_drivers_config();
+        }
         if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
             root = http_json_get_scheduler_config();
         }

@@ -199,3 +199,26 @@ bool script_is_enabled(void)
     nvs_get_u8(nvs, NVS_ENABLED, &value);
     return value;
 }
+
+uint8_t script_get_driver_count(void)
+{
+    xSemaphoreTake(script_mutex, portMAX_DELAY);
+
+    uint8_t  count = l_evse_get_driver_count(L);
+
+    xSemaphoreGive(script_mutex);
+
+    return count;
+}
+
+cJSON* script_read_driver_config(uint8_t index)
+{
+    xSemaphoreTake(script_mutex, portMAX_DELAY);
+
+    l_evse_get_driver(L, index);
+
+
+    xSemaphoreGive(script_mutex);
+
+    return NULL;
+}
