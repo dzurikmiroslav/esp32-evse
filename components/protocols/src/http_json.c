@@ -324,7 +324,9 @@ cJSON* http_json_get_script_drivers_config(void)
 
     uint8_t count = script_get_driver_count();
 
-    ESP_LOGI("SCR", "driver count %d", count);
+    for (uint8_t i = 0; i < count; i++) {
+        cJSON_AddItemToArray(json, script_read_driver_config(i));
+    }
 
     return json;
 }
@@ -415,7 +417,7 @@ esp_err_t http_json_set_time(cJSON* json)
         gettimeofday(&tv, NULL);
         tv.tv_sec = cJSON_GetNumberValue(json);
         settimeofday(&tv, NULL);
-        
+
         scheduler_execute_schedules();
     } else {
         return ESP_ERR_INVALID_ARG;

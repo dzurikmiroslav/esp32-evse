@@ -51,7 +51,7 @@ bool script_output_read(uint16_t *index, char **str, uint16_t* len);
 
 uint8_t script_get_driver_count(void);
 
-cJSON* script_read_config(uint8_t index);
+cJSON* script_read_driver_config(uint8_t index);
 
 
 #endif /* SCRIPT_H_ */

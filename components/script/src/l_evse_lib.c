@@ -224,9 +224,18 @@ uint8_t l_evse_get_driver_count(lua_State* L)
     return len;
 }
 
-void l_evse_get_driver(lua_State* L, uint8_t index);
+void l_evse_get_driver(lua_State* L, uint8_t index)
 {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
+    evse_userdata_t* userdata = lua_touserdata(L, -1);
 
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
+
+    lua_rawgeti(L, -1, index + 1);
+
+    lua_remove(L, -2);
+
+    lua_remove(L, -2);
 }
 
 static const luaL_Reg lib[] = {

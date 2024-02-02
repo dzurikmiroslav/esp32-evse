@@ -204,21 +204,121 @@ uint8_t script_get_driver_count(void)
 {
     xSemaphoreTake(script_mutex, portMAX_DELAY);
 
-    uint8_t  count = l_evse_get_driver_count(L);
+    uint8_t count = l_evse_get_driver_count(L);
 
     xSemaphoreGive(script_mutex);
 
     return count;
 }
 
+static cJSON* l_read_config_key(int table_idx, int config_key_idx)
+{
+    if (lua_istable(L, config_key_idx)) {
+        lua_getfield(L, config_key_idx, "type");
+        const char* type = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        if (strcmp("string", type) != 0 && strcmp("number", type) != 0 && strcmp("boolean", type) != 0) {
+            return NULL; // unknown type
+        }
+
+        lua_getfield(L, config_key_idx, "key");
+        const char* key = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        lua_getfield(L, config_key_idx, "name");
+        const char* name = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        cJSON* value_json = NULL;
+        lua_getfield(L, table_idx, key);
+        if (lua_isnil(L, -1)) {
+            value_json = cJSON_CreateNull();
+        } else {
+            if (strcmp("string", type) == 0) {
+                value_json = cJSON_CreateString(lua_tostring(L, -1));
+            } else if (strcmp("number", type) == 0) {
+                value_json = cJSON_CreateNumber(lua_tonumber(L, -1));
+            } else {
+                value_json = cJSON_CreateBool(lua_toboolean(L, -1));
+            }
+        }
+        lua_pop(L, 1);
+
+        cJSON* json = cJSON_CreateObject();
+        cJSON_AddStringToObject(json, "key", key);
+        cJSON_AddStringToObject(json, "type", type);
+        cJSON_AddStringToObject(json, "name", name);
+        cJSON_AddItemToObject(json, "value", value_json);
+
+        return json;
+    }
+
+    return NULL;
+}
+
+static cJSON* l_read_config_keys(int table_idx, int config_idx)
+{
+    cJSON* json = cJSON_CreateArray();
+
+    int count = lua_rawlen(L, config_idx);
+    for (int i = 1; i <= count; i++) {
+        lua_rawgeti(L, config_idx, i);
+
+        cJSON* item_json = l_read_config_key(table_idx - 1, -1);
+        if (item_json != NULL) {
+            cJSON_AddItemToArray(json, item_json);
+        }
+
+        lua_pop(L, 1);
+    }
+
+    return json;
+}
+
 cJSON* script_read_driver_config(uint8_t index)
 {
+    cJSON* json = cJSON_CreateObject();
+
     xSemaphoreTake(script_mutex, portMAX_DELAY);
 
     l_evse_get_driver(L, index);
 
+    lua_getfield(L, -1, "name");
+    if (lua_isstring(L, -1)) {
+        cJSON_AddStringToObject(json, "name", lua_tostring(L, -1));
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "readconfig");
+
+    if (lua_isfunction(L, -1)) {
+        if (lua_pcall(L, 0, 1, 0) == LUA_OK) {
+            if (lua_istable(L, -1)) {
+                lua_getfield(L, -2, "config");
+
+                cJSON_AddItemToObject(json, "config", l_read_config_keys(-2, -1));
+
+                lua_pop(L, 1);
+            } else {
+                const char* err = "readconfig not return table";
+                lua_writestring(err, strlen(err));
+                lua_writeline();
+            }
+            lua_pop(L, 1);
+        } else {
+            const char* err = lua_tostring(L, -1);
+            lua_writestring(err, strlen(err));
+            lua_writeline();
+            lua_pop(L, 1);
+        }
+    } else {
+        lua_pop(L, 1);
+    }
+
+    lua_pop(L, 1);
 
     xSemaphoreGive(script_mutex);
 
-    return NULL;
+    return json;
 }
