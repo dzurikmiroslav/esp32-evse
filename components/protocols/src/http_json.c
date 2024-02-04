@@ -316,19 +316,24 @@ esp_err_t http_json_set_script_config(cJSON* json)
     return ESP_OK;
 }
 
-#include "esp_log.h"
-
 cJSON* http_json_get_script_drivers_config(void)
 {
     cJSON* json = cJSON_CreateArray();
 
-    uint8_t count = script_get_driver_count();
+    uint8_t count = script_driver_get_count();
 
     for (uint8_t i = 0; i < count; i++) {
-        cJSON_AddItemToArray(json, script_read_driver_config(i));
+        cJSON_AddItemToArray(json, script_driver_read_config(i));
     }
 
     return json;
+}
+
+esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json)
+{
+    script_driver_write_config(index, json);
+
+    return ESP_OK;
 }
 
 cJSON* http_json_get_scheduler_config(void)

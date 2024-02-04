@@ -203,9 +203,7 @@ void l_evse_process(lua_State* L)
         lua_pop(L, 1);
     }
 
-    lua_pop(L, 1);
-
-    lua_pop(L, 1);
+    lua_pop(L, 2);
 }
 
 uint8_t l_evse_get_driver_count(lua_State* L)
@@ -217,9 +215,7 @@ uint8_t l_evse_get_driver_count(lua_State* L)
 
     int len = lua_rawlen(L, -1);
 
-    lua_pop(L, 1);
-
-    lua_pop(L, 1);
+    lua_pop(L, 2);
 
     return len;
 }

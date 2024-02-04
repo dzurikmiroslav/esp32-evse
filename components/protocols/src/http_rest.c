@@ -291,6 +291,10 @@ esp_err_t post_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
             ret = http_json_set_script_config(root);
         }
+        if (strstr(req->uri, REST_BASE_PATH"/config/script/driver/") == req->uri) {
+            int index = atoi(req->uri + strlen(REST_BASE_PATH"/config/script/driver/"));
+            ret = http_json_set_script_driver_config(index, root);
+        }
         if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
             ret = http_json_set_scheduler_config(root);
         }
