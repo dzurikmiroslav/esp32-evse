@@ -323,7 +323,43 @@ cJSON* http_json_get_script_drivers_config(void)
     uint8_t count = script_driver_get_count();
 
     for (uint8_t i = 0; i < count; i++) {
-        cJSON_AddItemToArray(json, script_driver_read_config(i));
+        script_driver_t* driver = script_driver_get(i);
+
+        cJSON* driver_json = cJSON_CreateObject();
+        cJSON_AddStringToObject(driver_json, "name", driver->name);
+
+        cJSON* cfg_entries_json = cJSON_CreateArray();
+        for (uint8_t j = 0; j < driver->cfg_entries_count; j++) {
+            script_driver_cfg_meta_entry_t* cfg_entry = &driver->cfg_entries[j];
+            if (cfg_entry->type != SCRIPT_DRIVER_CONFIG_TYPE_NONE) {
+                cJSON* cfg_entry_json = cJSON_CreateObject();
+                cJSON_AddStringToObject(cfg_entry_json, "key", cfg_entry->key);
+                cJSON_AddStringToObject(cfg_entry_json, "name", cfg_entry->name);
+                cJSON_AddStringToObject(cfg_entry_json, "type", script_driver_cfg_entry_type_to_str(cfg_entry->type));
+                switch (cfg_entry->type)
+                {
+                case SCRIPT_DRIVER_CONFIG_TYPE_STRING:
+                    cJSON_AddStringToObject(cfg_entry_json, "value", cfg_entry->value.string);
+                    break;
+                case SCRIPT_DRIVER_CONFIG_TYPE_NUMBER:
+                    cJSON_AddNumberToObject(cfg_entry_json, "value", cfg_entry->value.boolean);
+                    break;
+                case SCRIPT_DRIVER_CONFIG_TYPE_BOOLEAN:
+                    cJSON_AddBoolToObject(cfg_entry_json, "value", cfg_entry->value.number);
+                    break;
+                default:
+                    break;
+                }
+                cJSON_AddItemToArray(cfg_entries_json, cfg_entry_json);
+            }
+        }
+        cJSON_AddItemToObject(driver_json, "config", cfg_entries_json);
+
+
+        cJSON_AddItemToArray(json, driver_json);
+
+        free((void*)driver->cfg_entries);
+        free((void*)driver);
     }
 
     return json;
@@ -331,7 +367,7 @@ cJSON* http_json_get_script_drivers_config(void)
 
 esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json)
 {
-    script_driver_write_config(index, json);
+    // script_driver_write_config(index, json);
 
     return ESP_OK;
 }
