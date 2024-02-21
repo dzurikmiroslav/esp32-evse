@@ -26,6 +26,8 @@ cJSON* http_json_get_script_config(void);
 
 esp_err_t http_json_set_script_config(cJSON* json);
 
+cJSON* http_json_get_script_driver_config(uint8_t index);
+
 cJSON* http_json_get_script_drivers_config(void);
 
 esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json);

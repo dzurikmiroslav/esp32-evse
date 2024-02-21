@@ -56,10 +56,10 @@ bool script_output_read(uint16_t* index, char** str, uint16_t* len);
 uint8_t script_driver_get_count(void);
 
 typedef enum {
-    SCRIPT_DRIVER_CONFIG_TYPE_NONE,
-    SCRIPT_DRIVER_CONFIG_TYPE_STRING,
-    SCRIPT_DRIVER_CONFIG_TYPE_NUMBER,
-    SCRIPT_DRIVER_CONFIG_TYPE_BOOLEAN
+    SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE,
+    SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING,
+    SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER,
+    SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN
 } script_driver_cfg_entry_type_t;
 
 script_driver_cfg_entry_type_t script_str_to_driver_cfg_entry_type(const char* str);
@@ -67,32 +67,38 @@ script_driver_cfg_entry_type_t script_str_to_driver_cfg_entry_type(const char* s
 const char* script_driver_cfg_entry_type_to_str(script_driver_cfg_entry_type_t type);
 
 typedef struct {
-    const char* key;
-    const char* name;
+    char* key;
+    char* name;
     script_driver_cfg_entry_type_t type;
     union {
-        const char* string;
+        char* string;
         double number;
         bool boolean;
     } value;
 } script_driver_cfg_meta_entry_t;
 
 typedef struct {
-    const char* name;
+    char* name;
+    char* description;
     uint8_t cfg_entries_count;
     script_driver_cfg_meta_entry_t* cfg_entries;
 } script_driver_t;
 
 typedef struct {
-    const char* key;
+    char* key;
+    script_driver_cfg_entry_type_t type;
     union {
-        const char* string;
+        char* string;
         double number;
         bool boolean;
     } value;
 } script_driver_cfg_entry_t;
 
 script_driver_t* script_driver_get(uint8_t index);
+
+void script_driver_free(script_driver_t* script_driver);
+
+void script_driver_cfg_entries_free(script_driver_cfg_entry_t* cfg_entries, uint8_t cfg_entries_count);
 
 void script_driver_set_config(uint8_t driver_index, const script_driver_cfg_entry_t* cfg_entries, uint8_t cfg_entries_count);
 
