@@ -5,3 +5,4 @@ sdkconfig.old
 .project
 .settings
 .vscode
+managed_components
