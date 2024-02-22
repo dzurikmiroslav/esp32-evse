@@ -18,7 +18,7 @@
 #include "l_aux_lib.h"
 #include "l_board_config_lib.h"
 
-#define START_TIMEOUT           1000
+#define START_TIMEOUT           10000
 #define SHUTDOWN_TIMEOUT        1000
 #define HEARTBEAT_THRESHOLD     5
 #define OUTPUT_BUFFER_SIZE      4096
@@ -115,9 +115,9 @@ static void script_stop(void)
             ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
             vTaskDelete(script_task);
             if (L != NULL) {
-                xSemaphoreGive(script_mutex);
                 lua_close(L);
                 L = NULL;
+                xSemaphoreGive(script_mutex);
             }
         }
 
@@ -175,8 +175,12 @@ bool script_output_read(uint16_t* index, char** str, uint16_t* len)
 void script_reload(void)
 {
     if (script_is_enabled()) {
+        xSemaphoreTake(script_mutex, portMAX_DELAY);
+
         script_stop();
         script_start();
+
+        xSemaphoreGive(script_mutex);
     }
 }
 
@@ -335,7 +339,7 @@ void script_driver_free(script_driver_t* script_driver)
 void script_driver_cfg_entries_free(script_driver_cfg_entry_t* cfg_entries, uint8_t cfg_entries_count)
 {
     for (uint8_t i = 0; i < cfg_entries_count; i++) {
-        script_driver_cfg_meta_entry_t* cfg_entry = &cfg_entries[i];
+        script_driver_cfg_entry_t* cfg_entry = &cfg_entries[i];
         free((void*)cfg_entry->key);
         if (cfg_entry->type == SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING) {
             free((void*)cfg_entry->value.string);
