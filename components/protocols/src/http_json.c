@@ -316,6 +316,95 @@ esp_err_t http_json_set_script_config(cJSON* json)
     return ESP_OK;
 }
 
+cJSON* http_json_get_script_driver_config(uint8_t index)
+{
+    cJSON* json = cJSON_CreateObject();
+
+    script_driver_t* driver = script_driver_get(index);
+    if (driver != NULL) {
+        cJSON_AddStringToObject(json, "name", driver->name);
+        cJSON_AddStringToObject(json, "description", driver->description);
+
+        cJSON* cfg_entries_json = cJSON_CreateArray();
+        for (uint8_t i = 0; i < driver->cfg_entries_count; i++) {
+            script_driver_cfg_meta_entry_t* cfg_entry = &driver->cfg_entries[i];
+            if (cfg_entry->type != SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE) {
+                cJSON* cfg_entry_json = cJSON_CreateObject();
+                cJSON_AddStringToObject(cfg_entry_json, "key", cfg_entry->key);
+                cJSON_AddStringToObject(cfg_entry_json, "name", cfg_entry->name);
+                cJSON_AddStringToObject(cfg_entry_json, "type", script_driver_cfg_entry_type_to_str(cfg_entry->type));
+                switch (cfg_entry->type) {
+                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING:
+                    cJSON_AddStringToObject(cfg_entry_json, "value", cfg_entry->value.string);
+                    break;
+                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER:
+                    cJSON_AddNumberToObject(cfg_entry_json, "value", cfg_entry->value.number);
+                    break;
+                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN:
+                    cJSON_AddBoolToObject(cfg_entry_json, "value", cfg_entry->value.boolean);
+                    break;
+                default:
+                    break;
+                }
+                cJSON_AddItemToArray(cfg_entries_json, cfg_entry_json);
+            }
+        }
+        cJSON_AddItemToObject(json, "config", cfg_entries_json);
+
+        script_driver_free(driver);
+    }
+
+    return json;
+}
+
+cJSON* http_json_get_script_drivers_config(void)
+{
+    cJSON* json = cJSON_CreateArray();
+
+    uint8_t count = script_driver_get_count();
+    for (uint8_t i = 0; i < count; i++) {
+        cJSON_AddItemToArray(json, http_json_get_script_driver_config(i));
+    }
+
+    return json;
+}
+
+esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json)
+{
+    cJSON* config_json = cJSON_GetObjectItem(json, "config");
+    if (cJSON_IsArray(config_json)) {
+        uint8_t cfg_entries_count = cJSON_GetArraySize(config_json);
+        script_driver_cfg_entry_t* cfg_entries = (script_driver_cfg_entry_t*)malloc(sizeof(script_driver_cfg_entry_t) * cfg_entries_count);
+
+        uint8_t i = 0;
+        cJSON* entry_json = NULL;
+        cJSON_ArrayForEach(entry_json, config_json) {
+            script_driver_cfg_entry_t* cfg_entry = &cfg_entries[i];
+            cfg_entry->key = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(entry_json, "key")));
+            cJSON* value_json = cJSON_GetObjectItem(entry_json, "value");
+            if (cJSON_IsString(value_json)) {
+                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING;
+                cfg_entry->value.string = strdup(value_json->valuestring);
+            } else if (cJSON_IsNumber(value_json)) {
+                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER;
+                cfg_entry->value.number = value_json->valuedouble;
+            } else if (cJSON_IsBool(value_json)) {
+                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN;
+                cfg_entry->value.boolean = cJSON_IsTrue(value_json);
+            } else {
+                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE;
+            }
+
+            i++;
+        };
+
+        script_driver_set_config(index, cfg_entries, cfg_entries_count);
+        script_driver_cfg_entries_free(cfg_entries, cfg_entries_count);
+    }
+
+    return ESP_OK;
+}
+
 cJSON* http_json_get_scheduler_config(void)
 {
     cJSON* json = cJSON_CreateObject();
@@ -402,7 +491,7 @@ esp_err_t http_json_set_time(cJSON* json)
         gettimeofday(&tv, NULL);
         tv.tv_sec = cJSON_GetNumberValue(json);
         settimeofday(&tv, NULL);
-        
+
         scheduler_execute_schedules();
     } else {
         return ESP_ERR_INVALID_ARG;

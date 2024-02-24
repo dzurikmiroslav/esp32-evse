@@ -41,7 +41,6 @@ static void event_handler(void* handler_args, esp_event_base_t base, int32_t eve
         userdata->connected = false;
         break;
     case MQTT_EVENT_DATA:
-        ESP_LOGW("LM", "data");
         if (userdata->on_message_ref != LUA_NOREF) {
             xSemaphoreTake(script_mutex, portMAX_DELAY);
             lua_State* L = userdata->L;
@@ -173,19 +172,21 @@ static int l_client_publish(lua_State* L)
 {
     client_userdata_t* userdata = (client_userdata_t*)luaL_checkudata(L, 1, "mqtt.client");
 
-    const char* topic = luaL_checkstring(L, 2);
-    const char* data = luaL_checkstring(L, 3);
-    int qos = 1;
-    if (!lua_isnoneornil(L, 4)) {
-        qos = luaL_checkinteger(L, 4);
-    }
-    int retry = 0;
-    if (!lua_isnoneornil(L, 5)) {
-        retry = luaL_checkinteger(L, 5);
-    }
+    if (userdata->connected) {
+        const char* topic = luaL_checkstring(L, 2);
+        const char* data = luaL_checkstring(L, 3);
+        int qos = 1;
+        if (!lua_isnoneornil(L, 4)) {
+            qos = luaL_checkinteger(L, 4);
+        }
+        int retry = 0;
+        if (!lua_isnoneornil(L, 5)) {
+            retry = luaL_checkinteger(L, 5);
+        }
 
-    esp_mqtt_client_publish(userdata->client, topic, data, 0, qos, retry);
-
+        esp_mqtt_client_publish(userdata->client, topic, data, 0, qos, retry);
+    }
+    
     return 0;
 }
 
