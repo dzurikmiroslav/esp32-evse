@@ -276,7 +276,7 @@ void energy_meter_init(void)
     nvs_get_u16(nvs, NVS_AC_VOLTAGE, &ac_voltage);
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_11
+        .atten = ADC_ATTEN_DB_12
     };
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {

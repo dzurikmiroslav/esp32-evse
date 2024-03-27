@@ -118,7 +118,7 @@ void aux_init(void)
 
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_11
+        .atten = ADC_ATTEN_DB_12
     };
 
     if (board_config.aux_ain_1) {

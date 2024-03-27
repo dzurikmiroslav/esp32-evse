@@ -150,28 +150,28 @@ void board_config_load()
                     SET_CONFIG_VALUE("AUX_AIN_2", aux_ain_2, atob);
                     SET_CONFIG_VALUE_STR("AUX_AIN_2_NAME", aux_ain_2_name);
                     SET_CONFIG_VALUE("AUX_AIN_2_ADC_CHANNEL", aux_ain_2_adc_channel, atoi);
-#if CONFIG_ESP_CONSOLE_UART_NUM != 0
+#if CONFIG_ESP_CONSOLE_NONE || CONFIG_ESP_CONSOLE_UART_NUM != 0
                     SET_CONFIG_VALUE("SERIAL_1", serial_1, atoser);
                     SET_CONFIG_VALUE_STR("SERIAL_1_NAME", serial_1_name);
                     SET_CONFIG_VALUE("SERIAL_1_RXD_GPIO", serial_1_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_1_TXD_GPIO", serial_1_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_1_RTS_GPIO", serial_1_rts_gpio, atoi);
-#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 0 */
-#if CONFIG_ESP_CONSOLE_UART_NUM != 1
+#endif /* CONFIG_ESP_CONSOLE_NONE || CONFIG_ESP_CONSOLE_UART_NUM != 0 */
+#if CONFIG_ESP_CONSOLE_NONE || CONFIG_ESP_CONSOLE_UART_NUM != 1
                     SET_CONFIG_VALUE("SERIAL_2", serial_2, atoser);
                     SET_CONFIG_VALUE_STR("SERIAL_2_NAME", serial_2_name);
                     SET_CONFIG_VALUE("SERIAL_2_RXD_GPIO", serial_2_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2_TXD_GPIO", serial_2_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_2_RTS_GPIO", serial_2_rts_gpio, atoi);
-#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 1 */
+#endif /* CONFIG_ESP_CONSOLE_NONE || CONFIG_ESP_CONSOLE_UART_NUM != 1 */
 #if SOC_UART_NUM > 2
-#if CONFIG_ESP_CONSOLE_UART_NUM != 2
+#if CONFIG_ESP_CONSOLE_NONE || CONFIG_ESP_CONSOLE_UART_NUM != 2
                     SET_CONFIG_VALUE("SERIAL_3", serial_3, atoser);
                     SET_CONFIG_VALUE_STR("SERIAL_3_NAME", serial_3_name);
                     SET_CONFIG_VALUE("SERIAL_3_RXD_GPIO", serial_3_rxd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_TXD_GPIO", serial_3_txd_gpio, atoi);
                     SET_CONFIG_VALUE("SERIAL_3_RTS_GPIO", serial_3_rts_gpio, atoi);
-#endif /* CONFIG_ESP_CONSOLE_UART_NUM != 2 */
+#endif /* CONFIG_ESP_CONSOLE_NONE || CONFIG_ESP_CONSOLE_UART_NUM != 2 */
 #endif /* SOC_UART_NUM > 2 */
                     SET_CONFIG_VALUE("ONEWIRE", onewire, atob);
                     SET_CONFIG_VALUE("ONEWIRE_GPIO", onewire_gpio, atoi);
