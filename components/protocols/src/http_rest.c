@@ -9,6 +9,7 @@
 #include "esp_ota_ops.h"
 #include "esp_https_ota.h"
 #include "esp_vfs.h"
+#include "esp_crt_bundle.h"
 #include "cJSON.h"
 
 #include "http_rest.h"
@@ -28,9 +29,6 @@
 #define OTA_FIRMWARE_URL        "https://dzurikmiroslav.github.io/esp32-evse/firmware/"
 
 static const char* TAG = "http_rest";
-
-extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-extern const char server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
 static void restart_func(void* arg)
 {
@@ -104,7 +102,7 @@ static esp_err_t ota_get_available_version(char* version)
 {
     esp_http_client_config_t config = {
         .url = OTA_VERSION_URL,
-        .cert_pem = server_cert_pem_start
+        .crt_bundle_attach = esp_crt_bundle_attach
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -377,11 +375,9 @@ esp_err_t firmware_update_post_handler(httpd_req_t* req)
             const esp_app_desc_t* app_desc = esp_app_get_description();
 
             if (ota_is_newer_version(app_desc->version, avl_version)) {
-                extern const char server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-
                 esp_http_client_config_t http_config = {
                     .url = OTA_FIRMWARE_URL CONFIG_IDF_TARGET "-evse.bin",
-                    .cert_pem = server_cert_pem_start
+                    .crt_bundle_attach = esp_crt_bundle_attach
                 };
 
                 esp_https_ota_config_t config = {

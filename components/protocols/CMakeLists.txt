@@ -9,8 +9,7 @@ set(srcs
     "src/scheduler.c")
 
 set(embed_files
-    "web.cpio"
-    "server_certs/ca_cert.pem")
+    "web.cpio")
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include"
