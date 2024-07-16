@@ -2,8 +2,9 @@
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
-<esp-web-install-button manifest="https://dzurikmiroslav.github.io/esp32-evse/web-tools/manifest-esp32devkitc.json"></esp-web-install-button>
+<esp-web-install-button manifest="https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32devkitc/manifest.json">ESP32</esp-web-install-button>
 
+<esp-web-install-button manifest="https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/manifest.json">ESP32</esp-web-install-button>
 
 You can use the [editor on GitHub](https://github.com/dzurikmiroslav/esp32-evse/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
