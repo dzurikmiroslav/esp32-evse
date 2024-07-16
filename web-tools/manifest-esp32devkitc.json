@@ -9,9 +9,9 @@
         "parts": [
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/bootloader.bin", "offset": 4096 },
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/firmware/esp32-evse.bin", "offset": 65536 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-toolspartition-table.bin", "offset": 32768 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-toolsota_data_initial.bin", "offset": 53248 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-toolscfg.bin", "offset": 3866624 }
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/partition-table.bin", "offset": 32768 },
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/ota_data_initial.bin", "offset": 53248 },
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/cfg-esp32devkitc.bin", "offset": 3866624 }
         ]
       }
     ]
