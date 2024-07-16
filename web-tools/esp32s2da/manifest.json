@@ -11,7 +11,7 @@
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/firmware/esp32-evse.bin", "offset": 65536 },
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/partition-table.bin", "offset": 32768 },
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/ota_data_initial.bin", "offset": 53248 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/cfg-esp32devkitc.bin", "offset": 3866624 }
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/cfg.bin", "offset": 3866624 }
         ]
       }
     ]
