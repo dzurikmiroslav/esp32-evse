@@ -8,7 +8,7 @@
         "chipFamily": "ESP32-S2",
         "parts": [
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/bootloader.bin", "offset": 4096 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/firmware/esp3s2-evse.bin", "offset": 65536 },
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/firmware/esp32s2-evse.bin", "offset": 65536 },
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/partition-table.bin", "offset": 32768 },
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/ota_data_initial.bin", "offset": 53248 },
           { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32s2da/cfg.bin", "offset": 3866624 }
