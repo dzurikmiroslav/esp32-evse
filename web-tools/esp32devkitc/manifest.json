@@ -1,8 +1,8 @@
 {
-    "name": "esp32-evse",
+    "name": "ESP32DevkitC EVSE",
     "version": "0.7.0",
     "funding_url": "https://github.com/sponsors/dzurikmiroslav",
-    "new_install_prompt_erase": false,
+    "new_install_prompt_erase": true,
     "builds": [
       {
         "chipFamily": "ESP32",
