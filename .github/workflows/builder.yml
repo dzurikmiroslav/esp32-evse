@@ -72,15 +72,15 @@ jobs:
         with:
           esp_idf_version: $ESP_IDF_VERSION
           target: ${{ matrix.platform }}
+          command: export SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.board }}" \
+            idf.py build
 
       - name: Merge
         uses: espressif/esp-idf-ci-action@v1
-        env:
-          SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.${{ matrix.board }}
         with:
           esp_idf_version: $ESP_IDF_VERSION
           target: ${{ matrix.platform }}
-          command: export SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.board }}";   esptool.py --chip esp32 merge_bin -o build/merged-esp32-evse.bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
+          command: esptool.py --chip {{ matrix.platform }} merge_bin -o build/merged-esp32-evse.bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
             0x1000 build/bootloader/bootloader.bin \
             0x10000 build/esp32-evse.bin \
             0x8000 build/partition_table/partition-table.bin \
