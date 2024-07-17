@@ -76,9 +76,33 @@ jobs:
         with:
           esp_idf_version: $ESP_IDF_VERSION
           target: ${{ matrix.platform }}
+          board_config: ${{ matrix.board }}
           command: esptool.py --chip esp32 merge_bin -o build/merged-esp32-evse.bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
             0x1000 build/bootloader/bootloader.bin \
             0x10000 build/esp32-evse.bin \
             0x8000 build/partition_table/partition-table.bin \
             0xd000 build/ota_data_initial.bin \
             0x3b0000 build/cfg.bin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.board }}
+          path: build/merged-esp32-evse.bin
+
+      - name: sdkconfig
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.board }}-sdkconfig
+          path: sdkconfig
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build/merged-esp32-evse.bin
+          asset_name: ${{ matrix.board }}.bin
+          asset_content_type: application/octet-stream
