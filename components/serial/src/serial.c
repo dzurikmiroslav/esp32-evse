@@ -92,9 +92,9 @@ void serial_init(void)
     }
 #endif
 
-    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
+    for (serial_id_t id = SERIAL_ID_1; id < SERIAL_ID_MAX; id++) {
         if (serial_board_config[id] != BOARD_CONFIG_SERIAL_NONE) {
-            uint8_t u8 = 0;
+            uint8_t u8 = id == SERIAL_ID_1 ? SERIAL_MODE_LOG : SERIAL_MODE_NONE;  //SERIAL_ID_1 is default system log
             char key[12];
             sprintf(key, NVS_MODE, id);
             nvs_get_u8(nvs, key, &u8);
@@ -126,7 +126,7 @@ serial_mode_t serial_get_mode(serial_id_t id)
 
 int serial_get_baud_rate(serial_id_t id)
 {
-    int32_t value = 460800;
+    int32_t value = 115200;
     char key[12];
     sprintf(key, NVS_BAUD_RATE, id);
     nvs_get_i32(nvs, key, &value);

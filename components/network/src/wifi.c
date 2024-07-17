@@ -201,9 +201,9 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
     memset(ap_info, 0, sizeof(ap_info));
 
     esp_wifi_scan_start(NULL, true);
-    esp_wifi_scan_get_ap_records(&number, ap_info);
     esp_wifi_scan_get_ap_num(&ap_count);
-
+    esp_wifi_scan_get_ap_records(&number, ap_info);
+    
     for (int i = 0; (i < WIFI_SCAN_SCAN_LIST_SIZE) && (i < ap_count); i++) {
         strcpy(scan_aps[i].ssid, (const char*)ap_info[i].ssid);
         scan_aps[i].rssi = ap_info[i].rssi;

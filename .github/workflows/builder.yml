@@ -1,5 +1,9 @@
 name: Build with ESP-IDF
 
+env:
+  ESP_IDF_VERSION: v5.2.2
+
+
 on: 
   push:
     tags-ignore:
@@ -12,7 +16,7 @@ on:
       - created
 
 jobs:
-  build:
+  firmware:
     runs-on: ubuntu-latest
 
     strategy:
@@ -26,7 +30,7 @@ jobs:
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: v5.2.1
+          esp_idf_version: $ESP_IDF_VERSION
           target: ${{ matrix.platform }}
 
       - name: Upload artifact
@@ -45,3 +49,36 @@ jobs:
           asset_path: ./build/esp32-evse.bin
           asset_name: ${{ matrix.platform }}-evse.bin
           asset_content_type: application/octet-stream
+
+  merged-firmware:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - platform: esp32
+            board: esp32devkitc
+          - platform: esp32s2
+            board: esp32s2da
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+   
+      - name: Build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: $ESP_IDF_VERSION
+          target: ${{ matrix.platform }}
+
+      - name: Merge
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: $ESP_IDF_VERSION
+          target: ${{ matrix.platform }}
+          command: esptool.py --chip esp32 merge_bin -o merged-esp32-evse.bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            0x1000 bootloader/bootloader.bin \
+            0x10000 esp32-evse.bin \
+            0x8000 partition_table/partition-table.bin \
+            0xd000 ota_data_initial.bin \
+            0x3b0000 cfg.bin
