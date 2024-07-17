@@ -35,13 +35,13 @@ jobs:
 
       - name: Rename file 
         shell: bash
-        run: mv ./build/esp32-evse.bin ./build/${{ matrix.platform }}-evse.bin
+        run: cp build/esp32-evse.bin ${{ matrix.platform }}-evse.bin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.platform }}
-          path: build/${{ matrix.platform }}-evse.bin
+          path: ${{ matrix.platform }}-evse.bin
 
       - name: Upload release assets
         if: github.event_name == 'release'
@@ -50,7 +50,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/${{ matrix.platform }}-evse.bin
+          asset_path: ${{ matrix.platform }}-evse.bin
           asset_name: ${{ matrix.platform }}-evse.bin
           asset_content_type: application/octet-stream
 
