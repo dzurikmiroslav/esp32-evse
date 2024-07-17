@@ -67,6 +67,8 @@ jobs:
    
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
+        env:
+          SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.${{ matrix.board }}
         with:
           esp_idf_version: $ESP_IDF_VERSION
           target: ${{ matrix.platform }}
