@@ -7,11 +7,7 @@
       {
         "chipFamily": "ESP32",
         "parts": [
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer/bootloader.bin", "offset": 4096 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/firmware/esp32-evse.bin", "offset": 65536 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer/partition-table.bin", "offset": 32768 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer/ota_data_initial.bin", "offset": 53248 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer/cfg_esp32devkitc.bin", "offset": 3866624 }
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer/esp32devkitc.bin", "offset": 0 }
         ]
       }
     ]
