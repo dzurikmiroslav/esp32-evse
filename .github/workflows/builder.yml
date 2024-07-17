@@ -16,7 +16,7 @@ on:
       - created
 
 jobs:
-  firmware:
+  build:
     runs-on: ubuntu-latest
 
     strategy:
@@ -34,6 +34,7 @@ jobs:
           target: ${{ matrix.platform }}
 
       - name: Rename file 
+        shell: bash
         run: mv build/esp32-evse.bin build/${{ matrix.platform }}-evse.bin
 
       - name: Upload artifact
@@ -53,7 +54,7 @@ jobs:
           asset_name: ${{ matrix.platform }}-evse.bin
           asset_content_type: application/octet-stream
 
-  merged-firmware:
+  factory:
     runs-on: ubuntu-latest
 
     strategy:
@@ -90,7 +91,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: merged-${{ matrix.board }}
+          name: factory-${{ matrix.board }}
           path: build/${{ matrix.board }}.bin
 
       - name: Upload release assets
