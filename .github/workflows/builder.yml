@@ -70,8 +70,7 @@ jobs:
         with:
           esp_idf_version: $ESP_IDF_VERSION
           target: ${{ matrix.platform }}
-          command: export SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.board }}" \
-            idf.py build
+          command: export SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.board }}"; idf.py build
 
       - name: Merge
         uses: espressif/esp-idf-ci-action@v1
