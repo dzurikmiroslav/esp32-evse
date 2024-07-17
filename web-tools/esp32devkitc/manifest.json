@@ -2,16 +2,12 @@
     "name": "ESP32DevkitC EVSE",
     "version": "0.7.0",
     "funding_url": "https://github.com/sponsors/dzurikmiroslav",
-    "new_install_prompt_erase": true,
+    "new_install_prompt_erase": false,
     "builds": [
       {
         "chipFamily": "ESP32",
         "parts": [
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32devkitc/bootloader.bin", "offset": 4096 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/firmware/esp32-evse.bin", "offset": 65536 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32devkitc/partition-table.bin", "offset": 32768 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32devkitc/ota_data_initial.bin", "offset": 53248 },
-          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32devkitc/cfg.bin", "offset": 3866624 }
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-tools/esp32devkitc.bin", "offset": 0 }
         ]
       }
     ]

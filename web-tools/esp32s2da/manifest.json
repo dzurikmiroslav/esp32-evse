@@ -2,7 +2,7 @@
     "name": "ESP32-S2 EVSE DIY ALPHA",
     "version": "0.7.0",
     "funding_url": "https://github.com/sponsors/dzurikmiroslav",
-    "new_install_prompt_erase": true,
+    "new_install_prompt_erase": false,
     "builds": [
       {
         "chipFamily": "ESP32-S2",
