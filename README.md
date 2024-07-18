@@ -17,6 +17,12 @@ J1772 EVSE firmware for ESP32 based devices.
  - [Nextion HMI](https://github.com/dzurikmiroslav/esp32-evse/wiki/Nextion)
  - Scheduler
 
+### Web installer
+
+Easy initial installation of esp32-evse firmware can be performed using your browser (currently Google Chrome or Microsoft Edge).
+
+[ Web installer](https://dzurikmiroslav.github.io/esp32-evse/web-installer)
+
 ### Device definition method
 
 _One firmware to rule them all._ Not really :-) one per device platform (ESP32, ESP32-S2...).
