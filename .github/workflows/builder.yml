@@ -64,7 +64,12 @@ jobs:
             board: esp32devkitc
           - platform: esp32s2
             board: esp32s2da
-
+          - platform: esp32
+            board: esp32minimal
+          - platform: esp32s2
+            board: esp32s2minimal
+          - platform: esp32s3
+            board: esp32s3minimal
     steps:
       - name: Checkout
         uses: actions/checkout@v4
