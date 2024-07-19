@@ -1,0 +1,14 @@
+{
+    "name": "esp32-evse",
+    "version": "0.8.0",
+    "funding_url": "https://github.com/sponsors/dzurikmiroslav",
+    "new_install_prompt_erase": true,
+    "builds": [
+      {
+        "chipFamily": "ESP32",
+        "parts": [
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer/esp32minimal.bin", "offset": 0 }
+        ]
+      }
+    ]
+  }
