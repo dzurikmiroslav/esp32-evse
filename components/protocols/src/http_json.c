@@ -61,7 +61,7 @@ cJSON* http_json_get_evse_config(void)
     cJSON_AddBoolToObject(json, "socketLockDetectionHigh", socket_lock_is_detection_high());
     cJSON_AddNumberToObject(json, "socketLockRetryCount", socket_lock_get_retry_count());
 
-    cJSON_AddStringToObject(json, "energyMeter", energy_meter_mode_to_str(energy_meter_get_mode()));
+    cJSON_AddStringToObject(json, "energyMeterMode", energy_meter_mode_to_str(energy_meter_get_mode()));
     cJSON_AddNumberToObject(json, "energyMeterAcVoltage", energy_meter_get_ac_voltage());
     cJSON_AddNumberToObject(json, "energyMeterThreePhases", energy_meter_is_three_phases());
 
@@ -123,8 +123,8 @@ esp_err_t http_json_set_evse_config(cJSON* json)
         socket_lock_set_retry_count(cJSON_GetObjectItem(json, "socketLockRetryCount")->valuedouble);
     }
 
-    if (cJSON_IsString(cJSON_GetObjectItem(json, "energyMeter"))) {
-        RETURN_ON_ERROR(energy_meter_set_mode(energy_meter_str_to_mode(cJSON_GetObjectItem(json, "energyMeter")->valuestring)));
+    if (cJSON_IsString(cJSON_GetObjectItem(json, "energyMeterMode"))) {
+        RETURN_ON_ERROR(energy_meter_set_mode(energy_meter_str_to_mode(cJSON_GetObjectItem(json, "energyMeterMode")->valuestring)));
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "energyMeterAcVoltage"))) {
         RETURN_ON_ERROR(energy_meter_set_ac_voltage(cJSON_GetObjectItem(json, "energyMeterAcVoltage")->valuedouble));
