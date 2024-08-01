@@ -122,7 +122,7 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         *value = evse_is_enabled();
         break;
     case MODBUS_REG_AVAILABLE:
-        *value = evse_is_enabled();
+        *value = evse_is_available();
         break;
     case MODBUS_REG_PENDING_AUTH:
         *value = evse_is_pending_auth();
