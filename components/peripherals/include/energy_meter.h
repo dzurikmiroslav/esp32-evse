@@ -10,8 +10,7 @@
  *
  */
 typedef enum {
-    ENERGY_METER_MODE_DUMMY_SINGLE_PHASE,
-    ENERGY_METER_MODE_DUMMY_THREE_PHASE,
+    ENERGY_METER_MODE_DUMMY,
     ENERGY_METER_MODE_CUR,
     ENERGY_METER_MODE_CUR_VLT,
     //TODO ENERGY_METER_MODE_MODBUS
@@ -57,6 +56,21 @@ uint16_t energy_meter_get_ac_voltage(void);
  * @return esp_err_t 
  */
 esp_err_t energy_meter_set_ac_voltage(uint16_t ac_voltage);
+
+/**
+ * @brief Is three phase energy meter, stored in NVS
+ * 
+ * @return true 
+ * @return false 
+ */
+bool energy_meter_is_three_phases(void);
+
+/**
+ * @brief Set three phase energy meter, stored in NVS
+ * 
+ * @param three_phases 
+ */
+void energy_meter_set_three_phases(bool three_phases);
 
 /**
  * @brief Start energy meter session, if not started

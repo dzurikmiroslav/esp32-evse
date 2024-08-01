@@ -15,6 +15,7 @@
 #define NVS_NAMESPACE           "evse_emeter"
 #define NVS_MODE                "mode"
 #define NVS_AC_VOLTAGE          "ac_voltage"
+#define NVS_three_phases         "three_phases"
 
 #define ZERO_FIX                5000
 #define MEASURE_US              40000   //2 periods at 50Hz
@@ -24,9 +25,11 @@ static const char* TAG = "energy_meter";
 
 static nvs_handle nvs;
 
-static energy_meter_mode_t mode = ENERGY_METER_MODE_DUMMY_SINGLE_PHASE;
+static energy_meter_mode_t mode = ENERGY_METER_MODE_DUMMY;
 
 static uint16_t ac_voltage = 250;
+
+static bool three_phases = false;
 
 static uint16_t power = 0;
 
@@ -50,34 +53,29 @@ static int64_t prev_time = 0;
 
 static void (*measure_fn)(uint32_t delta_ms, uint16_t charging_current);
 
-static void set_calc_power(float p, uint32_t delta_ms)
+static void set_calc_va_power(uint32_t delta_ms)
 {
-    consumption += roundf((p * delta_ms) / 1000.0f);
-    power = roundf(p);
+    float va = (vlt[0] * cur[0]) + (vlt[1] * cur[1]) + (vlt[2] * cur[2]);
+
+    consumption += roundf((va * delta_ms) / 1000.0f);
+    power = roundf(va);
 }
 
-static void measure_single_phase_dummy(uint32_t delta_ms, uint16_t charging_current)
+static void measure_dummy(uint32_t delta_ms, uint16_t charging_current)
 {
-    vlt[0] = ac_voltage;
     cur[0] = charging_current / 10.0f;
-    vlt[1] = vlt[2] = 0;
-    cur[1] = cur[2] = 0;
+    vlt[0] = ac_voltage;
 
-    float va = vlt[0] * cur[0];
+    if (three_phases) {
+        cur[1] = cur[2] = cur[0];
+        vlt[1] = vlt[2] = vlt[0];
+    } else {
+        cur[1] = cur[2] = 0;
+        vlt[1] = vlt[2] = 0;
+    }
 
-    set_calc_power(va, delta_ms);
+    set_calc_va_power(delta_ms);
 }
-
-static void measure_three_phase_dummy(uint32_t delta_ms, uint16_t charging_current)
-{
-    vlt[0] = vlt[1] = vlt[2] = ac_voltage;
-    cur[0] = cur[1] = cur[2] = charging_current / 10.0f;
-
-    float va = (vlt[0] * cur[0]) * 3;
-
-    set_calc_power(va, delta_ms);
-}
-
 
 static uint32_t read_adc(adc_channel_t channel)
 {
@@ -113,11 +111,19 @@ static void measure_single_phase_cur(uint32_t delta_ms, uint16_t charging_curren
         cur_sum += filtered_cur * filtered_cur;
     }
 
-    vlt[0] = ac_voltage;
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
+    vlt[0] = ac_voltage;
+    if (three_phases) {
+        vlt[1] = vlt[2] = vlt[0];
+        cur[1] = cur[2] = cur[0];
+    } else {
+        vlt[1] = vlt[2] = 0;
+        cur[1] = cur[2] = 0;
+    }
+
     ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
 
-    set_calc_power(vlt[0] * cur[0], delta_ms);
+    set_calc_va_power(delta_ms);
 }
 
 static void measure_single_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_current)
@@ -144,15 +150,22 @@ static void measure_single_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
     }
 
     cur[0] = sqrt(cur_sum / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
-
     vlt[0] = sqrt(vlt_sum / samples) * board_config.energy_meter_vlt_scale;
+    if (three_phases) {
+        cur[1] = cur[2] = cur[0];
+        vlt[1] = vlt[2] = vlt[0];
+    } else {
+        cur[1] = cur[2] = 0;
+        vlt[1] = vlt[2] = 0;
+    }
+
+    ESP_LOGD(TAG, "Current %f (samples %d)", cur[0], samples);
     ESP_LOGD(TAG, "Voltage %f (samples %d)", vlt[0], samples);
 
-    set_calc_power(cur[0] * vlt[0], delta_ms);
+    set_calc_va_power(delta_ms);
 }
 
-static void measure_three_phase_cur(uint32_t delta_ms, uint16_t charging_current)
+static void measure_three_phases_cur(uint32_t delta_ms, uint16_t charging_current)
 {
     float cur_sum[3] = { 0, 0, 0 };
     uint32_t sample_cur;
@@ -166,31 +179,40 @@ static void measure_three_phase_cur(uint32_t delta_ms, uint16_t charging_current
         filtered_cur = sample_cur - cur_sens_zero[0];
         cur_sum[0] += filtered_cur * filtered_cur;
 
-        //L2
-        sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
+        if (three_phases) {
+            //L2
+            sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
 
-        cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
-        filtered_cur = sample_cur - cur_sens_zero[1];
-        cur_sum[1] += filtered_cur * filtered_cur;
+            cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
+            filtered_cur = sample_cur - cur_sens_zero[1];
+            cur_sum[1] += filtered_cur * filtered_cur;
 
-        //L3
-        sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
+            //L3
+            sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
 
-        cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
-        filtered_cur = sample_cur - cur_sens_zero[2];
-        cur_sum[2] += filtered_cur * filtered_cur;
+            cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
+            filtered_cur = sample_cur - cur_sens_zero[2];
+            cur_sum[2] += filtered_cur * filtered_cur;
+        }
     }
 
-    vlt[0] = vlt[1] = vlt[2] = ac_voltage;
     cur[0] = sqrt(cur_sum[0] / samples) * board_config.energy_meter_cur_scale;
-    cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
-    cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
+    vlt[0] = ac_voltage;
+    if (three_phases) {
+        cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
+        cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
+        vlt[1] = vlt[2] = ac_voltage;
+    } else {
+        cur[1] = cur[2] = 0;
+        vlt[1] = vlt[2] = 0;
+    }
+
     ESP_LOGD(TAG, "Currents %f %f %f (samples %d)", cur[0], cur[1], cur[2], samples);
 
-    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2], delta_ms);
+    set_calc_va_power(delta_ms);
 }
 
-static void measure_three_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_current)
+static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_current)
 {
     float cur_sum[3] = { 0, 0, 0 };
     float vlt_sum[3] = { 0, 0, 0 };
@@ -212,55 +234,60 @@ static void measure_three_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_cur
         filtered_vlt = sample_vlt - vlt_sens_zero[0];
         vlt_sum[0] += filtered_vlt * filtered_vlt;
 
-        //L2
-        sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
-        sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
+        if (three_phases) {
+            //L2
+            sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
+            sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
 
-        cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
-        filtered_cur = sample_cur - cur_sens_zero[1];
-        cur_sum[1] += filtered_cur * filtered_cur;
+            cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
+            filtered_cur = sample_cur - cur_sens_zero[1];
+            cur_sum[1] += filtered_cur * filtered_cur;
 
-        vlt_sens_zero[1] += (sample_vlt - vlt_sens_zero[1]) / ZERO_FIX;
-        filtered_vlt = sample_vlt - vlt_sens_zero[1];
-        vlt_sum[1] += filtered_vlt * filtered_vlt;
+            vlt_sens_zero[1] += (sample_vlt - vlt_sens_zero[1]) / ZERO_FIX;
+            filtered_vlt = sample_vlt - vlt_sens_zero[1];
+            vlt_sum[1] += filtered_vlt * filtered_vlt;
 
-        //L3
-        sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
-        sample_vlt = read_adc(board_config.energy_meter_l3_vlt_adc_channel);
+            //L3
+            sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
+            sample_vlt = read_adc(board_config.energy_meter_l3_vlt_adc_channel);
 
-        cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
-        filtered_cur = sample_cur - cur_sens_zero[2];
-        cur_sum[2] += filtered_cur * filtered_cur;
+            cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
+            filtered_cur = sample_cur - cur_sens_zero[2];
+            cur_sum[2] += filtered_cur * filtered_cur;
 
-        vlt_sens_zero[2] += (sample_vlt - vlt_sens_zero[2]) / ZERO_FIX;
-        filtered_vlt = sample_vlt - vlt_sens_zero[2];
-        vlt_sum[2] += filtered_vlt * filtered_vlt;
+            vlt_sens_zero[2] += (sample_vlt - vlt_sens_zero[2]) / ZERO_FIX;
+            filtered_vlt = sample_vlt - vlt_sens_zero[2];
+            vlt_sum[2] += filtered_vlt * filtered_vlt;
+        }
     }
 
     cur[0] = sqrt(cur_sum[0] / samples) * board_config.energy_meter_cur_scale;
-    cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
-    cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
-    ESP_LOGD(TAG, "Currents %fA %fA %fA (samples %d)", cur[0], cur[1], cur[2], samples);
-
     vlt[0] = sqrt(vlt_sum[0] / samples) * board_config.energy_meter_vlt_scale;
-    vlt[1] = sqrt(vlt_sum[1] / samples) * board_config.energy_meter_vlt_scale;
-    vlt[2] = sqrt(vlt_sum[2] / samples) * board_config.energy_meter_vlt_scale;
+    if (three_phases) {
+        cur[1] = sqrt(cur_sum[1] / samples) * board_config.energy_meter_cur_scale;
+        cur[2] = sqrt(cur_sum[2] / samples) * board_config.energy_meter_cur_scale;
+        vlt[1] = sqrt(vlt_sum[1] / samples) * board_config.energy_meter_vlt_scale;
+        vlt[2] = sqrt(vlt_sum[2] / samples) * board_config.energy_meter_vlt_scale;
+    } else {
+        cur[1] = cur[2] = 0;
+        vlt[1] = vlt[2] = 0;
+    }
+
+    ESP_LOGD(TAG, "Currents %fA %fA %fA (samples %d)", cur[0], cur[1], cur[2], samples);
     ESP_LOGD(TAG, "Voltages %fV %fV %fV (samples %d)", vlt[0], vlt[1], vlt[2], samples);
 
-    set_calc_power(vlt[0] * cur[0] + vlt[1] * cur[1] + vlt[2] * cur[2], delta_ms);
+    set_calc_va_power(delta_ms);
 }
 
 static void* get_measure_fn(energy_meter_mode_t mode)
 {
     switch (mode) {
     case ENERGY_METER_MODE_CUR:
-        return board_config.energy_meter_three_phases ? measure_three_phase_cur : measure_single_phase_cur;
+        return board_config.energy_meter_three_phases ? measure_three_phases_cur : measure_single_phase_cur;
     case ENERGY_METER_MODE_CUR_VLT:
-        return board_config.energy_meter_three_phases ? measure_three_phase_cur_vlt : measure_single_phase_cur_vlt;
-    case ENERGY_METER_MODE_DUMMY_THREE_PHASE:
-        return measure_three_phase_dummy;
+        return board_config.energy_meter_three_phases ? measure_three_phases_cur_vlt : measure_single_phase_cur_vlt;
     default:
-        return measure_single_phase_dummy;
+        return measure_dummy;
     }
 }
 
@@ -268,7 +295,7 @@ void energy_meter_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    uint8_t u8 = ENERGY_METER_MODE_DUMMY_SINGLE_PHASE;
+    uint8_t u8 = ENERGY_METER_MODE_DUMMY;
     nvs_get_u8(nvs, NVS_MODE, &u8);
     mode = u8;
     measure_fn = get_measure_fn(mode);
@@ -278,6 +305,10 @@ void energy_meter_init(void)
         .bitwidth = ADC_BITWIDTH_DEFAULT,
         .atten = ADC_ATTEN_DB_12
     };
+
+    if (nvs_get_u8(nvs, NVS_three_phases, &u8) == ESP_OK) {
+        three_phases = u8;
+    }
 
     if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
         vlt[0] = ac_voltage;
@@ -371,6 +402,18 @@ esp_err_t energy_meter_set_ac_voltage(uint16_t _ac_voltage)
     nvs_commit(nvs);
 
     return ESP_OK;
+}
+
+bool energy_meter_is_three_phases(void)
+{
+    return three_phases;
+}
+
+void energy_meter_set_three_phases(bool _three_phases)
+{
+    three_phases = _three_phases;
+    nvs_set_u8(nvs, NVS_three_phases, three_phases);
+    nvs_commit(nvs);
 }
 
 void energy_meter_start_session(void)
@@ -482,10 +525,8 @@ const char* energy_meter_mode_to_str(energy_meter_mode_t mode)
         return "cur";
     case ENERGY_METER_MODE_CUR_VLT:
         return "cur_vlt";
-    case ENERGY_METER_MODE_DUMMY_THREE_PHASE:
-        return "dummy_3p";
     default:
-        return "dummy_1p";
+        return "dummy";
     }
 }
 
@@ -497,8 +538,5 @@ energy_meter_mode_t energy_meter_str_to_mode(const char* str)
     if (!strcmp(str, "cur_vlt")) {
         return ENERGY_METER_MODE_CUR_VLT;
     }
-    if (!strcmp(str, "dummy_3p")) {
-        return ENERGY_METER_MODE_DUMMY_THREE_PHASE;
-    }
-    return ENERGY_METER_MODE_DUMMY_SINGLE_PHASE;
+    return ENERGY_METER_MODE_DUMMY;
 }
