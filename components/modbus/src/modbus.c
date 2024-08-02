@@ -51,6 +51,7 @@
 #define MODBUS_REG_LOCK_RET_COUNT       314
 #define MODBUS_REG_EMETER_MODE          315
 #define MODBUS_REG_EMETER_AC_VLT        316
+#define MODBUS_REG_EMETER_THREE_PHASES  317
 
 #define MODBUS_REG_UPTIME               400 //2 word
 #define MODBUS_REG_TEMP_LOW             402
@@ -253,6 +254,9 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
     case MODBUS_REG_EMETER_AC_VLT:
         *value = energy_meter_get_ac_voltage();
         break;
+    case MODBUS_REG_EMETER_THREE_PHASES:
+        *value = energy_meter_is_three_phases();
+        break;
     case MODBUS_REG_UPTIME:
         *value = UINT32_GET_HI(get_uptime());
         break;
@@ -418,6 +422,12 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         if (energy_meter_set_ac_voltage(value) != ESP_OK) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
+        break;
+    case MODBUS_REG_EMETER_THREE_PHASES:
+        if (value != 0 || value != 1) {
+            return MODBUS_EX_ILLEGAL_DATA_VALUE;
+        }
+        energy_meter_set_three_phases(value);
         break;
     case MODBUS_REG_RESTART:
         if (value != 1) {
