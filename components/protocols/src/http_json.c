@@ -543,7 +543,7 @@ cJSON* http_json_get_state(void)
         if (error & EVSE_ERR_TEMPERATURE_FAULT_BIT) {
             cJSON_AddItemToArray(errors_json, cJSON_CreateString("temperature_fault"));
         }
-        cJSON_AddItemToObject(json, "errors_json", errors_json);
+        cJSON_AddItemToObject(json, "errors", errors_json);
     }
 
     cJSON_AddNumberToObject(json, "sessionTime", energy_meter_get_session_time());
