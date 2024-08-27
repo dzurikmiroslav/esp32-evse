@@ -516,7 +516,7 @@ cJSON* http_json_get_state(void)
 
     uint32_t error = evse_get_error();
     if (error == 0) {
-        cJSON_AddNullToObject(json, "errors_json");
+        cJSON_AddNullToObject(json, "errors");
     } else {
         cJSON* errors_json = cJSON_CreateArray();
         if (error & EVSE_ERR_PILOT_FAULT_BIT) {
