@@ -1,10 +1,10 @@
 name: Build with ESP-IDF
 
 env:
-  ESP_IDF_VERSION: v5.2.2
+  ESP_IDF_VERSION: v5.3.0
 
 
-on: 
+on:
   push:
     tags-ignore:
      - '**'
