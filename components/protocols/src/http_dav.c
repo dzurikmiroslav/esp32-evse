@@ -206,7 +206,7 @@ static esp_err_t propfind_handler(httpd_req_t* req)
             DIR* dd = opendir(path);
             if (dd == NULL) {
                 ESP_LOGE(TAG, "Failed to open directory %s", path);
-                httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open directory");
+                httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
                 return ESP_FAIL;
             }
 
@@ -236,7 +236,7 @@ static esp_err_t get_handler(httpd_req_t* req)
     FILE* fd = fopen(path, "r");
     if (fd == NULL) {
         ESP_LOGE(TAG, "Failed to open file %s", path);
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
         return ESP_FAIL;
     }
 
@@ -252,7 +252,7 @@ static esp_err_t get_handler(httpd_req_t* req)
                     fclose(fd);
                     ESP_LOGE(TAG, "File sending failed");
                     httpd_resp_sendstr_chunk(req, NULL);
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
                     return ESP_FAIL;
                 }
             }
@@ -273,7 +273,7 @@ static esp_err_t put_handler(httpd_req_t* req)
     FILE* fd = fopen(path, "w");
     if (fd == NULL) {
         ESP_LOGE(TAG, "Failed to open file %s", path);
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
         return ESP_FAIL;
     }
 
@@ -286,7 +286,8 @@ static esp_err_t put_handler(httpd_req_t* req)
             fclose(fd);
 
             ESP_LOGE(TAG, "File receive failed");
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive file");
+            httpd_resp_send_custom_err(req, "530 Failed To Receive File", "Failed to receive file");
+//            httpd_resp_send_err(req, HTTPD_530_INTERNAL_SERVER_ERROR, "Failed to receive file");
             return ESP_FAIL;
         }
 
@@ -295,7 +296,8 @@ static esp_err_t put_handler(httpd_req_t* req)
             unlink(path);
 
             ESP_LOGE(TAG, "File write failed");
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
+            httpd_resp_send_custom_err(req, "531 Failed To Write File", "Failed to write file");
+            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
             return ESP_FAIL;
         }
 
@@ -344,14 +346,14 @@ static esp_err_t copy_handler(httpd_req_t* req)
     FILE* src_fd = fopen(path, "r");
     if (src_fd == NULL) {
         ESP_LOGE(TAG, "Failed to open file %s", path);
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
         return ESP_FAIL;
     }
 
     FILE* dst_fd = fopen(dest, "w");
     if (dst_fd == NULL) {
         ESP_LOGE(TAG, "Failed to open file %s", dest);
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Failed to open file");
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
         if (src_fd != NULL) {
             fclose(src_fd);
         }
@@ -369,7 +371,7 @@ static esp_err_t copy_handler(httpd_req_t* req)
                 unlink(dest);
 
                 ESP_LOGE(TAG, "File write failed %s", dest);
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
                 return ESP_FAIL;
             }
 
