@@ -1,7 +1,7 @@
 name: Build with ESP-IDF
 
 env:
-  ESP_IDF_VERSION: v5.3.0
+  ESP_IDF_VERSION: v5.3
 
 
 on:
