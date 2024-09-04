@@ -237,7 +237,7 @@ static bool charging_allowed(void)
         return false;
     }
 
-    if (socket_outlet && board_config.socket_lock && socket_lock_get_status() != SOCKED_LOCK_STATUS_IDLE) {
+    if (socket_outlet && board_config.socket_lock && socket_lock_get_status() != SOCKET_LOCK_STATUS_IDLE) {
         return false;
     }
 
@@ -265,10 +265,10 @@ void evse_process(void)
     if (board_config.socket_lock && socket_outlet) {
         switch (socket_lock_get_status())
         {
-        case SOCKED_LOCK_STATUS_LOCKING_FAIL:
+        case SOCKET_LOCK_STATUS_LOCKING_FAIL:
             set_error_bits(EVSE_ERR_LOCK_FAULT_BIT);
             break;
-        case SOCKED_LOCK_STATUS_UNLOCKING_FAIL:
+        case SOCKET_LOCK_STATUS_UNLOCKING_FAIL:
             set_error_bits(EVSE_ERR_UNLOCK_FAULT_BIT);
             break;
         default:
