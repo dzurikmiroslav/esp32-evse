@@ -340,18 +340,10 @@ void evse_process(void)
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_B2;
-                } else {
-                    state = EVSE_STATE_B1;
-                }
+                state = charging_allowed() ? EVSE_STATE_B2 : EVSE_STATE_B1;
                 break;
             case PILOT_VOLTAGE_6:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_C2;
-                } else {
-                    state = EVSE_STATE_C1;
-                }
+                state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
@@ -379,25 +371,13 @@ void evse_process(void)
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_B2;
-                } else {
-                    state = EVSE_STATE_B1;
-                }
+                state = charging_allowed() ? EVSE_STATE_B2 : EVSE_STATE_B1;
                 break;
             case PILOT_VOLTAGE_6:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_C2;
-                } else {
-                    state = EVSE_STATE_C1;
-                }
+                state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
             case PILOT_VOLTAGE_3:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_D2;
-                } else {
-                    state = EVSE_STATE_D1;
-                }
+                state = charging_allowed() ? EVSE_STATE_D2 : EVSE_STATE_D1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
@@ -422,18 +402,10 @@ void evse_process(void)
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_6:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_C2;
-                } else {
-                    state = EVSE_STATE_C1;
-                }
+                state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
             case PILOT_VOLTAGE_3:
-                if (charging_allowed()) {
-                    state = EVSE_STATE_D2;
-                } else {
-                    state = EVSE_STATE_D1;
-                }
+                state = charging_allowed() ? EVSE_STATE_D2 : EVSE_STATE_D1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
