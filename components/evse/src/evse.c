@@ -103,11 +103,28 @@ static bool socket_lock_locked = false;
 
 static evse_state_t prev_state = EVSE_STATE_A;
 
+// timeout helper to improve readability, should probably go to a separate header if needed elsewhere
+// set a timeout value in ms
+static inline void set_timeout(TickType_t *to, uint32_t ms)
+{
+    *to = xTaskGetTickCount() + pdMS_TO_TICKS(ms);
+}
+
+// check if timeout is expired (sets timer value to 0, if true), returns false if timer value is 0
+static inline bool is_expired(TickType_t *to)
+{
+    bool expired = *to != 0 && xTaskGetTickCount() > *to;
+    if (expired)
+        *to = 0;
+
+    return expired;
+}
+
 static void set_error_bits(uint32_t bits)
 {
     error |= bits;
     if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
-        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+        set_timeout(&error_wait_to, ERROR_WAIT_TIME);
     }
 }
 
@@ -214,7 +231,7 @@ static void apply_state(void)
         case EVSE_STATE_C1:
         case EVSE_STATE_D1:
             set_pilot(PILOT_STATE_12V);
-            c1_d1_ac_relay_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(C1_D1_AC_RELAY_WAIT_TIME);
+            set_timeout(&c1_d1_ac_relay_wait_to, C1_D1_AC_RELAY_WAIT_TIME);
             break;
         case EVSE_STATE_C2:
         case EVSE_STATE_D2:
@@ -252,10 +269,9 @@ void evse_process(void)
     bool pilot_down_voltage_n12;
     pilot_measure(&pilot_voltage, &pilot_down_voltage_n12);
 
-    if (error_wait_to != 0 && xTaskGetTickCount() >= error_wait_to) {
+    if (is_expired(&error_wait_to)) {
         clear_error_bits(EVSE_ERR_AUTO_CLEAR_BITS);
         state = EVSE_STATE_A;
-        error_wait_to = 0;
     }
 
     if (pilot_state == PILOT_STATE_PWM && !pilot_down_voltage_n12) {
@@ -322,6 +338,8 @@ void evse_process(void)
         case EVSE_STATE_B1:
             if (!authorized) {
                 if (require_auth) {
+                    // TODO: this resets auth_grant_to even if not expired, really?
+                    //  when retesting this will set authorized to false!
                     authorized = auth_grant_to >= xTaskGetTickCount();
                     auth_grant_to = 0;
                 } else {
@@ -350,10 +368,9 @@ void evse_process(void)
             }
             break;
         case EVSE_STATE_C1:
-            if (c1_d1_ac_relay_wait_to != 0 && xTaskGetTickCount() >= c1_d1_ac_relay_wait_to) {
+            if (is_expired(&c1_d1_ac_relay_wait_to)) {
                 ESP_LOGW(TAG, "Force switch off ac relay");
                 ac_relay_set_state(false);
-                c1_d1_ac_relay_wait_to = 0;
                 if (!available) {
                     state = EVSE_STATE_F;
                     break;
@@ -384,10 +401,9 @@ void evse_process(void)
             }
             break;
         case EVSE_STATE_D1:
-            if (c1_d1_ac_relay_wait_to != 0 && xTaskGetTickCount() >= c1_d1_ac_relay_wait_to) {
+            if (is_expired(&c1_d1_ac_relay_wait_to)) {
                 ESP_LOGW(TAG, "Force switch off ac relay");
                 ac_relay_set_state(false);
-                c1_d1_ac_relay_wait_to = 0;
                 if (!available) {
                     state = EVSE_STATE_F;
                     break;
@@ -699,7 +715,7 @@ void evse_set_require_auth(bool _require_auth)
 void evse_authorize(void)
 {
     ESP_LOGI(TAG, "Authorize");
-    auth_grant_to = xTaskGetTickCount() + pdMS_TO_TICKS(AUTHORIZED_TIME);
+    set_timeout(&auth_grant_to, AUTHORIZED_TIME);
     under_power_start_time = 0;
 }
 
