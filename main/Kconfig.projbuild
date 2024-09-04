@@ -23,7 +23,7 @@ menu "EVSE Configuration"
 			bool "esp32devkitc"
 		config BOARD_CONFIG_ESP32S2DA
 			bool "esp32s2da"
-		config BOARD_CONFIG_CUSTON
+		config BOARD_CONFIG_CUSTOM
 			bool "custom"
 	endchoice
 
@@ -34,6 +34,6 @@ menu "EVSE Configuration"
 		default "esp32s3minimal" if BOARD_CONFIG_ESP32S3MINIMAL
 		default "esp32devkitc" if BOARD_CONFIG_ESP32DEVKITC
 		default "esp32s2da" if BOARD_CONFIG_ESP32S2DA
-		default "custom" if BOARD_CONFIG_CUSTON
+		default "custom" if BOARD_CONFIG_CUSTOM
 
 endmenu
