@@ -227,21 +227,13 @@ static void apply_state(void)
     }
 }
 
-static bool can_charging(void)
+static bool charging_allowed(void)
 {
-    if (!enabled) {
-        return false;
-    }
+    if (!enabled ||
+        !available ||
+        !authorized ||
+        reached_limit != 0) {
 
-    if (!available) {
-        return false;
-    }
-
-    if (!authorized) {
-        return false;
-    }
-
-    if (reached_limit != 0) {
         return false;
     }
 
@@ -348,14 +340,14 @@ void evse_process(void)
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_B2;
                 } else {
                     state = EVSE_STATE_B1;
                 }
                 break;
             case PILOT_VOLTAGE_6:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_C2;
                 } else {
                     state = EVSE_STATE_C1;
@@ -387,21 +379,21 @@ void evse_process(void)
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_B2;
                 } else {
                     state = EVSE_STATE_B1;
                 }
                 break;
             case PILOT_VOLTAGE_6:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_C2;
                 } else {
                     state = EVSE_STATE_C1;
                 }
                 break;
             case PILOT_VOLTAGE_3:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_D2;
                 } else {
                     state = EVSE_STATE_D1;
@@ -430,14 +422,14 @@ void evse_process(void)
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_6:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_C2;
                 } else {
                     state = EVSE_STATE_C1;
                 }
                 break;
             case PILOT_VOLTAGE_3:
-                if (can_charging()) {
+                if (charging_allowed()) {
                     state = EVSE_STATE_D2;
                 } else {
                     state = EVSE_STATE_D1;
