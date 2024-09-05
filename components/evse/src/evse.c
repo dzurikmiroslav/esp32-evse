@@ -103,11 +103,28 @@ static bool socket_lock_locked = false;
 
 static evse_state_t prev_state = EVSE_STATE_A;
 
+// timeout helper to improve readability, should probably go to a separate header if needed elsewhere
+// set a timeout value in ms
+static inline void set_timeout(TickType_t *to, uint32_t ms)
+{
+    *to = xTaskGetTickCount() + pdMS_TO_TICKS(ms);
+}
+
+// check if timeout is expired (sets timer value to 0, if true), returns false if timer value is 0
+static inline bool is_expired(TickType_t *to)
+{
+    bool expired = *to != 0 && xTaskGetTickCount() > *to;
+    if (expired)
+        *to = 0;
+
+    return expired;
+}
+
 static void set_error_bits(uint32_t bits)
 {
     error |= bits;
     if (bits & EVSE_ERR_AUTO_CLEAR_BITS) {
-        error_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(ERROR_WAIT_TIME);
+        set_timeout(&error_wait_to, ERROR_WAIT_TIME);
     }
 }
 
@@ -214,7 +231,7 @@ static void apply_state(void)
         case EVSE_STATE_C1:
         case EVSE_STATE_D1:
             set_pilot(PILOT_STATE_12V);
-            c1_d1_ac_relay_wait_to = xTaskGetTickCount() + pdMS_TO_TICKS(C1_D1_AC_RELAY_WAIT_TIME);
+            set_timeout(&c1_d1_ac_relay_wait_to, C1_D1_AC_RELAY_WAIT_TIME);
             break;
         case EVSE_STATE_C2:
         case EVSE_STATE_D2:
@@ -227,25 +244,17 @@ static void apply_state(void)
     }
 }
 
-static bool can_charging(void)
+static bool charging_allowed(void)
 {
-    if (!enabled) {
+    if (!enabled ||
+        !available ||
+        !authorized ||
+        reached_limit != 0) {
+
         return false;
     }
 
-    if (!available) {
-        return false;
-    }
-
-    if (!authorized) {
-        return false;
-    }
-
-    if (reached_limit != 0) {
-        return false;
-    }
-
-    if (socket_outlet && board_config.socket_lock && socket_lock_get_status() != SOCKED_LOCK_STATUS_IDLE) {
+    if (socket_outlet && board_config.socket_lock && socket_lock_get_status() != SOCKET_LOCK_STATUS_IDLE) {
         return false;
     }
 
@@ -260,10 +269,9 @@ void evse_process(void)
     bool pilot_down_voltage_n12;
     pilot_measure(&pilot_voltage, &pilot_down_voltage_n12);
 
-    if (error_wait_to != 0 && xTaskGetTickCount() >= error_wait_to) {
+    if (is_expired(&error_wait_to)) {
         clear_error_bits(EVSE_ERR_AUTO_CLEAR_BITS);
         state = EVSE_STATE_A;
-        error_wait_to = 0;
     }
 
     if (pilot_state == PILOT_STATE_PWM && !pilot_down_voltage_n12) {
@@ -273,10 +281,10 @@ void evse_process(void)
     if (board_config.socket_lock && socket_outlet) {
         switch (socket_lock_get_status())
         {
-        case SOCKED_LOCK_STATUS_LOCKING_FAIL:
+        case SOCKET_LOCK_STATUS_LOCKING_FAIL:
             set_error_bits(EVSE_ERR_LOCK_FAULT_BIT);
             break;
-        case SOCKED_LOCK_STATUS_UNLOCKING_FAIL:
+        case SOCKET_LOCK_STATUS_UNLOCKING_FAIL:
             set_error_bits(EVSE_ERR_UNLOCK_FAULT_BIT);
             break;
         default:
@@ -330,6 +338,8 @@ void evse_process(void)
         case EVSE_STATE_B1:
             if (!authorized) {
                 if (require_auth) {
+                    // TODO: this resets auth_grant_to even if not expired, really?
+                    //  when retesting this will set authorized to false!
                     authorized = auth_grant_to >= xTaskGetTickCount();
                     auth_grant_to = 0;
                 } else {
@@ -348,28 +358,19 @@ void evse_process(void)
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                if (can_charging()) {
-                    state = EVSE_STATE_B2;
-                } else {
-                    state = EVSE_STATE_B1;
-                }
+                state = charging_allowed() ? EVSE_STATE_B2 : EVSE_STATE_B1;
                 break;
             case PILOT_VOLTAGE_6:
-                if (can_charging()) {
-                    state = EVSE_STATE_C2;
-                } else {
-                    state = EVSE_STATE_C1;
-                }
+                state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
         case EVSE_STATE_C1:
-            if (c1_d1_ac_relay_wait_to != 0 && xTaskGetTickCount() >= c1_d1_ac_relay_wait_to) {
+            if (is_expired(&c1_d1_ac_relay_wait_to)) {
                 ESP_LOGW(TAG, "Force switch off ac relay");
                 ac_relay_set_state(false);
-                c1_d1_ac_relay_wait_to = 0;
                 if (!available) {
                     state = EVSE_STATE_F;
                     break;
@@ -387,35 +388,22 @@ void evse_process(void)
                 state = EVSE_STATE_A;
                 break;
             case PILOT_VOLTAGE_9:
-                if (can_charging()) {
-                    state = EVSE_STATE_B2;
-                } else {
-                    state = EVSE_STATE_B1;
-                }
+                state = charging_allowed() ? EVSE_STATE_B2 : EVSE_STATE_B1;
                 break;
             case PILOT_VOLTAGE_6:
-                if (can_charging()) {
-                    state = EVSE_STATE_C2;
-                } else {
-                    state = EVSE_STATE_C1;
-                }
+                state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
             case PILOT_VOLTAGE_3:
-                if (can_charging()) {
-                    state = EVSE_STATE_D2;
-                } else {
-                    state = EVSE_STATE_D1;
-                }
+                state = charging_allowed() ? EVSE_STATE_D2 : EVSE_STATE_D1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
             }
             break;
         case EVSE_STATE_D1:
-            if (c1_d1_ac_relay_wait_to != 0 && xTaskGetTickCount() >= c1_d1_ac_relay_wait_to) {
+            if (is_expired(&c1_d1_ac_relay_wait_to)) {
                 ESP_LOGW(TAG, "Force switch off ac relay");
                 ac_relay_set_state(false);
-                c1_d1_ac_relay_wait_to = 0;
                 if (!available) {
                     state = EVSE_STATE_F;
                     break;
@@ -430,18 +418,10 @@ void evse_process(void)
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_6:
-                if (can_charging()) {
-                    state = EVSE_STATE_C2;
-                } else {
-                    state = EVSE_STATE_C1;
-                }
+                state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
             case PILOT_VOLTAGE_3:
-                if (can_charging()) {
-                    state = EVSE_STATE_D2;
-                } else {
-                    state = EVSE_STATE_D1;
-                }
+                state = charging_allowed() ? EVSE_STATE_D2 : EVSE_STATE_D1;
                 break;
             default:
                 set_error_bits(EVSE_ERR_PILOT_FAULT_BIT);
@@ -735,7 +715,7 @@ void evse_set_require_auth(bool _require_auth)
 void evse_authorize(void)
 {
     ESP_LOGI(TAG, "Authorize");
-    auth_grant_to = xTaskGetTickCount() + pdMS_TO_TICKS(AUTHORIZED_TIME);
+    set_timeout(&auth_grant_to, AUTHORIZED_TIME);
     under_power_start_time = 0;
 }
 

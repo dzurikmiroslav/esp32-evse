@@ -71,7 +71,7 @@ static void socket_lock_task_func(void* param)
 
                 if (!is_locked()) {
                     ESP_LOGI(TAG, "Unlock OK");
-                    status = SOCKED_LOCK_STATUS_IDLE;
+                    status = SOCKET_LOCK_STATUS_IDLE;
                 } else {
                     if (attempt > 1) {
                         ESP_LOGW(TAG, "Not unlocked yet, repeating...");
@@ -79,7 +79,7 @@ static void socket_lock_task_func(void* param)
                         xTaskNotify(socket_lock_task, REPEAT_UNLOCK_BIT, eSetBits);
                     } else {
                         ESP_LOGE(TAG, "Not unlocked");
-                        status = SOCKED_LOCK_STATUS_UNLOCKING_FAIL;
+                        status = SOCKET_LOCK_STATUS_UNLOCKING_FAIL;
                     }
                 }
 
@@ -95,7 +95,7 @@ static void socket_lock_task_func(void* param)
 
                 if (is_locked()) {
                     ESP_LOGI(TAG, "Lock OK");
-                    status = SOCKED_LOCK_STATUS_IDLE;
+                    status = SOCKET_LOCK_STATUS_IDLE;
                 } else {
                     if (attempt > 1) {
                         ESP_LOGW(TAG, "Not locked yet, repeating...");
@@ -103,7 +103,7 @@ static void socket_lock_task_func(void* param)
                         xTaskNotify(socket_lock_task, REPEAT_LOCK_BIT, eSetBits);
                     } else {
                         ESP_LOGE(TAG, "Not locked");
-                        status = SOCKED_LOCK_STATUS_LOCKING_FAIL;
+                        status = SOCKET_LOCK_STATUS_LOCKING_FAIL;
                     }
                 }
 
@@ -218,7 +218,7 @@ void socket_lock_set_locked(bool locked)
     ESP_LOGI(TAG, "Set locked %d", locked);
 
     xTaskNotify(socket_lock_task, locked ? LOCK_BIT : UNLOCK_BIT, eSetBits);
-    status = SOCKED_LOCK_STATUS_OPERATING;
+    status = SOCKET_LOCK_STATUS_OPERATING;
 }
 
 socket_lock_status_t socket_lock_get_status(void)
