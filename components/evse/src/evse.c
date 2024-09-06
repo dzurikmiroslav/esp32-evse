@@ -338,9 +338,8 @@ void evse_process(void)
         case EVSE_STATE_B1:
             if (!authorized) {
                 if (require_auth) {
-                    // TODO: this resets auth_grant_to even if not expired, really?
-                    //  when retesting this will set authorized to false!
-                    authorized = auth_grant_to >= xTaskGetTickCount();
+                    authorized = !is_expired(&auth_grant_to);
+                    // in any case we need a fresh authorization, if the EV is disconnected
                     auth_grant_to = 0;
                 } else {
                     authorized = true;
@@ -468,11 +467,14 @@ void evse_process(void)
             }
         }
 
+        // TODO: probably better put to states C2 and D2!
         if (reached_limit > 0 && evse_state_is_charging(state)) {
             ESP_LOGI(TAG, "Reached limit %d", reached_limit);
+            // TODO: never reached, as !is_charging in B2
             if (state == EVSE_STATE_B2) {
                 state = EVSE_STATE_B1;
             }
+            //
             if (state == EVSE_STATE_C2) {
                 state = EVSE_STATE_C1;
             }
@@ -729,22 +731,15 @@ bool evse_is_enabled(void)
     return enabled;
 }
 
+// allow the EVSE to actually charge the vehicle, it will wait until enabled
+// This is set by 'external' means (modbus ...)
 void evse_set_enabled(bool value)
 {
     ESP_LOGI(TAG, "Set enabled %d", value);
-
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     if (enabled != value) {
         enabled = value;
-        // if (!enabled) {
-        //     if (state == EVSE_STATE_C2) {
-        //         state = EVSE_STATE_C1;
-        //     } else if (state == EVSE_STATE_D2) {
-        //         state = EVSE_STATE_D1;
-        //     }
-        //     apply_state();
-        // }
     }
 
     xSemaphoreGive(mutex);
@@ -755,6 +750,8 @@ bool evse_is_available(void)
     return available;
 }
 
+// allow the EVSE state machine to act. This is set by 'external' means (modbus, ...)
+// if available is false the state machine will stay in STATE_F
 void evse_set_available(bool value)
 {
     ESP_LOGI(TAG, "Set available %d", value);
@@ -762,20 +759,6 @@ void evse_set_available(bool value)
 
     if (available != value) {
         available = value;
-        // if (available) {
-        //     if (state == EVSE_STATE_F) {
-        //         state = EVSE_STATE_A;
-        //     }
-        // } else {
-        //     if (state == EVSE_STATE_C2) {
-        //         state = EVSE_STATE_C1;
-        //     } else if (state == EVSE_STATE_D2) {
-        //         state = EVSE_STATE_D1;
-        //     } else {
-        //         state = EVSE_STATE_F;
-        //     }
-        // }
-        // apply_state();
     }
 
     xSemaphoreGive(mutex);
