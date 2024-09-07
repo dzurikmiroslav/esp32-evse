@@ -155,20 +155,24 @@ static void set_pilot(enum pilot_state_e state)
     }
 }
 
+// set socket lock, if there is one
 static void set_socket_lock(bool locked)
 {
-    if (error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT)) {
-        return;
-    }
-    if (socket_lock_locked != locked) {
-        socket_lock_locked = locked;
-        socket_lock_set_locked(socket_lock_locked);
+    if (board_config.socket_lock && socket_outlet) {
+        if (error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT)) {
+            return;
+        }
+        if (socket_lock_locked != locked) {
+            socket_lock_locked = locked;
+            socket_lock_set_locked(socket_lock_locked);
+        }
     }
 }
 
+// do RCM selftest if there is one and it's not yet done
 static void perform_rcm_selftest(void)
 {
-    if (!rcm_selftest) {
+    if (rcm && !rcm_selftest) {
         if (!rcm_test()) {
             ESP_LOGW(TAG, "Residual current monitor self test fail");
             set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
@@ -197,10 +201,7 @@ static void apply_state(void)
         case EVSE_STATE_F:
             ac_relay_set_state(false);
             set_pilot(new_state == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
-
-            if (board_config.socket_lock && socket_outlet) {
-                set_socket_lock(false);
-            }
+            set_socket_lock(false);
             authorized = false;
             reached_limit = 0;
             under_power_start_time = 0;
@@ -211,14 +212,9 @@ static void apply_state(void)
         case EVSE_STATE_B1:
             set_pilot(PILOT_STATE_12V);
             ac_relay_set_state(false);
-
             c1_d1_ac_relay_wait_to = 0;
-            if (board_config.socket_lock && socket_outlet) {
-                set_socket_lock(true);
-            }
-            if (rcm) {
-                perform_rcm_selftest();
-            }
+            set_socket_lock(true);
+            perform_rcm_selftest();
             if (socket_outlet) {
                 cable_max_current = proximity_get_max_current();
             }
@@ -327,12 +323,10 @@ void evse_process(void)
         }
     }
 
-    if (rcm) {
-        if (rcm_is_triggered()) {
-            set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
-        }
+    if (rcm && rcm_is_triggered()) {
+        set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
     }
-
+    
     if (board_config.onewire && board_config.onewire_temp_sensor) {
         if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
