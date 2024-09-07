@@ -232,7 +232,7 @@ static bool charging_allowed(void)
     if (!enabled ||
         !available ||
         !authorized ||
-        reached_limit != 0) {
+        reached_limit) {
 
         return false;
     }
@@ -405,10 +405,11 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_C2:
-            if (!enabled || !available) {
+            if (!enabled || !available || reached_limit) {
                 state = EVSE_STATE_C1;
                 break;
             }
+
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_12:
@@ -438,7 +439,7 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_D2:
-            if (!enabled || !available) {
+            if (!enabled || !available || reached_limit) {
                 state = EVSE_STATE_D1;
                 break;
             }
@@ -465,20 +466,8 @@ void evse_process(void)
             break;
         }
 
-        // TODO: probably better put to states C2 and D2!
         if (reached_limit > 0 && evse_state_is_charging(state)) {
             ESP_LOGI(TAG, "Reached limit %d", reached_limit);
-            // TODO: never reached, as !is_charging in B2
-            if (state == EVSE_STATE_B2) {
-                state = EVSE_STATE_B1;
-            }
-            //
-            if (state == EVSE_STATE_C2) {
-                state = EVSE_STATE_C1;
-            }
-            if (state == EVSE_STATE_D2) {
-                state = EVSE_STATE_D1;
-            }
         }
     }
 
