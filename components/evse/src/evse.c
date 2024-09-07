@@ -261,6 +261,41 @@ static bool charging_allowed(void)
     return true;
 }
 
+// set and clear limit bits in reached_limit
+static void check_charging_limits()
+{
+    // check consumption limit
+    if (consumption_limit > 0 && energy_meter_get_consumption() > consumption_limit) {
+        reached_limit |= LIMIT_CONSUMPTION_BIT;
+    } else {
+        reached_limit &= ~LIMIT_CONSUMPTION_BIT;
+    }
+
+    // check charging time limit
+    if (charging_time_limit > 0 && energy_meter_get_charging_time() > charging_time_limit) {
+        reached_limit |= LIMIT_CHARGING_TIME_BIT;
+    } else {
+        reached_limit &= ~LIMIT_CHARGING_TIME_BIT;
+    }
+
+    // check under power limit
+    if (evse_state_is_charging(state)) {
+        if (under_power_limit > 0 && energy_meter_get_power() < under_power_limit) {
+            if (under_power_start_time == 0) {
+                under_power_start_time = xTaskGetTickCount();
+            }
+        } else {
+            under_power_start_time = 0;
+        }
+
+        if (under_power_start_time > 0 && under_power_start_time + pdMS_TO_TICKS(UNDER_POWER_TIME) < xTaskGetTickCount()) {
+            reached_limit |= LIMIT_UNDER_POWER_BIT;
+        } else {
+            reached_limit &= ~LIMIT_UNDER_POWER_BIT;
+        }
+    }
+}
+
 void evse_process(void)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
@@ -315,6 +350,9 @@ void evse_process(void)
     if (error == 0 && !error_cleared) {
         //no errors
         //after clear error, process on next iteration, after apply_state
+
+        // set limit bits in reached_limit
+        check_charging_limits();
 
         switch (state)
         {
@@ -414,6 +452,7 @@ void evse_process(void)
                 state = EVSE_STATE_D1;
                 break;
             }
+            
             switch (pilot_voltage)
             {
             case PILOT_VOLTAGE_6:
@@ -434,37 +473,6 @@ void evse_process(void)
                 break;
             }
             break;
-        }
-
-        // check consumption limit
-        if (consumption_limit > 0 && energy_meter_get_consumption() > consumption_limit) {
-            reached_limit |= LIMIT_CONSUMPTION_BIT;
-        } else {
-            reached_limit &= ~LIMIT_CONSUMPTION_BIT;
-        }
-
-        // check charging time limit
-        if (charging_time_limit > 0 && energy_meter_get_charging_time() > charging_time_limit) {
-            reached_limit |= LIMIT_CHARGING_TIME_BIT;
-        } else {
-            reached_limit &= ~LIMIT_CHARGING_TIME_BIT;
-        }
-
-        // check under power limit
-        if (evse_state_is_charging(state)) {
-            if (under_power_limit > 0 && energy_meter_get_power() < under_power_limit) {
-                if (under_power_start_time == 0) {
-                    under_power_start_time = xTaskGetTickCount();
-                }
-            } else {
-                under_power_start_time = 0;
-            }
-
-            if (under_power_start_time > 0 && under_power_start_time + pdMS_TO_TICKS(UNDER_POWER_TIME) < xTaskGetTickCount()) {
-                reached_limit |= LIMIT_UNDER_POWER_BIT;
-            } else {
-                reached_limit &= ~LIMIT_UNDER_POWER_BIT;
-            }
         }
 
         // TODO: probably better put to states C2 and D2!
