@@ -101,8 +101,6 @@ static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 
 static bool socket_lock_locked = false;
 
-static evse_state_t prev_state = EVSE_STATE_A;
-
 // timeout helper to improve readability, should probably go to a separate header if needed elsewhere
 // set a timeout value in ms
 static inline void set_timeout(TickType_t *to, uint32_t ms)
@@ -184,59 +182,48 @@ static void perform_rcm_selftest(void)
     }
 }
 
-static void apply_state(void)
+static void enter_new_state(evse_state_t state_to_enter)
 {
-    evse_state_t new_state = evse_get_state(); // getter method detect error state
-
-    if (prev_state != new_state) {
-        ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
-        if (error) {
-            ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
+    switch (state_to_enter)
+    {
+    case EVSE_STATE_A:
+    case EVSE_STATE_E:
+    case EVSE_STATE_F:
+        set_pilot(state_to_enter == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
+        ac_relay_set_state(false);
+        c1_d1_ac_relay_wait_to = 0;
+        set_socket_lock(false);
+        authorized = false;
+        reached_limit = 0;
+        under_power_start_time = 0;
+        rcm_selftest = false;
+        energy_meter_stop_session();
+        break;
+    case EVSE_STATE_B1:
+        set_pilot(PILOT_STATE_12V);
+        ac_relay_set_state(false);
+        c1_d1_ac_relay_wait_to = 0;
+        set_socket_lock(true);
+        perform_rcm_selftest();
+        if (socket_outlet) {
+            cable_max_current = proximity_get_max_current();
         }
-
-        switch (new_state)
-        {
-        case EVSE_STATE_A:
-        case EVSE_STATE_E:
-        case EVSE_STATE_F:
-            ac_relay_set_state(false);
-            set_pilot(new_state == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
-            set_socket_lock(false);
-            authorized = false;
-            reached_limit = 0;
-            under_power_start_time = 0;
-            rcm_selftest = false;
-            c1_d1_ac_relay_wait_to = 0;
-            energy_meter_stop_session();
-            break;
-        case EVSE_STATE_B1:
-            set_pilot(PILOT_STATE_12V);
-            ac_relay_set_state(false);
-            c1_d1_ac_relay_wait_to = 0;
-            set_socket_lock(true);
-            perform_rcm_selftest();
-            if (socket_outlet) {
-                cable_max_current = proximity_get_max_current();
-            }
-            energy_meter_start_session();
-            break;
-        case EVSE_STATE_B2:
-            set_pilot(PILOT_STATE_PWM);
-            ac_relay_set_state(false);
-            break;
-        case EVSE_STATE_C1:
-        case EVSE_STATE_D1:
-            set_pilot(PILOT_STATE_12V);
-            set_timeout(&c1_d1_ac_relay_wait_to, C1_D1_AC_RELAY_WAIT_TIME);
-            break;
-        case EVSE_STATE_C2:
-        case EVSE_STATE_D2:
-            set_pilot(PILOT_STATE_PWM);
-            ac_relay_set_state(true);
-            break;
-        }
-
-        prev_state = new_state;
+        energy_meter_start_session();
+        break;
+    case EVSE_STATE_B2:
+        set_pilot(PILOT_STATE_PWM);
+        ac_relay_set_state(false);
+        break;
+    case EVSE_STATE_C1:
+    case EVSE_STATE_D1:
+        set_pilot(PILOT_STATE_12V);
+        set_timeout(&c1_d1_ac_relay_wait_to, C1_D1_AC_RELAY_WAIT_TIME);
+        break;
+    case EVSE_STATE_C2:
+    case EVSE_STATE_D2:
+        set_pilot(PILOT_STATE_PWM);
+        ac_relay_set_state(true);
+        break;
     }
 }
 
@@ -292,23 +279,9 @@ static void check_charging_limits()
     }
 }
 
-void evse_process(void)
+// set and clear error condition bits, depending on the configuration
+static void check_other_error_conditions()
 {
-    xSemaphoreTake(mutex, portMAX_DELAY);
-
-    pilot_voltage_t pilot_voltage;
-    bool pilot_down_voltage_n12;
-    pilot_measure(&pilot_voltage, &pilot_down_voltage_n12);
-
-    if (is_expired(&error_wait_to)) {
-        clear_error_bits(EVSE_ERR_AUTO_CLEAR_BITS);
-        state = EVSE_STATE_A;
-    }
-
-    if (pilot_state == PILOT_STATE_PWM && !pilot_down_voltage_n12) {
-        set_error_bits(EVSE_ERR_DIODE_SHORT_BIT);
-    }
-
     if (board_config.socket_lock && socket_outlet) {
         switch (socket_lock_get_status())
         {
@@ -340,6 +313,29 @@ void evse_process(void)
             clear_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
         }
     }
+}
+
+void evse_process(void)
+{
+    static evse_state_t prev_state = EVSE_STATE_A;
+
+    xSemaphoreTake(mutex, portMAX_DELAY);
+
+    pilot_voltage_t pilot_voltage;
+    bool pilot_down_voltage_n12;
+    pilot_measure(&pilot_voltage, &pilot_down_voltage_n12);
+
+    if (is_expired(&error_wait_to)) {
+        clear_error_bits(EVSE_ERR_AUTO_CLEAR_BITS);
+        state = EVSE_STATE_A;
+    }
+
+    if (pilot_state == PILOT_STATE_PWM && !pilot_down_voltage_n12) {
+        set_error_bits(EVSE_ERR_DIODE_SHORT_BIT);
+    }
+
+    // check configuration specific errors
+    check_other_error_conditions();
 
     if (error == 0 && !error_cleared) {
         //no errors
@@ -486,7 +482,16 @@ void evse_process(void)
         }
     }
 
-    apply_state();
+    evse_state_t new_state = evse_get_state(); // getter method detect error state
+
+    if (prev_state != new_state) {
+        ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
+        if (error) {
+            ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
+        }
+        enter_new_state(new_state);
+        prev_state = new_state;
+    }
 
     error_cleared = false;
 
