@@ -395,7 +395,7 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_C2:
-            if (!enabled || !available || reached_limit) {
+            if (!charging_allowed()) {
                 state = EVSE_STATE_C1;
                 break;
             }
@@ -428,7 +428,7 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_D2:
-            if (!enabled || !available || reached_limit) {
+            if (!charging_allowed()) {
                 state = EVSE_STATE_D1;
                 break;
             }
