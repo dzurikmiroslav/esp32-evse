@@ -395,11 +395,6 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_C2:
-            if (!charging_allowed()) {
-                state = EVSE_STATE_C1;
-                break;
-            }
-
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
@@ -428,11 +423,6 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_D2:
-            if (!charging_allowed()) {
-                state = EVSE_STATE_D1;
-                break;
-            }
-
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_6:
                 state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
