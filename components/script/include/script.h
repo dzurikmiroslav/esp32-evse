@@ -1,8 +1,8 @@
 #ifndef SCRIPT_H_
 #define SCRIPT_H_
 
-#include <stdbool.h>
 #include <esp_err.h>
+#include <stdbool.h>
 
 /**
  * @brief Initialize script VM
