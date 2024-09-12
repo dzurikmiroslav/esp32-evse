@@ -102,8 +102,6 @@ static enum pilot_state_e pilot_state = PILOT_STATE_12V;
 
 static bool socket_lock_locked = false;
 
-static evse_state_t prev_state = EVSE_STATE_A;
-
 // timeout helper to improve readability, should probably go to a separate header if needed elsewhere
 // set a timeout value in ms
 static inline void set_timeout(TickType_t* to, uint32_t ms)
@@ -154,20 +152,24 @@ static void set_pilot(enum pilot_state_e state)
     }
 }
 
+// set socket lock, if there is one
 static void set_socket_lock(bool locked)
 {
-    if (error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT)) {
-        return;
-    }
-    if (socket_lock_locked != locked) {
-        socket_lock_locked = locked;
-        socket_lock_set_locked(socket_lock_locked);
+    if (board_config.socket_lock && socket_outlet) {
+        if (error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT)) {
+            return;
+        }
+        if (socket_lock_locked != locked) {
+            socket_lock_locked = locked;
+            socket_lock_set_locked(socket_lock_locked);
+        }
     }
 }
 
+// do RCM selftest if there is one and it's not yet done
 static void perform_rcm_selftest(void)
 {
-    if (!rcm_selftest) {
+    if (rcm && !rcm_selftest) {
         if (!rcm_test()) {
             ESP_LOGW(TAG, "Residual current monitor self test fail");
             set_error_bits(EVSE_ERR_RCM_SELFTEST_FAULT_BIT);
@@ -179,6 +181,48 @@ static void perform_rcm_selftest(void)
     }
 }
 
+static void enter_new_state(evse_state_t state_to_enter)
+{
+    switch (state_to_enter)
+    {
+    case EVSE_STATE_A:
+    case EVSE_STATE_E:
+    case EVSE_STATE_F:
+        set_pilot(state_to_enter == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
+        ac_relay_set_state(false);
+        c1_d1_ac_relay_wait_to = 0;
+        set_socket_lock(false);
+        authorized = false;
+        reached_limit = 0;
+        under_power_start_time = 0;
+        rcm_selftest = false;
+        energy_meter_stop_session();
+        break;
+    case EVSE_STATE_B1:
+        set_pilot(PILOT_STATE_12V);
+        ac_relay_set_state(false);
+        c1_d1_ac_relay_wait_to = 0;
+        set_socket_lock(true);
+        perform_rcm_selftest();
+        if (socket_outlet) {
+            cable_max_current = proximity_get_max_current();
+        }
+        energy_meter_start_session();
+        break;
+    case EVSE_STATE_B2:
+        set_pilot(PILOT_STATE_PWM);
+        ac_relay_set_state(false);
+        break;
+    case EVSE_STATE_C1:
+    case EVSE_STATE_D1:
+        set_pilot(PILOT_STATE_12V);
+        set_timeout(&c1_d1_ac_relay_wait_to, C1_D1_AC_RELAY_WAIT_TIME);
+        break;
+    case EVSE_STATE_C2:
+    case EVSE_STATE_D2:
+        set_pilot(PILOT_STATE_PWM);
+        ac_relay_set_state(true);
+        break;
 static void apply_state(void)
 {
     evse_state_t new_state = evse_get_state();  // getter method detect error state
@@ -244,6 +288,11 @@ static void apply_state(void)
 
 static bool charging_allowed(void)
 {
+    if (!enabled ||
+        !available ||
+        !authorized ||
+        reached_limit) {
+
     if (!enabled || !available || !authorized || reached_limit != 0) {
         return false;
     }
@@ -255,8 +304,80 @@ static bool charging_allowed(void)
     return true;
 }
 
+// set and clear limit bits in reached_limit
+static void check_charging_limits()
+{
+    // check consumption limit
+    if (consumption_limit > 0 && energy_meter_get_consumption() > consumption_limit) {
+        reached_limit |= LIMIT_CONSUMPTION_BIT;
+    } else {
+        reached_limit &= ~LIMIT_CONSUMPTION_BIT;
+    }
+
+    // check charging time limit
+    if (charging_time_limit > 0 && energy_meter_get_charging_time() > charging_time_limit) {
+        reached_limit |= LIMIT_CHARGING_TIME_BIT;
+    } else {
+        reached_limit &= ~LIMIT_CHARGING_TIME_BIT;
+    }
+
+    // check under power limit
+    if (evse_state_is_charging(state)) {
+        if (under_power_limit > 0 && energy_meter_get_power() < under_power_limit) {
+            if (under_power_start_time == 0) {
+                under_power_start_time = xTaskGetTickCount();
+            }
+        } else {
+            under_power_start_time = 0;
+        }
+
+        if (under_power_start_time > 0 && under_power_start_time + pdMS_TO_TICKS(UNDER_POWER_TIME) < xTaskGetTickCount()) {
+            reached_limit |= LIMIT_UNDER_POWER_BIT;
+        } else {
+            reached_limit &= ~LIMIT_UNDER_POWER_BIT;
+        }
+    }
+}
+
+// set and clear error condition bits, depending on the configuration
+static void check_other_error_conditions()
+{
+    if (board_config.socket_lock && socket_outlet) {
+        switch (socket_lock_get_status()) {
+        case SOCKET_LOCK_STATUS_LOCKING_FAIL:
+            set_error_bits(EVSE_ERR_LOCK_FAULT_BIT);
+            break;
+        case SOCKET_LOCK_STATUS_UNLOCKING_FAIL:
+            set_error_bits(EVSE_ERR_UNLOCK_FAULT_BIT);
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (rcm && rcm_is_triggered()) {
+        set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
+    }
+    
+    if (board_config.onewire && board_config.onewire_temp_sensor) {
+        if (temp_sensor_get_high() > temp_threshold * 100) {
+            set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
+        } else {
+            clear_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
+        }
+
+        if (temp_sensor_is_error()) {
+            set_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
+        } else {
+            clear_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
+        }
+    }
+}
+
 void evse_process(void)
 {
+    static evse_state_t prev_state = EVSE_STATE_A;
+
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     pilot_voltage_t pilot_voltage;
@@ -272,40 +393,15 @@ void evse_process(void)
         set_error_bits(EVSE_ERR_DIODE_SHORT_BIT);
     }
 
-    if (board_config.socket_lock && socket_outlet) {
-        switch (socket_lock_get_status()) {
-        case SOCKET_LOCK_STATUS_LOCKING_FAIL:
-            set_error_bits(EVSE_ERR_LOCK_FAULT_BIT);
-            break;
-        case SOCKET_LOCK_STATUS_UNLOCKING_FAIL:
-            set_error_bits(EVSE_ERR_UNLOCK_FAULT_BIT);
-            break;
-        default:
-            break;
-        }
-    }
-
-    if (rcm) {
-        if (rcm_is_triggered()) {
-            set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
-        }
-    }
-
-    if (board_config.onewire && board_config.onewire_temp_sensor) {
-        if (temp_sensor_get_high() > temp_threshold * 100) {
-            set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
-        } else {
-            clear_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
-        }
-
-        if (temp_sensor_is_error()) {
-            set_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
-        } else {
-            clear_error_bits(EVSE_ERR_TEMPERATURE_FAULT_BIT);
-        }
-    }
+    // check configuration specific errors
+    check_other_error_conditions();
 
     if (error == 0 && !error_cleared) {
+        //no errors
+        //after clear error, process on next iteration, after apply_state
+
+        // set limit bits in reached_limit
+        check_charging_limits();
         // no errors
         // after clear error, process on next iteration, after apply_state
 
@@ -329,9 +425,8 @@ void evse_process(void)
         case EVSE_STATE_B1:
             if (!authorized) {
                 if (require_auth) {
-                    // TODO: this resets auth_grant_to even if not expired, really?
-                    //  when retesting this will set authorized to false!
-                    authorized = auth_grant_to >= xTaskGetTickCount();
+                    authorized = !is_expired(&auth_grant_to);
+                    // in any case we need a fresh authorization, if the EV is disconnected
                     auth_grant_to = 0;
                 } else {
                     authorized = true;
@@ -368,10 +463,13 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_C2:
-            if (!enabled || !available) {
+            if (!enabled || !available || reached_limit) {
                 state = EVSE_STATE_C1;
                 break;
             }
+
+            switch (pilot_voltage)
+            {
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
@@ -400,10 +498,13 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_D2:
-            if (!enabled || !available) {
+            if (!enabled || !available || reached_limit) {
                 state = EVSE_STATE_D1;
                 break;
             }
+            
+            switch (pilot_voltage)
+            {
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_6:
                 state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
@@ -425,52 +526,21 @@ void evse_process(void)
             break;
         }
 
-        // check consumption limit
-        if (consumption_limit > 0 && energy_meter_get_consumption() > consumption_limit) {
-            reached_limit |= LIMIT_CONSUMPTION_BIT;
-        } else {
-            reached_limit &= ~LIMIT_CONSUMPTION_BIT;
-        }
-
-        // check charging time limit
-        if (charging_time_limit > 0 && energy_meter_get_charging_time() > charging_time_limit) {
-            reached_limit |= LIMIT_CHARGING_TIME_BIT;
-        } else {
-            reached_limit &= ~LIMIT_CHARGING_TIME_BIT;
-        }
-
-        // check under power limit
-        if (evse_state_is_charging(state)) {
-            if (under_power_limit > 0 && energy_meter_get_power() < under_power_limit) {
-                if (under_power_start_time == 0) {
-                    under_power_start_time = xTaskGetTickCount();
-                }
-            } else {
-                under_power_start_time = 0;
-            }
-
-            if (under_power_start_time > 0 && under_power_start_time + pdMS_TO_TICKS(UNDER_POWER_TIME) < xTaskGetTickCount()) {
-                reached_limit |= LIMIT_UNDER_POWER_BIT;
-            } else {
-                reached_limit &= ~LIMIT_UNDER_POWER_BIT;
-            }
-        }
-
         if (reached_limit > 0 && evse_state_is_charging(state)) {
             ESP_LOGI(TAG, "Reached limit %d", reached_limit);
-            if (state == EVSE_STATE_B2) {
-                state = EVSE_STATE_B1;
-            }
-            if (state == EVSE_STATE_C2) {
-                state = EVSE_STATE_C1;
-            }
-            if (state == EVSE_STATE_D2) {
-                state = EVSE_STATE_D1;
-            }
         }
     }
 
-    apply_state();
+    evse_state_t new_state = evse_get_state(); // getter method detect error state
+
+    if (prev_state != new_state) {
+        ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
+        if (error) {
+            ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
+        }
+        enter_new_state(new_state);
+        prev_state = new_state;
+    }
 
     error_cleared = false;
 
@@ -718,22 +788,15 @@ bool evse_is_enabled(void)
     return enabled;
 }
 
+// allow the EVSE to actually charge the vehicle, it will wait until enabled
+// This is set by 'external' means (modbus ...)
 void evse_set_enabled(bool value)
 {
     ESP_LOGI(TAG, "Set enabled %d", value);
-
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     if (enabled != value) {
         enabled = value;
-        // if (!enabled) {
-        //     if (state == EVSE_STATE_C2) {
-        //         state = EVSE_STATE_C1;
-        //     } else if (state == EVSE_STATE_D2) {
-        //         state = EVSE_STATE_D1;
-        //     }
-        //     apply_state();
-        // }
     }
 
     xSemaphoreGive(mutex);
@@ -744,6 +807,8 @@ bool evse_is_available(void)
     return available;
 }
 
+// allow the EVSE state machine to act. This is set by 'external' means (modbus, ...)
+// if available is false the state machine will stay in STATE_F
 void evse_set_available(bool value)
 {
     ESP_LOGI(TAG, "Set available %d", value);
@@ -751,20 +816,6 @@ void evse_set_available(bool value)
 
     if (available != value) {
         available = value;
-        // if (available) {
-        //     if (state == EVSE_STATE_F) {
-        //         state = EVSE_STATE_A;
-        //     }
-        // } else {
-        //     if (state == EVSE_STATE_C2) {
-        //         state = EVSE_STATE_C1;
-        //     } else if (state == EVSE_STATE_D2) {
-        //         state = EVSE_STATE_D1;
-        //     } else {
-        //         state = EVSE_STATE_F;
-        //     }
-        // }
-        // apply_state();
     }
 
     xSemaphoreGive(mutex);
