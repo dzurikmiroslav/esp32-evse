@@ -1,11 +1,10 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 
 #define LOGGER_SERIAL_BIT BIT0
 

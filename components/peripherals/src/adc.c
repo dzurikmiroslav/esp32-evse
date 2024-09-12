@@ -1,5 +1,6 @@
 #include "adc.h"
-#include "esp_log.h"
+
+#include <esp_log.h>
 
 const static char* TAG = "adc";
 
@@ -10,7 +11,7 @@ adc_cali_handle_t adc_cali_handle;
 void adc_init(void)
 {
     adc_oneshot_unit_init_cfg_t conf = {
-        .unit_id = ADC_UNIT_1
+        .unit_id = ADC_UNIT_1,
     };
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&conf, &adc_handle));
 
@@ -38,7 +39,7 @@ void adc_init(void)
             .atten = ADC_ATTEN_DB_12,
             .bitwidth = ADC_BITWIDTH_DEFAULT,
 #if CONFIG_IDF_TARGET_ESP32
-            .default_vref = 1100
+            .default_vref = 1100,
 #endif
         };
         if (adc_cali_create_scheme_line_fitting(&cali_config, &adc_cali_handle) == ESP_OK) {

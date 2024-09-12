@@ -1,7 +1,9 @@
-#include "esp_log.h"
-#include "driver/gpio.h"
 
 #include "ac_relay.h"
+
+#include <driver/gpio.h>
+#include <esp_log.h>
+
 #include "board_config.h"
 
 static const char* TAG = "ac_relay";
@@ -13,7 +15,7 @@ void ac_relay_init(void)
         .mode = GPIO_MODE_OUTPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pull_up_en = GPIO_PULLUP_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE        
+        .intr_type = GPIO_INTR_DISABLE,
     };
     ESP_ERROR_CHECK(gpio_config(&conf));
 }

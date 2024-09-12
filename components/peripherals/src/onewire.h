@@ -32,9 +32,9 @@
 #ifndef ONEWIRE_H_
 #define ONEWIRE_H_
 
+#include <driver/gpio.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "driver/gpio.h"
 
 /**
  * Type used to hold all 1-Wire device ROM addresses (64-bit)
@@ -44,8 +44,7 @@ typedef uint64_t onewire_addr_t;
 /**
  * Structure to contain the current state for onewire_search_next(), etc
  */
-typedef struct
-{
+typedef struct {
     uint8_t rom_no[8];
     uint8_t last_discrepancy;
     bool last_device_found;
@@ -251,7 +250,7 @@ uint8_t onewire_crc8(const uint8_t *data, uint8_t len);
  *
  * @return `true` if the CRC matches, `false` otherwise.
  */
-bool onewire_check_crc16(const uint8_t* input, size_t len, const uint8_t* inverted_crc, uint16_t crc_iv);
+bool onewire_check_crc16(const uint8_t *input, size_t len, const uint8_t *inverted_crc, uint16_t crc_iv);
 
 /**
  * @brief Compute a Dallas Semiconductor 16 bit CRC.
@@ -271,7 +270,6 @@ bool onewire_check_crc16(const uint8_t* input, size_t len, const uint8_t* invert
  *
  * @return the CRC16, as defined by Dallas Semiconductor.
  */
-uint16_t onewire_crc16(const uint8_t* input, size_t len, uint16_t crc_iv);
-
+uint16_t onewire_crc16(const uint8_t *input, size_t len, uint16_t crc_iv);
 
 #endif /* ONEWIRE_H_ */

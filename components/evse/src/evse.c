@@ -1,30 +1,31 @@
-#include <sys/param.h>
-#include <math.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "esp_log.h"
-#include "nvs.h"
-
 #include "evse.h"
+
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <math.h>
+#include <nvs.h>
+#include <sys/param.h>
+
+#include "ac_relay.h"
 #include "board_config.h"
+#include "energy_meter.h"
 #include "pilot.h"
 #include "proximity.h"
-#include "ac_relay.h"
-#include "socket_lock.h"
-#include "energy_meter.h"
 #include "rcm.h"
+#include "socket_lock.h"
 #include "temp_sensor.h"
 
-#define MAX_CHARGING_CURRENT_MIN        6       // A
-#define MAX_CHARGING_CURRENT_MAX        63      // A
-#define CHARGING_CURRENT_MIN            60      // A*10
-#define AUTHORIZED_TIME                 60000   // 60sec
-#define ERROR_WAIT_TIME                 60000   // 60sec
-#define UNDER_POWER_TIME                60000   // 60sec
-#define C1_D1_AC_RELAY_WAIT_TIME        6000    // 6sec
-#define TEMP_THRESHOLD_MIN              40
-#define TEMP_THRESHOLD_MAX              80
+#define MAX_CHARGING_CURRENT_MIN 6      // A
+#define MAX_CHARGING_CURRENT_MAX 63     // A
+#define CHARGING_CURRENT_MIN     60     // A*10
+#define AUTHORIZED_TIME          60000  // 60sec
+#define ERROR_WAIT_TIME          60000  // 60sec
+#define UNDER_POWER_TIME         60000  // 60sec
+#define C1_D1_AC_RELAY_WAIT_TIME 6000   // 6sec
+#define TEMP_THRESHOLD_MIN       40
+#define TEMP_THRESHOLD_MAX       80
 
 #define NVS_NAMESPACE                   "evse"
 #define NVS_MAX_CHARGING_CURRENT        "max_chrg_curr"
@@ -37,9 +38,9 @@
 #define NVS_DEFAULT_CHARGING_TIME_LIMIT "def_ch_time_lim"
 #define NVS_DEFAULT_UNDER_POWER_LIMIT   "def_un_pwr_lim"
 
-#define LIMIT_CONSUMPTION_BIT           BIT0
-#define LIMIT_CHARGING_TIME_BIT         BIT1
-#define LIMIT_UNDER_POWER_BIT           BIT2
+#define LIMIT_CONSUMPTION_BIT   BIT0
+#define LIMIT_CHARGING_TIME_BIT BIT1
+#define LIMIT_UNDER_POWER_BIT   BIT2
 
 static const char* TAG = "evse";
 
@@ -47,7 +48,7 @@ static nvs_handle nvs;
 
 static SemaphoreHandle_t mutex;
 
-static evse_state_t state = EVSE_STATE_A;   // not hold error state
+static evse_state_t state = EVSE_STATE_A;  // not hold error state
 
 static uint32_t error = 0;
 
@@ -105,17 +106,16 @@ static evse_state_t prev_state = EVSE_STATE_A;
 
 // timeout helper to improve readability, should probably go to a separate header if needed elsewhere
 // set a timeout value in ms
-static inline void set_timeout(TickType_t *to, uint32_t ms)
+static inline void set_timeout(TickType_t* to, uint32_t ms)
 {
     *to = xTaskGetTickCount() + pdMS_TO_TICKS(ms);
 }
 
 // check if timeout is expired (sets timer value to 0, if true), returns false if timer value is 0
-static inline bool is_expired(TickType_t *to)
+static inline bool is_expired(TickType_t* to)
 {
     bool expired = *to != 0 && xTaskGetTickCount() > *to;
-    if (expired)
-        *to = 0;
+    if (expired) *to = 0;
 
     return expired;
 }
@@ -140,8 +140,7 @@ static void set_pilot(enum pilot_state_e state)
 {
     if (pilot_state != state) {
         pilot_state = state;
-        switch (pilot_state)
-        {
+        switch (pilot_state) {
         case PILOT_STATE_12V:
             pilot_set_level(true);
             break;
@@ -182,16 +181,15 @@ static void perform_rcm_selftest(void)
 
 static void apply_state(void)
 {
-    evse_state_t new_state = evse_get_state(); // getter method detect error state
+    evse_state_t new_state = evse_get_state();  // getter method detect error state
 
     if (prev_state != new_state) {
         ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
         if (error) {
-            ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
+            ESP_LOGI(TAG, "Error bits %" PRIu32 "", error);
         }
 
-        switch (new_state)
-        {
+        switch (new_state) {
         case EVSE_STATE_A:
         case EVSE_STATE_E:
         case EVSE_STATE_F:
@@ -246,11 +244,7 @@ static void apply_state(void)
 
 static bool charging_allowed(void)
 {
-    if (!enabled ||
-        !available ||
-        !authorized ||
-        reached_limit != 0) {
-
+    if (!enabled || !available || !authorized || reached_limit != 0) {
         return false;
     }
 
@@ -279,8 +273,7 @@ void evse_process(void)
     }
 
     if (board_config.socket_lock && socket_outlet) {
-        switch (socket_lock_get_status())
-        {
+        switch (socket_lock_get_status()) {
         case SOCKET_LOCK_STATUS_LOCKING_FAIL:
             set_error_bits(EVSE_ERR_LOCK_FAULT_BIT);
             break;
@@ -313,18 +306,16 @@ void evse_process(void)
     }
 
     if (error == 0 && !error_cleared) {
-        //no errors
-        //after clear error, process on next iteration, after apply_state
+        // no errors
+        // after clear error, process on next iteration, after apply_state
 
-        switch (state)
-        {
+        switch (state) {
         case EVSE_STATE_A:
             if (!available) {
                 state = EVSE_STATE_F;
                 break;
             }
-            switch (pilot_voltage)
-            {
+            switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 // stay in current state
                 break;
@@ -352,8 +343,7 @@ void evse_process(void)
                 state = EVSE_STATE_F;
                 break;
             }
-            switch (pilot_voltage)
-            {
+            switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
                 break;
@@ -382,8 +372,7 @@ void evse_process(void)
                 state = EVSE_STATE_C1;
                 break;
             }
-            switch (pilot_voltage)
-            {
+            switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
                 break;
@@ -415,8 +404,7 @@ void evse_process(void)
                 state = EVSE_STATE_D1;
                 break;
             }
-            switch (pilot_voltage)
-            {
+            switch (pilot_voltage) {
             case PILOT_VOLTAGE_6:
                 state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
                 break;
@@ -538,7 +526,7 @@ const char* evse_state_to_str(evse_state_t state)
         return "A";
     case EVSE_STATE_B1:
         return "B1";
-    case  EVSE_STATE_B2:
+    case EVSE_STATE_B2:
         return "B2";
     case EVSE_STATE_C1:
         return "C1";
@@ -548,11 +536,12 @@ const char* evse_state_to_str(evse_state_t state)
         return "D1";
     case EVSE_STATE_D2:
         return "D2";
-    case  EVSE_STATE_E:
+    case EVSE_STATE_E:
         return "E";
     case EVSE_STATE_F:
         return "F";
-    default: return NULL;
+    default:
+        return NULL;
     }
 }
 

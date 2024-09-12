@@ -1,8 +1,9 @@
 #ifndef HTTP_JSON_UTILS_H
 #define HTTP_JSON_UTILS_H
 
-#include "esp_err.h"
-#include "cJSON.h"
+#include <cJSON.h>
+#include <esp_err.h>
+#include <stdbool.h>
 
 cJSON* http_json_get_evse_config(void);
 

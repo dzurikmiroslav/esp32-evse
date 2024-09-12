@@ -1,14 +1,15 @@
+#include "http_web.h"
+
+#include <esp_log.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "esp_log.h"
 
-#include "http_web.h"
 #include "http.h"
 
-#define CPIO_MAGIC          "070707"
-#define CPIO_MAGIC_LENGTH   6
-#define CPIO_TRAILER        "TRAILER!!!"
+#define CPIO_MAGIC        "070707"
+#define CPIO_MAGIC_LENGTH 6
+#define CPIO_TRAILER      "TRAILER!!!"
 
 typedef struct {
     char magic[6];
@@ -80,7 +81,7 @@ static size_t web_archive_find(const char* name, char** content)
     do {
         if (strcmp(name, cpio_file_name(hdr)) == 0) {
             *content = (char*)cpio_file_data(hdr);
-            return  cpio_file_size(hdr);
+            return cpio_file_size(hdr);
         }
     } while (cpio_next(&hdr));
 
@@ -139,9 +140,9 @@ size_t http_web_handlers_count(void)
 void http_web_add_handlers(httpd_handle_t server)
 {
     httpd_uri_t get_uri = {
-           .uri = "*",
-           .method = HTTP_GET,
-           .handler = get_handler
+        .uri = "*",
+        .method = HTTP_GET,
+        .handler = get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_uri));
 }

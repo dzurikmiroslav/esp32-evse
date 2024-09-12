@@ -1,40 +1,40 @@
-#include <sys/param.h>
-#include <stdint.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "esp_err.h"
-#include "esp_log.h"
-#include "esp_system.h"
-#include "nvs.h"
-#include "lwip/err.h"
-#include "lwip/sockets.h"
-#include "lwip/sys.h"
-#include "lwip/netdb.h"
-
 #include "modbus_tcp.h"
+
+#include <esp_err.h>
+#include <esp_log.h>
+#include <esp_system.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <lwip/err.h>
+#include <lwip/netdb.h>
+#include <lwip/sockets.h>
+#include <lwip/sys.h>
+#include <nvs.h>
+#include <stdint.h>
+#include <sys/param.h>
+
 #include "modbus.h"
 
+#define TCP_PORT     502
+#define TCP_MAX_CONN 3
+#define TCP_BACKLOG  5
+#define TCP_BUF_SIZE (MODBUS_PACKET_SIZE + 7)
 
-#define TCP_PORT                502
-#define TCP_MAX_CONN            3
-#define TCP_BACKLOG             5
-#define TCP_BUF_SIZE            (MODBUS_PACKET_SIZE + 7)
+#define RESPONSE_TIMEOUT   999
+#define DISCONNECT_TIMEOUT 20000
+#define SHUTDOWN_TIMEOUT   1000
 
-#define RESPONSE_TIMEOUT        999
-#define DISCONNECT_TIMEOUT      20000
-#define SHUTDOWN_TIMEOUT        1000
+#define MODBUS_TCP_TID  0
+#define MODBUS_TCP_PID  2
+#define MODBUS_TCP_LEN  4
+#define MODBUS_TCP_DATA 6
 
-#define MODBUS_TCP_TID          0
-#define MODBUS_TCP_PID          2
-#define MODBUS_TCP_LEN          4
-#define MODBUS_TCP_DATA         6
+#define NVS_NAMESPACE "modbus_tcp"
+#define NVS_ENABLED   "enabled"
 
-#define NVS_NAMESPACE           "modbus_tcp"
-#define NVS_ENABLED             "enabled"
-
-#define LOG_LVL_DATA            ESP_LOG_VERBOSE
-#define LOG_LVL_CONN            ESP_LOG_VERBOSE
+#define LOG_LVL_DATA ESP_LOG_VERBOSE
+#define LOG_LVL_CONN ESP_LOG_VERBOSE
 
 static const char* TAG = "modbus_tcp";
 
@@ -107,7 +107,7 @@ static int accept_conn(int listen_sock)
 
 static int port_bind(void)
 {
-    int listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); //TODO IPPROTO_UDP IPPROTO_TCP
+    int listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);  // TODO IPPROTO_UDP IPPROTO_TCP
     if (listen_sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
         return listen_sock;
@@ -122,11 +122,11 @@ static int port_bind(void)
     }
 
     struct sockaddr_in dest_addr = {
-           .sin_family = PF_INET,
-           .sin_addr = {
-               .s_addr = htonl(INADDR_ANY)
-           },
-           .sin_port = htons(TCP_PORT)
+        .sin_family = PF_INET,
+        .sin_addr = { 
+            .s_addr = htonl(INADDR_ANY),
+        },
+        .sin_port = htons(TCP_PORT),
     };
     err = bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
     if (err != 0) {

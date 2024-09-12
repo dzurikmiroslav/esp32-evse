@@ -18,21 +18,9 @@ IncludeCategories:
   - Regex:           '^<.*\.h>'
     Priority:        1
   - Regex:           '^"sdkconfig.h"'
-    Priority:        10
-  - Regex:           '^"freertos/.*\.h"'
-    Priority:        10
-    SortPriority:    11
-  - Regex:           '^"esp_.*\.h"'
-    Priority:        10
-    SortPriority:    12
-  - Regex:           '^"driver/.*\.h"'
-    Priority:        10
-    SortPriority:    13
-  - Regex:           '^"(nvs|adc|nvs_flash|cJSON|hal/.*|soc/.*|rom/.*).h"'
-    Priority:        10
-    SortPriority:    13
+    Priority:        2
   - Regex:           '.*'
-    Priority:        20
+    Priority:        3
 AlignOperands: true
 AlignConsecutiveMacros: Consecutive
 AllowShortFunctionsOnASingleLine: false
@@ -41,3 +29,5 @@ BinPackArguments: false
 BinPackParameters: false
 SeparateDefinitionBlocks: Always
 IndentCaseLabels: false
+Cpp11BracedListStyle: false
+ForEachMacros: [cJSON_ArrayForEach]

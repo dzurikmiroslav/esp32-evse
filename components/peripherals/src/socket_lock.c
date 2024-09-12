@@ -1,29 +1,30 @@
-#include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/timers.h"
-#include "esp_log.h"
-#include "driver/gpio.h"
-#include "nvs.h"
-
 #include "socket_lock.h"
+
+#include <driver/gpio.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <freertos/timers.h>
+#include <nvs.h>
+#include <string.h>
+
 #include "board_config.h"
 
-#define NVS_NAMESPACE           "socket_lock"
-#define NVS_OPERATING_TIME      "op_time"
-#define NVS_BREAK_TIME          "break_time"
-#define NVS_RETRY_COUNT         "retry_count"
-#define NVS_DETECTION_HIGH      "detect_hi"
+#define NVS_NAMESPACE      "socket_lock"
+#define NVS_OPERATING_TIME "op_time"
+#define NVS_BREAK_TIME     "break_time"
+#define NVS_RETRY_COUNT    "retry_count"
+#define NVS_DETECTION_HIGH "detect_hi"
 
-#define OPERATING_TIME_MIN      100
-#define OPERATING_TIME_MAX      1000
-#define LOCK_DELAY              500
+#define OPERATING_TIME_MIN 100
+#define OPERATING_TIME_MAX 1000
+#define LOCK_DELAY         500
 
-#define LOCK_BIT                BIT0
-#define UNLOCK_BIT              BIT1
-#define REPEAT_LOCK_BIT         BIT2
-#define REPEAT_UNLOCK_BIT       BIT3
+#define LOCK_BIT          BIT0
+#define UNLOCK_BIT        BIT1
+#define REPEAT_LOCK_BIT   BIT2
+#define REPEAT_UNLOCK_BIT BIT3
 
 static const char* TAG = "socket_lock";
 
@@ -87,7 +88,7 @@ static void socket_lock_task_func(void* param)
                 gpio_set_level(board_config.socket_lock_b_gpio, 0);
             } else if (notification & (LOCK_BIT | REPEAT_LOCK_BIT)) {
                 if (notification & LOCK_BIT) {
-                    vTaskDelay(pdMS_TO_TICKS(LOCK_DELAY));  //delay before first lock attempt
+                    vTaskDelay(pdMS_TO_TICKS(LOCK_DELAY));  // delay before first lock attempt
                 }
                 gpio_set_level(board_config.socket_lock_a_gpio, 1);
                 gpio_set_level(board_config.socket_lock_b_gpio, 0);
@@ -136,7 +137,7 @@ void socket_lock_init(void)
             detection_high = u8;
         }
 
-        gpio_config_t io_conf = {};
+        gpio_config_t io_conf = { 0 };
 
         io_conf.mode = GPIO_MODE_OUTPUT;
         io_conf.pin_bit_mask = BIT64(board_config.socket_lock_a_gpio) | BIT64(board_config.socket_lock_b_gpio);

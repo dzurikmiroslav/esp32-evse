@@ -1,24 +1,25 @@
+#include "serial.h"
+
+#include <driver/gpio.h>
+#include <driver/uart.h>
+#include <esp_log.h>
+#include <nvs.h>
 #include <string.h>
-#include "driver/uart.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "nvs.h"
 
 #include "board_config.h"
-#include "serial.h"
 #include "serial_logger.h"
 #include "serial_modbus.h"
 #include "serial_nextion.h"
 
-#define BAUD_RATE_MIN           300
-#define BAUD_RATE_MAX           1000000
+#define BAUD_RATE_MIN 300
+#define BAUD_RATE_MAX 1000000
 
-#define NVS_NAMESPACE           "serial"
-#define NVS_MODE                "mode_%x"
-#define NVS_BAUD_RATE           "baud_rate_%x"
-#define NVS_DATA_BITS           "data_bits_%x"
-#define NVS_STOP_BITS           "stop_bits_%x"
-#define NVS_PARITY              "parity_%x"
+#define NVS_NAMESPACE "serial"
+#define NVS_MODE      "mode_%x"
+#define NVS_BAUD_RATE "baud_rate_%x"
+#define NVS_DATA_BITS "data_bits_%x"
+#define NVS_STOP_BITS "stop_bits_%x"
+#define NVS_PARITY    "parity_%x"
 
 static const char* TAG = "serial";
 
@@ -94,7 +95,7 @@ void serial_init(void)
 
     for (serial_id_t id = SERIAL_ID_1; id < SERIAL_ID_MAX; id++) {
         if (serial_board_config[id] != BOARD_CONFIG_SERIAL_NONE) {
-            uint8_t u8 = id == SERIAL_ID_1 ? SERIAL_MODE_LOG : SERIAL_MODE_NONE;  //SERIAL_ID_1 is default system log
+            uint8_t u8 = id == SERIAL_ID_1 ? SERIAL_MODE_LOG : SERIAL_MODE_NONE;  // SERIAL_ID_1 is default system log
             char key[12];
             sprintf(key, NVS_MODE, id);
             nvs_get_u8(nvs, key, &u8);
@@ -250,8 +251,7 @@ esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, u
 
 const char* serial_mode_to_str(serial_mode_t mode)
 {
-    switch (mode)
-    {
+    switch (mode) {
     case SERIAL_MODE_LOG:
         return "log";
     case SERIAL_MODE_MODBUS:
@@ -279,8 +279,7 @@ serial_mode_t serial_str_to_mode(const char* str)
 
 const char* serial_data_bits_to_str(uart_word_length_t bits)
 {
-    switch (bits)
-    {
+    switch (bits) {
     case UART_DATA_5_BITS:
         return "5";
     case UART_DATA_6_BITS:
@@ -313,8 +312,7 @@ uart_word_length_t serial_str_to_data_bits(const char* str)
 
 const char* serial_stop_bits_to_str(uart_stop_bits_t bits)
 {
-    switch (bits)
-    {
+    switch (bits) {
     case UART_STOP_BITS_1:
         return "1";
     case UART_STOP_BITS_1_5:
@@ -342,8 +340,7 @@ uart_stop_bits_t serial_str_to_stop_bits(const char* str)
 
 const char* serial_parity_to_str(uart_parity_t parity)
 {
-    switch (parity)
-    {
+    switch (parity) {
     case UART_PARITY_DISABLE:
         return "disable";
     case UART_PARITY_EVEN:

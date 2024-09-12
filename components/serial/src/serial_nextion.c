@@ -1,18 +1,19 @@
-#include <string.h>
-#include "esp_log.h"
-#include "esp_ota_ops.h"
-#include "esp_timer.h"
-#include "esp_netif.h"
-
 #include "serial_nextion.h"
-#include "evse.h"
-#include "energy_meter.h"
+
+#include <esp_log.h>
+#include <esp_netif.h>
+#include <esp_ota_ops.h>
+#include <esp_timer.h>
+#include <string.h>
+
 #include "board_config.h"
+#include "energy_meter.h"
+#include "evse.h"
 #include "temp_sensor.h"
 
-#define BUF_SIZE                256
-#define NEX_RET_AUTO_SLEEP      0x86
-#define NEX_RET_BUF_OVERFLOW    0x24
+#define BUF_SIZE             256
+#define NEX_RET_AUTO_SLEEP   0x86
+#define NEX_RET_BUF_OVERFLOW 0x24
 
 static const char* VAR_STATE = "state";
 static const char* VAR_ENABLED = "en";
@@ -43,40 +44,40 @@ static const char* VAR_HEAP_SIZE = "heap";
 static const char* VAR_MAX_HEAP_SIZE = "maxHeap";
 
 static const char* VAR_FMT_STATE = "state.txt=\"%s\"";
-static const char* VAR_FMT_ENABLED = "en.val=%"PRIu8;
-static const char* VAR_FMT_ERROR = "err.val=%"PRIu16;
-static const char* VAR_FMT_PENDING_AUTH = "pendAuth.val=%"PRIu8;
-static const char* VAR_FMT_LIMIT_REACHED = "limReach.val=%"PRIu8;
-static const char* VAR_FMT_MAX_CHARGING_CURRENT = "maxChCur.val=%"PRIu8;
-static const char* VAR_FMT_CHARGING_CURRENT = "chCur.val=%"PRIu16;
-static const char* VAR_FMT_SESSION_TIME = "sesTime.val=%"PRIu32;
-static const char* VAR_FMT_CHARGING_TIME = "chTime.val=%"PRIu32;
-static const char* VAR_FMT_POWER = "power.val=%"PRIu16;
-static const char* VAR_FMT_CONSUMPTION = "consum.val=%"PRIu16;
-static const char* VAR_FMT_VOLTAGE_L1 = "vltL1.val=%"PRIu16;
-static const char* VAR_FMT_VOLTAGE_L2 = "vltL2.val=%"PRIu16;
-static const char* VAR_FMT_VOLTAGE_L3 = "vltL3.val=%"PRIu16;
-static const char* VAR_FMT_CURRENT_L1 = "curL1.val=%"PRIu16;
-static const char* VAR_FMT_CURRENT_L2 = "curL2.val=%"PRIu16;
-static const char* VAR_FMT_CURRENT_L3 = "curL3.val=%"PRIu16;
-static const char* VAR_FMT_CONSUMPTION_LIMIT = "consumLim.val=%"PRIu32;
-static const char* VAR_FMT_CHARGING_TIME_LIMIT = "chTimeLim.val=%"PRIu32;
-static const char* VAR_FMT_UNDER_POWER_LIMIT = "uPowerLim.val=%"PRIu16;
+static const char* VAR_FMT_ENABLED = "en.val=%" PRIu8;
+static const char* VAR_FMT_ERROR = "err.val=%" PRIu16;
+static const char* VAR_FMT_PENDING_AUTH = "pendAuth.val=%" PRIu8;
+static const char* VAR_FMT_LIMIT_REACHED = "limReach.val=%" PRIu8;
+static const char* VAR_FMT_MAX_CHARGING_CURRENT = "maxChCur.val=%" PRIu8;
+static const char* VAR_FMT_CHARGING_CURRENT = "chCur.val=%" PRIu16;
+static const char* VAR_FMT_SESSION_TIME = "sesTime.val=%" PRIu32;
+static const char* VAR_FMT_CHARGING_TIME = "chTime.val=%" PRIu32;
+static const char* VAR_FMT_POWER = "power.val=%" PRIu16;
+static const char* VAR_FMT_CONSUMPTION = "consum.val=%" PRIu16;
+static const char* VAR_FMT_VOLTAGE_L1 = "vltL1.val=%" PRIu16;
+static const char* VAR_FMT_VOLTAGE_L2 = "vltL2.val=%" PRIu16;
+static const char* VAR_FMT_VOLTAGE_L3 = "vltL3.val=%" PRIu16;
+static const char* VAR_FMT_CURRENT_L1 = "curL1.val=%" PRIu16;
+static const char* VAR_FMT_CURRENT_L2 = "curL2.val=%" PRIu16;
+static const char* VAR_FMT_CURRENT_L3 = "curL3.val=%" PRIu16;
+static const char* VAR_FMT_CONSUMPTION_LIMIT = "consumLim.val=%" PRIu32;
+static const char* VAR_FMT_CHARGING_TIME_LIMIT = "chTimeLim.val=%" PRIu32;
+static const char* VAR_FMT_UNDER_POWER_LIMIT = "uPowerLim.val=%" PRIu16;
 static const char* VAR_FMT_DEVICE_NAME = "devName.txt=\"%s\"";
-static const char* VAR_FMT_UPTIME = "uptime.val=%"PRIu32;
-static const char* VAR_FMT_TEMPERATURE = "temp.val=%"PRIi16;
+static const char* VAR_FMT_UPTIME = "uptime.val=%" PRIu32;
+static const char* VAR_FMT_TEMPERATURE = "temp.val=%" PRIi16;
 static const char* VAR_FMT_IP = "ip.txt=\"%d.%d.%d.%d\"";
 static const char* VAR_FMT_APP_VERSION = "appVer.txt=\"%s\"";
-static const char* VAR_FMT_HEAP_SIZE = "heap.val=%"PRIu32;
-static const char* VAR_FMT_MAX_HEAP_SIZE = "maxHeap.val=%"PRIu32;
+static const char* VAR_FMT_HEAP_SIZE = "heap.val=%" PRIu32;
+static const char* VAR_FMT_MAX_HEAP_SIZE = "maxHeap.val=%" PRIu32;
 
 static const char* CMD_SUBSCRIBE = "sub %s";
 static const char* CMD_UNSUBSCRIBE = "unsub";
-static const char* CMD_ENABLED = "en %"PRIu8;
-static const char* CMD_CHARGING_CURRENT = "chCur %"PRIu16;
-static const char* CMD_CONSUMPTION_LIMIT = "consumLim %"PRIu32;
-static const char* CMD_CHARGING_TIME_LIMIT = "chTimeLim %"PRIu32;
-static const char* CMD_UNDER_POWER_LIMIT = "uPowerLim %"PRIu16;
+static const char* CMD_ENABLED = "en %" PRIu8;
+static const char* CMD_CHARGING_CURRENT = "chCur %" PRIu16;
+static const char* CMD_CONSUMPTION_LIMIT = "consumLim %" PRIu32;
+static const char* CMD_CHARGING_TIME_LIMIT = "chTimeLim %" PRIu32;
+static const char* CMD_UNDER_POWER_LIMIT = "uPowerLim %" PRIu16;
 static const char* CMD_AUTHORIZE = "auth";
 
 static const char* NEX_CMD_WAKE = "sleep=0";
@@ -90,8 +91,7 @@ static uart_port_t port = -1;
 
 static TaskHandle_t serial_nextion_task = NULL;
 
-typedef struct
-{
+typedef struct {
     bool state : 1;
     bool enabled : 1;
     bool error : 1;
@@ -119,8 +119,7 @@ typedef struct
     bool max_heap_size : 1;
 } var_sub_t;
 
-typedef struct
-{
+typedef struct {
     bool sleep : 1;
     var_sub_t var_sub;
     evse_state_t state;
@@ -230,7 +229,7 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
     char var_str[32];
     char rx_cmd[64];
 
-    //nextion return codes
+    // nextion return codes
     if (cmd[0] == NEX_RET_AUTO_SLEEP) {
         ESP_LOGD(TAG, "Enter auto sleep");
         ctx->sleep = true;
@@ -243,7 +242,7 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
         return;
     }
 
-    //commands
+    // commands
     strncpy(rx_cmd, (const char*)cmd, cmd_len);
     rx_cmd[cmd_len] = '\0';
 
@@ -424,13 +423,13 @@ void serial_nextion_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_le
     ESP_LOGI(TAG, "Starting on uart %d", uart_num);
 
     uart_config_t uart_config = {
-            .baud_rate = baud_rate,
-            .data_bits = data_bits,
-            .parity = parity,
-            .stop_bits = stop_bit,
-            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-            .rx_flow_ctrl_thresh = 0,
-            .source_clk = UART_SCLK_APB
+        .baud_rate = baud_rate,
+        .data_bits = data_bits,
+        .parity = parity,
+        .stop_bits = stop_bit,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .rx_flow_ctrl_thresh = 0,
+        .source_clk = UART_SCLK_APB,
     };
 
     esp_err_t err = uart_param_config(uart_num, &uart_config);

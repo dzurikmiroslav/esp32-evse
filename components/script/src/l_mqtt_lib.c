@@ -1,15 +1,15 @@
-#include "mqtt_client.h"
-#include "lua.h"
-#include "lauxlib.h"
-
 #include "l_mqtt_lib.h"
+
+#include <esp_log.h>
+
+#include "lauxlib.h"
+#include "lua.h"
+#include "mqtt_client.h"
 #include "script_utils.h"
-#include "esp_log.h"
 
 static const char* TAG = "l_mqtt";
 
-typedef struct
-{
+typedef struct {
     esp_mqtt_client_handle_t client;
     bool connected : 1;
     lua_State* L;
@@ -186,7 +186,7 @@ static int l_client_publish(lua_State* L)
 
         esp_mqtt_client_publish(userdata->client, topic, data, 0, qos, retry);
     }
-    
+
     return 0;
 }
 
@@ -209,25 +209,19 @@ static int l_client_gc(lua_State* L)
 }
 
 static const luaL_Reg lib[] = {
-    {"client",      l_client},
-    {NULL, NULL}
+    { "client", l_client },
+    { NULL, NULL },
 };
 
 static const luaL_Reg client_fields[] = {
-    {"connect",         l_client_connect},
-    {"disconnect",      l_client_disconnect},
-    {"subscribe",       l_client_subscribe},
-    {"unsubscribe",     l_client_unsubscribe},
-    {"publish",         l_client_publish},
-    {"setonconnect",    l_client_set_on_connect},
-    {"setonmessage",    l_client_set_on_message},
-    {NULL, NULL}
+    { "connect", l_client_connect }, { "disconnect", l_client_disconnect },       { "subscribe", l_client_subscribe },         { "unsubscribe", l_client_unsubscribe },
+    { "publish", l_client_publish }, { "setonconnect", l_client_set_on_connect }, { "setonmessage", l_client_set_on_message }, { NULL, NULL },
 };
 
 static const luaL_Reg client_metadata[] = {
-    {"__index",     NULL},
-    {"__gc",        l_client_gc},
-    {NULL, NULL}
+    { "__index", NULL },
+    { "__gc", l_client_gc },
+    { NULL, NULL },
 };
 
 int luaopen_mqtt(lua_State* L)

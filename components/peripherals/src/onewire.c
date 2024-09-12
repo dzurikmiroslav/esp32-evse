@@ -29,12 +29,12 @@
  * Branding Policy.
  */
 
-#include <string.h>
+#include "onewire.h"
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include "rom/ets_sys.h"
-
-#include "onewire.h"
+#include <rom/ets_sys.h>
+#include <string.h>
 
 #define ONEWIRE_SELECT_ROM 0x55
 #define ONEWIRE_SKIP_ROM   0xcc
@@ -50,8 +50,7 @@ static inline bool _onewire_wait_for_bus(gpio_num_t pin, int max_wait)
 {
     bool state;
     for (int i = 0; i < ((max_wait + 4) / 5); i++) {
-        if (gpio_get_level(pin))
-            break;
+        if (gpio_get_level(pin)) break;
         ets_delay_us(5);
     }
     state = gpio_get_level(pin);
@@ -79,29 +78,26 @@ bool onewire_reset(gpio_num_t pin)
 
     gpio_set_level(pin, 1);
     // wait until the wire is high... just in case
-    if (!_onewire_wait_for_bus(pin, 250))
-        return false;
+    if (!_onewire_wait_for_bus(pin, 250)) return false;
 
     gpio_set_level(pin, 0);
     ets_delay_us(480);
 
     portENTER_CRITICAL(&mux);
-    gpio_set_level(pin, 1); // allow it to float
+    gpio_set_level(pin, 1);  // allow it to float
     ets_delay_us(70);
     bool r = !gpio_get_level(pin);
     portEXIT_CRITICAL(&mux);
 
     // Wait for all devices to finish pulling the bus low before returning
-    if (!_onewire_wait_for_bus(pin, 410))
-        return false;
+    if (!_onewire_wait_for_bus(pin, 410)) return false;
 
     return r;
 }
 
 static bool _onewire_write_bit(gpio_num_t pin, bool v)
 {
-    if (!_onewire_wait_for_bus(pin, 10))
-        return false;
+    if (!_onewire_wait_for_bus(pin, 10)) return false;
 
     portENTER_CRITICAL(&mux);
     if (v) {
@@ -112,7 +108,7 @@ static bool _onewire_write_bit(gpio_num_t pin, bool v)
     } else {
         gpio_set_level(pin, 0);  // drive output low
         ets_delay_us(65);
-        gpio_set_level(pin, 1); // allow output high
+        gpio_set_level(pin, 1);  // allow output high
     }
     ets_delay_us(1);
     portEXIT_CRITICAL(&mux);
@@ -122,8 +118,7 @@ static bool _onewire_write_bit(gpio_num_t pin, bool v)
 
 static int _onewire_read_bit(gpio_num_t pin)
 {
-    if (!_onewire_wait_for_bus(pin, 10))
-        return -1;
+    if (!_onewire_wait_for_bus(pin, 10)) return -1;
 
     portENTER_CRITICAL(&mux);
     gpio_set_level(pin, 0);
@@ -145,8 +140,7 @@ static int _onewire_read_bit(gpio_num_t pin)
 bool onewire_write(gpio_num_t pin, uint8_t v)
 {
     for (uint8_t bitMask = 0x01; bitMask; bitMask <<= 1)
-        if (!_onewire_write_bit(pin, (bitMask & v)))
-            return false;
+        if (!_onewire_write_bit(pin, (bitMask & v))) return false;
 
     return true;
 }
@@ -154,8 +148,7 @@ bool onewire_write(gpio_num_t pin, uint8_t v)
 bool onewire_write_bytes(gpio_num_t pin, const uint8_t* buf, size_t count)
 {
     for (size_t i = 0; i < count; i++)
-        if (!onewire_write(pin, buf[i]))
-            return false;
+        if (!onewire_write(pin, buf[i])) return false;
 
     return true;
 }
@@ -183,8 +176,7 @@ bool onewire_read_bytes(gpio_num_t pin, uint8_t* buf, size_t count)
 
     for (i = 0; i < count; i++) {
         b = onewire_read(pin);
-        if (b < 0)
-            return false;
+        if (b < 0) return false;
         buf[i] = b;
     }
     return true;
@@ -194,12 +186,10 @@ bool onewire_select(gpio_num_t pin, onewire_addr_t addr)
 {
     uint8_t i;
 
-    if (!onewire_write(pin, ONEWIRE_SELECT_ROM))
-        return false;
+    if (!onewire_write(pin, ONEWIRE_SELECT_ROM)) return false;
 
     for (i = 0; i < 8; i++) {
-        if (!onewire_write(pin, addr & 0xff))
-            return false;
+        if (!onewire_write(pin, addr & 0xff)) return false;
         addr >>= 8;
     }
 
@@ -215,8 +205,7 @@ bool onewire_power(gpio_num_t pin)
 {
     // Make sure the bus is not being held low before driving it high, or we
     // may end up shorting ourselves out.
-    if (!_onewire_wait_for_bus(pin, 10))
-        return false;
+    if (!_onewire_wait_for_bus(pin, 10)) return false;
 
     setup_pin(pin, false);
     gpio_set_level(pin, 1);
@@ -262,7 +251,7 @@ void onewire_search_prefix(onewire_search_t* search, uint8_t family_code)
 //
 onewire_addr_t onewire_search_next(onewire_search_t* search, gpio_num_t pin)
 {
-    //TODO: add more checking for read/write errors
+    // TODO: add more checking for read/write errors
     uint8_t id_bit_number;
     uint8_t last_zero, search_result;
     int rom_byte_number;
@@ -313,8 +302,7 @@ onewire_addr_t onewire_search_next(onewire_search_t* search, gpio_num_t pin)
                         search_direction = (id_bit_number == search->last_discrepancy);
 
                     // if 0 was picked then record its position in LastZero
-                    if (!search_direction)
-                        last_zero = id_bit_number;
+                    if (!search_direction) last_zero = id_bit_number;
                 }
 
                 // set or clear the bit in the ROM byte rom_byte_number
@@ -346,8 +334,7 @@ onewire_addr_t onewire_search_next(onewire_search_t* search, gpio_num_t pin)
             search->last_discrepancy = last_zero;
 
             // check for last device
-            if (search->last_discrepancy == 0)
-                search->last_device_found = true;
+            if (search->last_discrepancy == 0) search->last_device_found = true;
 
             search_result = 1;
         }
@@ -363,7 +350,7 @@ onewire_addr_t onewire_search_next(onewire_search_t* search, gpio_num_t pin)
         for (rom_byte_number = 7; rom_byte_number >= 0; rom_byte_number--) {
             addr = (addr << 8) | search->rom_no[rom_byte_number];
         }
-        //printf("Ok I found something at %08x%08x...\n", (uint32_t)(addr >> 32), (uint32_t)addr);
+        // printf("Ok I found something at %08x%08x...\n", (uint32_t)(addr >> 32), (uint32_t)addr);
     }
     return addr;
 }
@@ -375,24 +362,16 @@ onewire_addr_t onewire_search_next(onewire_search_t* search, gpio_num_t pin)
 #ifdef ONEWIRE_CRC8_TABLE
 // This table comes from Dallas sample code where it is freely reusable,
 // though Copyright (c) 2000 Dallas Semiconductor Corporation
-static const uint8_t dscrc_table[] = {
-    0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
-    157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
-    35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
-    190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
-    70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
-    219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
-    101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
-    248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
-    140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
-    17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
-    175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
-    50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
-    202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
-    87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
-    233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
-    116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
-};
+static const uint8_t dscrc_table[] = { 0,   94,  188, 226, 97,  63,  221, 131, 194, 156, 126, 32,  163, 253, 31,  65,  157, 195, 33,  127, 252, 162, 64,  30,  95,  1,
+                                       227, 189, 62,  96,  130, 220, 35,  125, 159, 193, 66,  28,  254, 160, 225, 191, 93,  3,   128, 222, 60,  98,  190, 224, 2,   92,
+                                       223, 129, 99,  61,  124, 34,  192, 158, 29,  67,  161, 255, 70,  24,  250, 164, 39,  121, 155, 197, 132, 218, 56,  102, 229, 187,
+                                       89,  7,   219, 133, 103, 57,  186, 228, 6,   88,  25,  71,  165, 251, 120, 38,  196, 154, 101, 59,  217, 135, 4,   90,  184, 230,
+                                       167, 249, 27,  69,  198, 152, 122, 36,  248, 166, 68,  26,  153, 199, 37,  123, 58,  100, 134, 216, 91,  5,   231, 185, 140, 210,
+                                       48,  110, 237, 179, 81,  15,  78,  16,  242, 172, 47,  113, 147, 205, 17,  79,  173, 243, 112, 46,  204, 146, 211, 141, 111, 49,
+                                       178, 236, 14,  80,  175, 241, 19,  77,  206, 144, 114, 44,  109, 51,  209, 143, 12,  82,  176, 238, 50,  108, 142, 208, 83,  13,
+                                       239, 177, 240, 174, 76,  18,  145, 207, 45,  115, 202, 148, 118, 40,  171, 245, 23,  73,  8,   86,  180, 234, 105, 55,  213, 139,
+                                       87,  9,   235, 181, 54,  104, 138, 212, 149, 203, 41,  119, 244, 170, 72,  22,  233, 183, 85,  11,  136, 214, 52,  106, 43,  117,
+                                       151, 201, 74,  20,  246, 168, 116, 42,  200, 150, 21,  75,  169, 247, 182, 232, 10,  84,  215, 137, 107, 53 };
 
 //
 // Compute a Dallas Semiconductor 8 bit CRC. These show up in the ROM
@@ -405,8 +384,7 @@ uint8_t onewire_crc8(const uint8_t* data, uint8_t len)
 {
     uint8_t crc = 0;
 
-    while (len--)
-        crc = dscrc_table[crc ^ *data++];
+    while (len--) crc = dscrc_table[crc ^ *data++];
 
     return crc;
 }
@@ -419,15 +397,12 @@ uint8_t onewire_crc8(const uint8_t* data, uint8_t len)
 {
     uint8_t crc = 0;
 
-    while (len--)
-    {
+    while (len--) {
         uint8_t inbyte = *data++;
-        for (int i = 8; i; i--)
-        {
+        for (int i = 8; i; i--) {
             uint8_t mix = (crc ^ inbyte) & 0x01;
             crc >>= 1;
-            if (mix)
-                crc ^= 0x8C;
+            if (mix) crc ^= 0x8C;
             inbyte >>= 1;
         }
     }
@@ -446,8 +421,8 @@ uint8_t onewire_crc8(const uint8_t* data, uint8_t len)
 //    ReadBytes(net, buf+3, 10);  // Read 6 data bytes, 2 0xFF, 2 CRC16
 //    if (!CheckCRC16(buf, 11, &buf[11])) {
 //        // Handle error.
-//    }     
-//          
+//    }
+//
 // @param input - Array of bytes to checksum.
 // @param len - How many bytes to use.
 // @param inverted_crc - The two CRC16 bytes in the received data.
@@ -486,8 +461,7 @@ uint16_t onewire_crc16(const uint8_t* input, size_t len, uint16_t crc_iv)
         cdata = (cdata ^ crc) & 0xff;
         crc >>= 8;
 
-        if (oddparity[cdata & 0x0F] ^ oddparity[cdata >> 4])
-            crc ^= 0xC001;
+        if (oddparity[cdata & 0x0F] ^ oddparity[cdata >> 4]) crc ^= 0xC001;
 
         cdata <<= 6;
         crc ^= cdata;

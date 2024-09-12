@@ -1,18 +1,19 @@
-#include "esp_err.h"
-#include "esp_log.h"
-#include "nvs.h"
-#include "mbedtls/base64.h"
-
 #include "http.h"
-#include "http_rest.h"
+
+#include <esp_err.h>
+#include <esp_log.h>
+#include <mbedtls/base64.h>
+#include <nvs.h>
+
 #include "http_dav.h"
+#include "http_rest.h"
 #include "http_web.h"
 
-#define MAX_OPEN_SOCKETS        5
+#define MAX_OPEN_SOCKETS 5
 
-#define NVS_NAMESPACE           "rest"
-#define NVS_USER                "user"
-#define NVS_PASSWORD            "password"
+#define NVS_NAMESPACE "rest"
+#define NVS_USER      "user"
+#define NVS_PASSWORD  "password"
 
 static const char* TAG = "rest";
 
@@ -37,8 +38,7 @@ bool http_authorize_req(httpd_req_t* req)
 
         if (strlen(authorization_hdr) > 0) {
             size_t olen;
-            if (mbedtls_base64_decode((unsigned char*)authorization, sizeof(authorization), &olen, (unsigned char*)authorization_hdr,
-                strlen(authorization_hdr)) == 0) {
+            if (mbedtls_base64_decode((unsigned char*)authorization, sizeof(authorization), &olen, (unsigned char*)authorization_hdr, strlen(authorization_hdr)) == 0) {
                 authorization[olen] = '\0';
 
                 char req_user[32] = "";

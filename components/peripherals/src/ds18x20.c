@@ -27,12 +27,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "ds18x20.h"
 
-#include <math.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include "ds18x20.h"
+#include <math.h>
 
 #define ds18x20_WRITE_SCRATCHPAD 0x4E
 #define ds18x20_READ_SCRATCHPAD  0xBE
@@ -46,8 +46,15 @@
 #define ds18x20_ALARMSEARCH      0xEC
 #define ds18x20_CONVERT_T        0x44
 
-#define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) return __; } while (0)
-#define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
+#define CHECK(x)                           \
+    do {                                   \
+        esp_err_t __;                      \
+        if ((__ = x) != ESP_OK) return __; \
+    } while (0)
+#define CHECK_ARG(VAL)                          \
+    do {                                        \
+        if (!(VAL)) return ESP_ERR_INVALID_ARG; \
+    } while (0)
 
 static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -55,8 +62,7 @@ static const char* TAG = "ds18x20";
 
 esp_err_t ds18x20_measure(gpio_num_t pin, ds18x20_addr_t addr, bool wait)
 {
-    if (!onewire_reset(pin))
-        return ESP_ERR_INVALID_RESPONSE;
+    if (!onewire_reset(pin)) return ESP_ERR_INVALID_RESPONSE;
 
     if (addr == DS18X20_ANY)
         onewire_skip_rom(pin);
@@ -70,8 +76,8 @@ esp_err_t ds18x20_measure(gpio_num_t pin, ds18x20_addr_t addr, bool wait)
     onewire_power(pin);
     portEXIT_CRITICAL(&mux);
 
-    if (wait){
-        vTaskDelay(pdMS_TO_TICKS(750));        
+    if (wait) {
+        vTaskDelay(pdMS_TO_TICKS(750));
         onewire_depower(pin);
     }
 
@@ -85,8 +91,7 @@ esp_err_t ds18x20_read_scratchpad(gpio_num_t pin, ds18x20_addr_t addr, uint8_t* 
     uint8_t crc;
     uint8_t expected_crc;
 
-    if (!onewire_reset(pin))
-        return ESP_ERR_INVALID_RESPONSE;
+    if (!onewire_reset(pin)) return ESP_ERR_INVALID_RESPONSE;
 
     if (addr == DS18X20_ANY)
         onewire_skip_rom(pin);
@@ -94,15 +99,23 @@ esp_err_t ds18x20_read_scratchpad(gpio_num_t pin, ds18x20_addr_t addr, uint8_t* 
         onewire_select(pin, addr);
     onewire_write(pin, ds18x20_READ_SCRATCHPAD);
 
-    for (int i = 0; i < 8; i++)
-        buffer[i] = onewire_read(pin);
+    for (int i = 0; i < 8; i++) buffer[i] = onewire_read(pin);
     crc = onewire_read(pin);
 
     expected_crc = onewire_crc8(buffer, 8);
-    if (crc != expected_crc)
-    {
-        ESP_LOGE(TAG, "CRC check failed reading scratchpad: %02x %02x %02x %02x %02x %02x %02x %02x : %02x (expected %02x)", buffer[0], buffer[1],
-            buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], crc, expected_crc);
+    if (crc != expected_crc) {
+        ESP_LOGE(TAG,
+                 "CRC check failed reading scratchpad: %02x %02x %02x %02x %02x %02x %02x %02x : %02x (expected %02x)",
+                 buffer[0],
+                 buffer[1],
+                 buffer[2],
+                 buffer[3],
+                 buffer[4],
+                 buffer[5],
+                 buffer[6],
+                 buffer[7],
+                 crc,
+                 expected_crc);
         return ESP_ERR_INVALID_CRC;
     }
 
@@ -113,8 +126,7 @@ esp_err_t ds18x20_write_scratchpad(gpio_num_t pin, ds18x20_addr_t addr, uint8_t*
 {
     CHECK_ARG(buffer);
 
-    if (!onewire_reset(pin))
-        return ESP_ERR_INVALID_RESPONSE;
+    if (!onewire_reset(pin)) return ESP_ERR_INVALID_RESPONSE;
 
     if (addr == DS18X20_ANY)
         onewire_skip_rom(pin);
@@ -122,16 +134,14 @@ esp_err_t ds18x20_write_scratchpad(gpio_num_t pin, ds18x20_addr_t addr, uint8_t*
         onewire_select(pin, addr);
     onewire_write(pin, ds18x20_WRITE_SCRATCHPAD);
 
-    for (int i = 0; i < 3; i++)
-        onewire_write(pin, buffer[i]);
+    for (int i = 0; i < 3; i++) onewire_write(pin, buffer[i]);
 
     return ESP_OK;
 }
 
 esp_err_t ds18x20_copy_scratchpad(gpio_num_t pin, ds18x20_addr_t addr)
 {
-    if (!onewire_reset(pin))
-        return ESP_ERR_INVALID_RESPONSE;
+    if (!onewire_reset(pin)) return ESP_ERR_INVALID_RESPONSE;
 
     if (addr == DS18X20_ANY)
         onewire_skip_rom(pin);
@@ -146,7 +156,7 @@ esp_err_t ds18x20_copy_scratchpad(gpio_num_t pin, ds18x20_addr_t addr)
     portEXIT_CRITICAL(&mux);
 
     // And then it needs to keep that power up for 10ms.
-    vTaskDelay(pdMS_TO_TICKS(10));    
+    vTaskDelay(pdMS_TO_TICKS(10));
     onewire_depower(pin);
 
     return ESP_OK;
@@ -189,7 +199,7 @@ esp_err_t ds18x20_read_temperature(gpio_num_t pin, ds18x20_addr_t addr, int16_t*
 {
     if ((uint8_t)addr == DS18B20_FAMILY_ID) {
         return ds18b20_read_temperature(pin, addr, temperature);
-    } else    {
+    } else {
         return ds18s20_read_temperature(pin, addr, temperature);
     }
 }
@@ -236,13 +246,10 @@ esp_err_t ds18x20_scan_devices(gpio_num_t pin, ds18x20_addr_t* addr_list, size_t
 
     *found = 0;
     onewire_search_start(&search);
-    while ((addr = onewire_search_next(&search, pin)) != ONEWIRE_NONE)
-    {
+    while ((addr = onewire_search_next(&search, pin)) != ONEWIRE_NONE) {
         uint8_t family_id = (uint8_t)addr;
-        if (family_id == DS18B20_FAMILY_ID || family_id == DS18S20_FAMILY_ID)
-        {
-            if (*found < addr_count)
-                addr_list[*found] = addr;
+        if (family_id == DS18B20_FAMILY_ID || family_id == DS18S20_FAMILY_ID) {
+            if (*found < addr_count) addr_list[*found] = addr;
             *found += 1;
         }
     }
@@ -255,11 +262,9 @@ esp_err_t ds18x20_read_temp_multi(gpio_num_t pin, ds18x20_addr_t* addr_list, siz
     CHECK_ARG(result_list);
 
     esp_err_t res = ESP_OK;
-    for (size_t i = 0; i < addr_count; i++)
-    {
+    for (size_t i = 0; i < addr_count; i++) {
         esp_err_t tmp = ds18x20_read_temperature(pin, addr_list[i], &result_list[i]);
-        if (tmp != ESP_OK)
-            res = tmp;
+        if (tmp != ESP_OK) res = tmp;
     }
     return res;
 }

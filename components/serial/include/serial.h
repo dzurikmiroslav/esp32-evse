@@ -1,15 +1,14 @@
 #ifndef SERIAL_H_
 #define SERIAL_H_
 
-#include "esp_err.h"
-#include "driver/uart.h"
+#include <driver/uart.h>
+#include <esp_err.h>
 
 /**
  * @brief Serial identifiers
  *
  */
-typedef enum
-{
+typedef enum {
     SERIAL_ID_1,
     SERIAL_ID_2,
 #if SOC_UART_NUM > 2
@@ -22,8 +21,7 @@ typedef enum
  * @brief Serial modes
  *
  */
-typedef enum
-{
+typedef enum {
     SERIAL_MODE_NONE,
     SERIAL_MODE_LOG,
     SERIAL_MODE_MODBUS,
@@ -39,10 +37,10 @@ void serial_init(void);
 
 /**
  * @brief Check if serial is availabale
- * 
- * @param id 
- * @return true 
- * @return false 
+ *
+ * @param id
+ * @return true
+ * @return false
  */
 bool serial_is_available(serial_id_t id);
 
@@ -88,7 +86,7 @@ uart_parity_t serial_get_parity(serial_id_t id);
 
 /**
  * @brief Reseal all serials config, before calling serial_set_config
- * 
+ *
  */
 void serial_reset_config(void);
 

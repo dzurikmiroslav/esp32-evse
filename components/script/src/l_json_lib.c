@@ -1,9 +1,10 @@
-#include <stdbool.h>
-#include "cJSON.h"
-#include "lua.h"
-#include "lauxlib.h"
-
 #include "l_json_lib.h"
+
+#include <cJSON.h>
+#include <stdbool.h>
+
+#include "lauxlib.h"
+#include "lua.h"
 
 static void decode_child(lua_State* L, cJSON* obj)
 {
@@ -104,7 +105,7 @@ static int l_encode(lua_State* L)
     lua_pushvalue(L, 1);
     cJSON* root = encode_child(L);
     lua_pop(L, 1);
-    
+
     char* json;
     if (format) {
         json = cJSON_Print(root);
@@ -122,9 +123,9 @@ static int l_encode(lua_State* L)
 }
 
 static const luaL_Reg lib[] = {
-    {"decode",      l_decode},
-    {"encode",      l_encode},
-    {NULL, NULL}
+    { "decode", l_decode },
+    { "encode", l_encode },
+    { NULL, NULL },
 };
 
 int luaopen_json(lua_State* L)

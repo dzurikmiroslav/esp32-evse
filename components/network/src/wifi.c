@@ -1,23 +1,23 @@
-#include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "esp_log.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "esp_netif.h"
-#include "esp_mac.h"
-#include "nvs.h"
-//#include "mdns.h"
-
 #include "wifi.h"
 
-#define AP_SSID             "evse-%02x%02x%02x"
+#include <esp_event.h>
+#include <esp_log.h>
+#include <esp_mac.h>
+#include <esp_netif.h>
+#include <esp_wifi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
+#include <freertos/task.h>
+#include <nvs.h>
+#include <string.h>
+// #include <mdns.h>
 
-#define NVS_NAMESPACE       "wifi"
-#define NVS_ENABLED         "enabled"
-#define NVS_SSID            "ssid"
-#define NVS_PASSWORD        "password"
+#define AP_SSID "evse-%02x%02x%02x"
+
+#define NVS_NAMESPACE "wifi"
+#define NVS_ENABLED   "enabled"
+#define NVS_SSID      "ssid"
+#define NVS_PASSWORD  "password"
 
 static const char* TAG = "wifi";
 
@@ -75,12 +75,14 @@ static void sta_set_config(void)
 {
     if (wifi_get_enabled()) {
         wifi_config_t wifi_config = {
-            .sta = {
-                .pmf_cfg = {
-                    .capable = true,
-                    .required = false
-                }
-            }
+            .sta =
+                {
+                    .pmf_cfg =
+                        {
+                            .capable = true,
+                            .required = false,
+                        },
+                },
         };
         wifi_get_ssid((char*)wifi_config.sta.ssid);
         wifi_get_password((char*)wifi_config.sta.password);
@@ -93,10 +95,11 @@ static void sta_set_config(void)
 static void ap_set_config(void)
 {
     wifi_config_t wifi_ap_config = {
-        .ap = {
-            .max_connection = 1,
-            .authmode = WIFI_AUTH_OPEN
-        }
+        .ap =
+            {
+                .max_connection = 1,
+                .authmode = WIFI_AUTH_OPEN,
+            },
     };
     uint8_t mac[6];
     esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
@@ -203,7 +206,7 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
     esp_wifi_scan_start(NULL, true);
     esp_wifi_scan_get_ap_num(&ap_count);
     esp_wifi_scan_get_ap_records(&number, ap_info);
-    
+
     for (int i = 0; (i < WIFI_SCAN_SCAN_LIST_SIZE) && (i < ap_count); i++) {
         strcpy(scan_aps[i].ssid, (const char*)ap_info[i].ssid);
         scan_aps[i].rssi = ap_info[i].rssi;

@@ -1,8 +1,9 @@
-#include "esp_log.h"
-
 #include "proximity.h"
-#include "board_config.h"
+
+#include <esp_log.h>
+
 #include "adc.h"
+#include "board_config.h"
 
 static const char* TAG = "proximity";
 
@@ -11,7 +12,7 @@ void proximity_init(void)
     if (board_config.proximity) {
         adc_oneshot_chan_cfg_t config = {
             .bitwidth = ADC_BITWIDTH_DEFAULT,
-            .atten = ADC_ATTEN_DB_12
+            .atten = ADC_ATTEN_DB_12,
         };
         ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.proximity_adc_channel, &config));
     }

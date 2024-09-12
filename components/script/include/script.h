@@ -1,7 +1,8 @@
 #ifndef SCRIPT_H_
 #define SCRIPT_H_
 
-#include "esp_err.h"
+#include <stdbool.h>
+#include <esp_err.h>
 
 /**
  * @brief Initialize script VM
@@ -70,6 +71,7 @@ typedef struct {
     char* key;
     char* name;
     script_driver_cfg_entry_type_t type;
+
     union {
         char* string;
         double number;
@@ -87,6 +89,7 @@ typedef struct {
 typedef struct {
     char* key;
     script_driver_cfg_entry_type_t type;
+
     union {
         char* string;
         double number;

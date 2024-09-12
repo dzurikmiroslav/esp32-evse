@@ -1,11 +1,10 @@
 #include "logger.h"
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <memory.h>
 #include <stdio.h>
 #include <sys/param.h>
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 
 #include "output_buffer.h"
 

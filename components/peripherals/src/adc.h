@@ -1,9 +1,9 @@
 #ifndef ADC_H_
 #define ADC_H_
 
-#include "esp_adc/adc_oneshot.h"
-#include "esp_adc/adc_cali.h"
-#include "esp_adc/adc_cali_scheme.h"
+#include <esp_adc/adc_cali.h>
+#include <esp_adc/adc_cali_scheme.h>
+#include <esp_adc/adc_oneshot.h>
 
 extern adc_oneshot_unit_handle_t adc_handle;
 

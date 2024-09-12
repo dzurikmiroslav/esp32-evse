@@ -1,19 +1,19 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/timers.h"
-#include "esp_log.h"
-#include "driver/ledc.h"
-#include "driver/gpio.h"
-
 #include "led.h"
+
+#include <driver/gpio.h>
+#include <driver/ledc.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/timers.h>
+
 #include "board_config.h"
 
-#define BLOCK_TIME              10
+#define BLOCK_TIME 10
 
 static const char* TAG = "led";
 
-static struct led_s
-{
+static struct led_s {
     gpio_num_t gpio;
     bool on : 1;
     uint16_t ontime, offtime;
@@ -27,14 +27,14 @@ void led_init(void)
         leds[i].gpio = GPIO_NUM_NC;
     }
 
-    gpio_config_t io_conf =  {
+    gpio_config_t io_conf = {
         .mode = GPIO_MODE_OUTPUT,
         .intr_type = GPIO_INTR_DISABLE,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pin_bit_mask = 0
+        .pin_bit_mask = 0,
     };
-    
+
     if (board_config.led_wifi) {
         leds[LED_ID_WIFI].gpio = board_config.led_wifi_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.led_wifi_gpio);
@@ -98,4 +98,3 @@ void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
         }
     }
 }
-

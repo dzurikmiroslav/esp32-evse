@@ -1,13 +1,14 @@
 #include "peripherals.h"
+
+#include "ac_relay.h"
 #include "adc.h"
+#include "aux_io.h"
+#include "energy_meter.h"
 #include "led.h"
 #include "pilot.h"
 #include "proximity.h"
-#include "ac_relay.h"
-#include "socket_lock.h"
 #include "rcm.h"
-#include "energy_meter.h"
-#include "aux_io.h"
+#include "socket_lock.h"
 #include "temp_sensor.h"
 
 void peripherals_init(void)

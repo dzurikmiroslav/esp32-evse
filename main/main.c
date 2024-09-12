@@ -1,35 +1,34 @@
-#include <string.h>
+#include <driver/gpio.h>
+#include <esp_err.h>
+#include <esp_event.h>
+#include <esp_log.h>
+#include <esp_ota_ops.h>
+#include <esp_spiffs.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <nvs_flash.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/param.h>
+
 #include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
-#include "esp_ota_ops.h"
-#include "esp_log.h"
-#include "esp_err.h"
-#include "nvs_flash.h"
-#include "esp_event.h"
-#include "esp_spiffs.h"
-#include "driver/gpio.h"
-
-#include "evse.h"
-#include "peripherals.h"
-#include "led.h"
-#include "modbus.h"
-#include "protocols.h"
-#include "serial.h"
 #include "board_config.h"
-#include "wifi.h"
-#include "script.h"
+#include "evse.h"
+#include "led.h"
 #include "logger.h"
+#include "modbus.h"
+#include "peripherals.h"
+#include "protocols.h"
+#include "script.h"
+#include "serial.h"
+#include "wifi.h"
 
+#define AP_CONNECTION_TIMEOUT 60000  // 60sec
+#define RESET_HOLD_TIME       10000  // 10sec
 
-#define AP_CONNECTION_TIMEOUT   60000 // 60sec
-#define RESET_HOLD_TIME         10000 // 10sec
-
-#define PRESS_BIT               BIT0
-#define RELEASED_BIT            BIT1
+#define PRESS_BIT    BIT0
+#define RELEASED_BIT BIT1
 
 static const char* TAG = "app_main";
 
@@ -93,7 +92,7 @@ static void user_input_task_func(void* param)
                 pressed = true;
             }
             if (notification & RELEASED_BIT) {
-                if (pressed) { // sometimes after connect debug UART emit RELEASED_BIT without preceding PRESS_BIT
+                if (pressed) {  // sometimes after connect debug UART emit RELEASED_BIT without preceding PRESS_BIT
                     if (xTaskGetTickCount() - press_tick >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
                         evse_set_available(false);
                         reset_and_reboot();
@@ -131,7 +130,7 @@ static void button_init(void)
         .mode = GPIO_MODE_INPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pull_up_en = GPIO_PULLUP_ENABLE,
-        .intr_type = GPIO_INTR_ANYEDGE
+        .intr_type = GPIO_INTR_ANYEDGE,
     };
     ESP_ERROR_CHECK(gpio_config(&conf));
     ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
@@ -154,7 +153,7 @@ static void fs_init(void)
         .base_path = "/cfg",
         .partition_label = "cfg",
         .max_files = 1,
-        .format_if_mount_failed = false
+        .format_if_mount_failed = false,
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
 
@@ -162,7 +161,7 @@ static void fs_init(void)
         .base_path = "/data",
         .partition_label = "data",
         .max_files = 5,
-        .format_if_mount_failed = true
+        .format_if_mount_failed = true,
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
 
@@ -172,7 +171,7 @@ static void fs_init(void)
 
 static bool ota_diagnostic(void)
 {
-    //TODO diagnostic after ota
+    // TODO diagnostic after ota
     return true;
 }
 
