@@ -1,19 +1,18 @@
+#include "l_evse_lib.h"
+
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <math.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "lua.h"
-#include "lauxlib.h"
 
-#include "l_evse_lib.h"
-#include "evse.h"
 #include "energy_meter.h"
+#include "evse.h"
+#include "lauxlib.h"
+#include "lua.h"
 #include "temp_sensor.h"
 
-#include "esp_log.h"
-
-typedef struct
-{
+typedef struct {
     TickType_t tick_100ms;
     TickType_t tick_250ms;
     TickType_t tick_1s;
@@ -235,44 +234,44 @@ void l_evse_get_driver(lua_State* L, uint8_t index)
 }
 
 static const luaL_Reg lib[] = {
-    //states
-    {"STATEA",  NULL},
-    {"STATEB1", NULL},
-    {"STATEB2", NULL},
-    {"STATEC1", NULL},
-    {"STATEC2", NULL},
-    {"STATED1", NULL},
-    {"STATED2", NULL},
-    {"STATEE",  NULL},
-    {"STATEF",  NULL},
+    // states
+    { "STATEA", NULL },
+    { "STATEB1", NULL },
+    { "STATEB2", NULL },
+    { "STATEC1", NULL },
+    { "STATEC2", NULL },
+    { "STATED1", NULL },
+    { "STATED2", NULL },
+    { "STATEE", NULL },
+    { "STATEF", NULL },
     // error bits
-    {"ERRPILOTFAULTBIT",        NULL},
-    {"ERRDIODESHORTBIT",        NULL},
-    {"ERRLOCKFAULTBIT",         NULL},
-    {"ERRUNLOCKFAULTBIT",       NULL},
-    {"ERRRCMTRIGGEREDBIT",      NULL},
-    {"ERRRCMSELFTESTFAULTBIT",  NULL},
-    {"ERRTEMPERATUREHIGHBIT",   NULL},
-    {"ERRTEMPERATUREFAULTBIT",  NULL},
+    { "ERRPILOTFAULTBIT", NULL },
+    { "ERRDIODESHORTBIT", NULL },
+    { "ERRLOCKFAULTBIT", NULL },
+    { "ERRUNLOCKFAULTBIT", NULL },
+    { "ERRRCMTRIGGEREDBIT", NULL },
+    { "ERRRCMSELFTESTFAULTBIT", NULL },
+    { "ERRTEMPERATUREHIGHBIT", NULL },
+    { "ERRTEMPERATUREFAULTBIT", NULL },
     // methods
-    {"getstate",            l_get_state},
-    {"geterror",            l_get_error},
-    {"getenabled",          l_get_enabled},
-    {"setenabled",          l_set_enabled},
-    {"getavailable",        l_get_available},
-    {"setavailable",        l_set_available},
-    {"getchargingcurrent",  l_get_charging_current},
-    {"setchargingcurrent",  l_set_charging_current},
-    {"getpower",            l_get_power},
-    {"getchargingtime",     l_get_charging_time},
-    {"getsessiontime",      l_get_session_time},
-    {"getconsumption",      l_get_consumption},
-    {"getvoltage",          l_get_voltage},
-    {"getcurrent",          l_get_current},
-    {"getlowtemperature",   l_get_low_temperature},
-    {"gethightemperature",  l_get_high_temperature},
-    {"adddriver",           l_add_driver},
-    {NULL, NULL}
+    { "getstate", l_get_state },
+    { "geterror", l_get_error },
+    { "getenabled", l_get_enabled },
+    { "setenabled", l_set_enabled },
+    { "getavailable", l_get_available },
+    { "setavailable", l_set_available },
+    { "getchargingcurrent", l_get_charging_current },
+    { "setchargingcurrent", l_set_charging_current },
+    { "getpower", l_get_power },
+    { "getchargingtime", l_get_charging_time },
+    { "getsessiontime", l_get_session_time },
+    { "getconsumption", l_get_consumption },
+    { "getvoltage", l_get_voltage },
+    { "getcurrent", l_get_current },
+    { "getlowtemperature", l_get_low_temperature },
+    { "gethightemperature", l_get_high_temperature },
+    { "adddriver", l_add_driver },
+    { NULL, NULL },
 };
 
 int luaopen_evse(lua_State* L)

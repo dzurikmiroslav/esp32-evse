@@ -1,37 +1,35 @@
-#include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-#include "freertos/task.h"
-#include "esp_log.h"
-#include "driver/gpio.h"
-#include "nvs.h"
-
 #include "aux_io.h"
-#include "board_config.h"
+
+#include <driver/gpio.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <nvs.h>
+#include <string.h>
+
 #include "adc.h"
+#include "board_config.h"
 
-#define MAX_AUX_IN      4
-#define MAX_AUX_OUT     4
-#define MAX_AUX_AIN     4
+#define MAX_AUX_IN  4
+#define MAX_AUX_OUT 4
+#define MAX_AUX_AIN 4
 
-//static const char* TAG = "aux";
+// static const char* TAG = "aux";
 
 static int aux_in_count = 0;
 static int aux_out_count = 0;
 static int aux_ain_count = 0;
 
-static struct aux_gpio_s
-{
+static struct aux_gpio_s {
     gpio_num_t gpio;
     const char* name;
 } aux_in[MAX_AUX_IN], aux_out[MAX_AUX_OUT];
 
-static struct aux_adc_s
-{
+static struct aux_adc_s {
     adc_channel_t adc;
     const char* name;
 } aux_ain[MAX_AUX_AIN];
-
 
 void aux_init(void)
 {
@@ -42,7 +40,7 @@ void aux_init(void)
         .pull_up_en = GPIO_PULLDOWN_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
-        .pin_bit_mask = 0
+        .pin_bit_mask = 0,
     };
 
     if (board_config.aux_in_1) {
@@ -118,7 +116,7 @@ void aux_init(void)
 
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_12
+        .atten = ADC_ATTEN_DB_12,
     };
 
     if (board_config.aux_ain_1) {

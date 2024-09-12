@@ -1,10 +1,10 @@
-#include <string.h>
-#include <ctype.h>
-#include "esp_system.h"
-#include "esp_log.h"
-#include "esp_err.h"
-
 #include "board_config.h"
+
+#include <ctype.h>
+#include <esp_err.h>
+#include <esp_log.h>
+#include <esp_system.h>
+#include <string.h>
 
 static const char* TAG = "board_config";
 
@@ -37,17 +37,17 @@ board_config_serial_t atoser(const char* value)
     return BOARD_CONFIG_SERIAL_NONE;
 }
 
-#define SET_CONFIG_VALUE(name, prop, convert_fn)    \
-    if (!strcmp(key, name)) {                       \
-        board_config.prop = convert_fn(value);      \
-        continue;                                   \
-    }                                               \
+#define SET_CONFIG_VALUE(name, prop, convert_fn) \
+    if (!strcmp(key, name)) {                    \
+        board_config.prop = convert_fn(value);   \
+        continue;                                \
+    }
 
-#define SET_CONFIG_VALUE_STR(name, prop)            \
-    if (!strcmp(key, name)) {                       \
-        strcpy(board_config.prop, value);           \
-        continue;                                   \
-    }                                               \
+#define SET_CONFIG_VALUE_STR(name, prop)  \
+    if (!strcmp(key, name)) {             \
+        strcpy(board_config.prop, value); \
+        continue;                         \
+    }
 
 void board_config_load()
 {

@@ -1,36 +1,38 @@
+#include "http_json.h"
+
+#include <esp_chip_info.h>
+#include <esp_mac.h>
+#include <esp_ota_ops.h>
+#include <esp_timer.h>
+#include <esp_wifi.h>
+#include <freertos/FreeRTOS.h>
 #include <string.h>
 #include <sys/time.h>
-#include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "esp_wifi.h"
-#include "esp_ota_ops.h"
-#include "esp_timer.h"
-#include "esp_chip_info.h"
-#include "esp_mac.h"
 
-#include "http_json.h"
-#include "wifi.h"
-#include "evse.h"
+#include "sdkconfig.h"
+
 #include "board_config.h"
 #include "energy_meter.h"
-#include "socket_lock.h"
-#include "serial.h"
-#include "proximity.h"
+#include "evse.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
-#include "temp_sensor.h"
-#include "script.h"
+#include "proximity.h"
 #include "scheduler.h"
+#include "script.h"
+#include "serial.h"
+#include "socket_lock.h"
+#include "temp_sensor.h"
+#include "wifi.h"
 
-#define RETURN_ON_ERROR(x) do {                 \
-        esp_err_t err_rc_ = (x);                \
-        if (unlikely(err_rc_ != ESP_OK)) {      \
-            return err_rc_;                     \
-        }                                       \
-    } while(0)
+#define RETURN_ON_ERROR(x)                 \
+    do {                                   \
+        esp_err_t err_rc_ = (x);           \
+        if (unlikely(err_rc_ != ESP_OK)) { \
+            return err_rc_;                \
+        }                                  \
+    } while (0)
 
-typedef struct
-{
+typedef struct {
     bool enabled;
     bool ssid_blank;
     char ssid[32];
@@ -382,7 +384,7 @@ esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json)
 
         uint8_t i = 0;
         cJSON* entry_json = NULL;
-        cJSON_ArrayForEach(entry_json, config_json) {
+        cJSON_ArrayForEach (entry_json, config_json) {
             script_driver_cfg_entry_t* cfg_entry = &cfg_entries[i];
             cfg_entry->key = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(entry_json, "key")));
             cJSON* value_json = cJSON_GetObjectItem(entry_json, "value");
@@ -459,7 +461,7 @@ esp_err_t http_json_set_scheduler_config(cJSON* json)
 
         uint8_t i = 0;
         cJSON* schedule_json = NULL;
-        cJSON_ArrayForEach(schedule_json, schedules_json) {
+        cJSON_ArrayForEach (schedule_json, schedules_json) {
             schedules[i].action = scheduler_str_to_action(cJSON_GetStringValue(cJSON_GetObjectItem(schedule_json, "action")));
             schedules[i].days.week.mon = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "mon"));
             schedules[i].days.week.tue = cJSON_GetNumberValue(cJSON_GetObjectItem(schedule_json, "tue"));
@@ -602,8 +604,7 @@ cJSON* http_json_get_info(void)
 
 static const char* serial_to_str(board_config_serial_t serial)
 {
-    switch (serial)
-    {
+    switch (serial) {
     case BOARD_CONFIG_SERIAL_UART:
         return "uart";
     case BOARD_CONFIG_SERIAL_RS485:

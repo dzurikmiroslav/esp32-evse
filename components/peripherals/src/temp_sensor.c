@@ -1,16 +1,17 @@
-#include <sys/param.h>
-#include <freertos/FreeRTOS.h>
-#include "freertos/task.h"
-#include "esp_log.h"
-#include "driver/gpio.h"
-
 #include "temp_sensor.h"
+
+#include <driver/gpio.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <sys/param.h>
+
 #include "board_config.h"
 #include "ds18x20.h"
 
-#define MAX_SENSORS                 5
-#define MEASURE_PERIOD              10000   //10s
-#define MEASURE_ERR_THRESHOLD       3
+#define MAX_SENSORS           5
+#define MEASURE_PERIOD        10000  // 10s
+#define MEASURE_ERR_THRESHOLD 3
 
 static const char* TAG = "temp_sensor";
 

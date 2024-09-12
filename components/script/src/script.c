@@ -1,30 +1,31 @@
-#include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-#include "esp_log.h"
-#include "nvs.h"
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-
 #include "script.h"
-#include "script_utils.h"
-#include "output_buffer.h"
-#include "l_evse_lib.h"
-#include "l_mqtt_lib.h"
-#include "l_json_lib.h"
+
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <nvs.h>
+#include <string.h>
+
 #include "l_aux_lib.h"
 #include "l_board_config_lib.h"
+#include "l_evse_lib.h"
+#include "l_json_lib.h"
+#include "l_mqtt_lib.h"
+#include "lauxlib.h"
+#include "lua.h"
+#include "lualib.h"
+#include "output_buffer.h"
+#include "script_utils.h"
 
-#define START_TIMEOUT           10000
-#define SHUTDOWN_TIMEOUT        1000
-#define HEARTBEAT_THRESHOLD     5
-#define OUTPUT_BUFFER_SIZE      4096
+#define START_TIMEOUT       10000
+#define SHUTDOWN_TIMEOUT    1000
+#define HEARTBEAT_THRESHOLD 5
+#define OUTPUT_BUFFER_SIZE  4096
 
-#define NVS_NAMESPACE           "script"
-#define NVS_ENABLED             "enabled"
+#define NVS_NAMESPACE "script"
+#define NVS_ENABLED   "enabled"
 
 static const char* TAG = "script";
 
@@ -442,8 +443,7 @@ script_driver_cfg_entry_type_t script_str_to_driver_cfg_entry_type(const char* s
 
 const char* script_driver_cfg_entry_type_to_str(script_driver_cfg_entry_type_t type)
 {
-    switch (type)
-    {
+    switch (type) {
     case SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING:
         return "string";
     case SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER:

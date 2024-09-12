@@ -1,0 +1,33 @@
+---
+BasedOnStyle: Google
+IndentWidth: 4
+---
+Language: Cpp
+ColumnLimit: 180
+BreakArrays: true
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterEnum: false
+  AfterStruct: false
+  SplitEmptyFunction: false
+SortIncludes: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^<.*\.h>'
+    Priority:        1
+  - Regex:           '^"sdkconfig.h"'
+    Priority:        2
+  - Regex:           '.*'
+    Priority:        3
+AlignOperands: true
+AlignConsecutiveMacros: Consecutive
+AllowShortFunctionsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+BinPackArguments: false
+BinPackParameters: false
+SeparateDefinitionBlocks: Always
+IndentCaseLabels: false
+Cpp11BracedListStyle: false
+ForEachMacros: [cJSON_ArrayForEach]

@@ -1,25 +1,25 @@
-#include <memory.h>
-#include <math.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-#include "esp_log.h"
-#include "esp_timer.h"
-#include "driver/ledc.h"
-#include "driver/gpio.h"
-#include "nvs.h"
-
 #include "energy_meter.h"
-#include "board_config.h"
+
+#include <driver/gpio.h>
+#include <driver/ledc.h>
+#include <esp_log.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <math.h>
+#include <memory.h>
+#include <nvs.h>
+
 #include "adc.h"
+#include "board_config.h"
 
-#define NVS_NAMESPACE           "evse_emeter"
-#define NVS_MODE                "mode"
-#define NVS_AC_VOLTAGE          "ac_voltage"
-#define NVS_three_phases         "three_phases"
+#define NVS_NAMESPACE    "evse_emeter"
+#define NVS_MODE         "mode"
+#define NVS_AC_VOLTAGE   "ac_voltage"
+#define NVS_three_phases "three_phases"
 
-#define ZERO_FIX                5000
-#define MEASURE_US              40000   //2 periods at 50Hz
-
+#define ZERO_FIX   5000
+#define MEASURE_US 40000  // 2 periods at 50Hz
 
 static const char* TAG = "energy_meter";
 
@@ -39,7 +39,7 @@ static int64_t start_time = 0;
 
 static uint32_t charging_time = 0;  // ms
 
-static uint32_t consumption = 0;    // Ws
+static uint32_t consumption = 0;  // Ws
 
 static float cur[3] = { 0, 0, 0 };
 
@@ -172,7 +172,7 @@ static void measure_three_phases_cur(uint32_t delta_ms, uint16_t charging_curren
     float filtered_cur;
     uint16_t samples = 0;
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
-        //L1
+        // L1
         sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
 
         cur_sens_zero[0] += (sample_cur - cur_sens_zero[0]) / ZERO_FIX;
@@ -180,14 +180,14 @@ static void measure_three_phases_cur(uint32_t delta_ms, uint16_t charging_curren
         cur_sum[0] += filtered_cur * filtered_cur;
 
         if (three_phases) {
-            //L2
+            // L2
             sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
 
             cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
             filtered_cur = sample_cur - cur_sens_zero[1];
             cur_sum[1] += filtered_cur * filtered_cur;
 
-            //L3
+            // L3
             sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
 
             cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
@@ -222,7 +222,7 @@ static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
     float filtered_vlt;
     uint16_t samples = 0;
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
-        //L1
+        // L1
         sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
         sample_vlt = read_adc(board_config.energy_meter_l1_vlt_adc_channel);
 
@@ -235,7 +235,7 @@ static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
         vlt_sum[0] += filtered_vlt * filtered_vlt;
 
         if (three_phases) {
-            //L2
+            // L2
             sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
             sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
 
@@ -247,7 +247,7 @@ static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
             filtered_vlt = sample_vlt - vlt_sens_zero[1];
             vlt_sum[1] += filtered_vlt * filtered_vlt;
 
-            //L3
+            // L3
             sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
             sample_vlt = read_adc(board_config.energy_meter_l3_vlt_adc_channel);
 
@@ -303,7 +303,7 @@ void energy_meter_init(void)
     nvs_get_u16(nvs, NVS_AC_VOLTAGE, &ac_voltage);
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_12
+        .atten = ADC_ATTEN_DB_12,
     };
 
     if (nvs_get_u8(nvs, NVS_three_phases, &u8) == ESP_OK) {
@@ -461,7 +461,7 @@ uint16_t energy_meter_get_power(void)
 uint32_t energy_meter_get_session_time(void)
 {
     if (has_session) {
-        return  (esp_timer_get_time() - start_time) / 1000000;
+        return (esp_timer_get_time() - start_time) / 1000000;
     } else {
         return 0;
     }
@@ -519,8 +519,7 @@ float energy_meter_get_l3_current(void)
 
 const char* energy_meter_mode_to_str(energy_meter_mode_t mode)
 {
-    switch (mode)
-    {
+    switch (mode) {
     case ENERGY_METER_MODE_CUR:
         return "cur";
     case ENERGY_METER_MODE_CUR_VLT:

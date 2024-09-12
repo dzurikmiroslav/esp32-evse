@@ -1,12 +1,13 @@
+#include "l_board_config_lib.h"
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <math.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "lua.h"
-#include "lauxlib.h"
 
-#include "l_board_config_lib.h"
 #include "board_config.h"
+#include "lauxlib.h"
+#include "lua.h"
 
 int luaopen_board_config(lua_State* L)
 {

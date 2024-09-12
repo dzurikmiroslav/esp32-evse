@@ -1,30 +1,29 @@
 #ifndef EVSE_H_
 #define EVSE_H_
 
+#include <esp_err.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "esp_err.h"
 
-#define evse_state_is_session(state)        (state >= EVSE_STATE_B1 && state <= EVSE_STATE_D2)
-#define evse_state_is_charging(state)       (state == EVSE_STATE_C2 || state == EVSE_STATE_D2)
+#define evse_state_is_session(state)  (state >= EVSE_STATE_B1 && state <= EVSE_STATE_D2)
+#define evse_state_is_charging(state) (state == EVSE_STATE_C2 || state == EVSE_STATE_D2)
 
-#define EVSE_ERR_PILOT_FAULT_BIT            (1UL << 0)
-#define EVSE_ERR_DIODE_SHORT_BIT            (1UL << 1)
-#define EVSE_ERR_LOCK_FAULT_BIT             (1UL << 2)
-#define EVSE_ERR_UNLOCK_FAULT_BIT           (1UL << 3)
-#define EVSE_ERR_RCM_TRIGGERED_BIT          (1UL << 4)
-#define EVSE_ERR_RCM_SELFTEST_FAULT_BIT     (1UL << 5)
-#define EVSE_ERR_TEMPERATURE_HIGH_BIT       (1UL << 6)
-#define EVSE_ERR_TEMPERATURE_FAULT_BIT      (1UL << 7)
+#define EVSE_ERR_PILOT_FAULT_BIT        (1UL << 0)
+#define EVSE_ERR_DIODE_SHORT_BIT        (1UL << 1)
+#define EVSE_ERR_LOCK_FAULT_BIT         (1UL << 2)
+#define EVSE_ERR_UNLOCK_FAULT_BIT       (1UL << 3)
+#define EVSE_ERR_RCM_TRIGGERED_BIT      (1UL << 4)
+#define EVSE_ERR_RCM_SELFTEST_FAULT_BIT (1UL << 5)
+#define EVSE_ERR_TEMPERATURE_HIGH_BIT   (1UL << 6)
+#define EVSE_ERR_TEMPERATURE_FAULT_BIT  (1UL << 7)
 
-#define EVSE_ERR_AUTO_CLEAR_BITS            (EVSE_ERR_PILOT_FAULT_BIT | EVSE_ERR_DIODE_SHORT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT | EVSE_ERR_RCM_SELFTEST_FAULT_BIT)
+#define EVSE_ERR_AUTO_CLEAR_BITS (EVSE_ERR_PILOT_FAULT_BIT | EVSE_ERR_DIODE_SHORT_BIT | EVSE_ERR_RCM_TRIGGERED_BIT | EVSE_ERR_RCM_SELFTEST_FAULT_BIT)
 
 /**
  * @brief States of evse controller
  *
  */
-typedef enum
-{
+typedef enum {
     EVSE_STATE_A,
     EVSE_STATE_B1,
     EVSE_STATE_B2,
@@ -51,9 +50,9 @@ void evse_set_available(bool available);
 
 /**
  * @brief Return true if evse controller is available
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool evse_is_available(void);
 
@@ -72,9 +71,9 @@ evse_state_t evse_get_state(void);
 
 /**
  * @brief Format to string value
- * 
- * @param state 
- * @return const char 
+ *
+ * @param state
+ * @return const char
  */
 const char *evse_state_to_str(evse_state_t state);
 
@@ -87,16 +86,16 @@ uint32_t evse_get_error(void);
 
 /**
  * @brief Get max charging current, stored in NVS
- * 
+ *
  * @return current in A
  */
 uint8_t evse_get_max_charging_current(void);
 
 /**
  * @brief Set max charging current, stored in NVS
- * 
+ *
  * @param max_charging_current current in A
- * @return esp_err_t 
+ * @return esp_err_t
  */
 esp_err_t evse_set_max_charging_current(uint8_t max_charging_current);
 
@@ -220,7 +219,6 @@ esp_err_t evse_set_rcm(bool rcm);
  * @return false
  */
 bool evse_is_rcm(void);
-
 
 /**
  * @brief Set temperature threshold, stored in NVS

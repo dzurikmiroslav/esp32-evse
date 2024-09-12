@@ -1,3 +1,4 @@
+// clang-format off
 	{"Africa/Abidjan", "GMT0"},
 	{"Africa/Algiers", "CET-1"},
 	{"Africa/Bissau", "GMT0"},

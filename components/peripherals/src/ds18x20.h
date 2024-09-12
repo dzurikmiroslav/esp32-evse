@@ -31,6 +31,7 @@
 #define _DS18X20_H
 
 #include <esp_err.h>
+
 #include "onewire.h"
 
 typedef onewire_addr_t ds18x20_addr_t;
@@ -250,5 +251,4 @@ esp_err_t ds18x20_write_scratchpad(gpio_num_t pin, ds18x20_addr_t addr, uint8_t 
  */
 esp_err_t ds18x20_copy_scratchpad(gpio_num_t pin, ds18x20_addr_t addr);
 
-
-#endif  /* _DS18X20_H */
+#endif /* _DS18X20_H */

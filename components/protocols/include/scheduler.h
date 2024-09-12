@@ -1,15 +1,14 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include <esp_err.h>
 #include <stdbool.h>
-#include "esp_err.h"
 
 /**
  * @brief Scheduler actions
  *
  */
-typedef enum
-{
+typedef enum {
     SCHEDULER_ACTION_ENABLE,
     SCHEDULER_ACTION_AVAILABLE,
     SCHEDULER_ACTION_CHARGING_CURRENT_6A,
@@ -19,21 +18,22 @@ typedef enum
 
 /**
  * @brief Scheduler schedule
- * 
+ *
  */
-typedef struct
-{
+typedef struct {
     scheduler_action_t action;
+
     union {
-        struct  {
+        struct {
             uint32_t sun;
             uint32_t mon;
             uint32_t tue;
             uint32_t wed;
             uint32_t thu;
             uint32_t fri;
-            uint32_t sat;            
+            uint32_t sat;
         } week;
+
         uint32_t order[7];
     } days;
 } scheduler_schedule_t;
@@ -46,31 +46,31 @@ void scheduler_init(void);
 
 /**
  * @brief Execute schedules after change time
- * 
+ *
  */
 void scheduler_execute_schedules(void);
 
 /**
  * @brief Return number of schedulers
- * 
- * @return uint8_t 
+ *
+ * @return uint8_t
  */
 uint8_t scheduler_get_schedule_count(void);
 
 /**
  * @brief Return schedulers array
- * 
- * @return scheduler_schedule_t* 
+ *
+ * @return scheduler_schedule_t*
  */
 scheduler_schedule_t* scheduler_get_schedules(void);
 
 /**
  * @brief Set schedulers config
- * 
- * @param schedules 
- * @param schedule_count 
+ *
+ * @param schedules
+ * @param schedule_count
  */
-void scheduler_set_schedule_config(const scheduler_schedule_t *schedules, uint8_t schedule_count);
+void scheduler_set_schedule_config(const scheduler_schedule_t* schedules, uint8_t schedule_count);
 
 /**
  * @brief Return true if NTP is enabled, stored in NVS

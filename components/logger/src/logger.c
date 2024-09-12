@@ -1,19 +1,19 @@
-#include <stdio.h>
-#include <memory.h>
-#include <sys/param.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-
 #include "logger.h"
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <memory.h>
+#include <stdio.h>
+#include <sys/param.h>
+
 #include "output_buffer.h"
 
-#define LOG_BUFFER_SIZE     6096 //4096
-#define MAX_LOG_SIZE        512
-
+#define LOG_BUFFER_SIZE 6096  // 4096
+#define MAX_LOG_SIZE    512
 
 static SemaphoreHandle_t mutex;
 
-static output_buffer_t * buffer = NULL;
+static output_buffer_t* buffer = NULL;
 
 EventGroupHandle_t logger_event_group = NULL;
 
@@ -36,7 +36,7 @@ void logger_print(const char* str)
 
     output_buffer_append_str(buffer, str);
     xEventGroupSetBits(logger_event_group, 0xFF);
-  
+
     xSemaphoreGive(mutex);
 }
 

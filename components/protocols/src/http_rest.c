@@ -1,32 +1,32 @@
-#include <string.h>
+#include "http_rest.h"
+
+#include <cJSON.h>
 #include <dirent.h>
-#include <time.h>
+#include <esp_crt_bundle.h>
+#include <esp_err.h>
+#include <esp_http_client.h>
+#include <esp_https_ota.h>
+#include <esp_log.h>
+#include <esp_ota_ops.h>
+#include <esp_vfs.h>
+#include <string.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-#include "esp_err.h"
-#include "esp_log.h"
-#include "esp_http_client.h"
-#include "esp_ota_ops.h"
-#include "esp_https_ota.h"
-#include "esp_vfs.h"
-#include "esp_crt_bundle.h"
-#include "cJSON.h"
+#include <time.h>
 
-#include "http_rest.h"
+#include "evse.h"
 #include "http.h"
 #include "http_json.h"
-#include "evse.h"
-#include "script.h"
 #include "logger.h"
+#include "script.h"
 
-
-#define REST_BASE_PATH          "/api/v1"
-#define SCRATCH_BUFSIZE         1024
-#define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
-#define MAX_JSON_SIZE           (50*1024) // 50 KB
-#define MAX_JSON_SIZE_STR       "50KB"
-#define OTA_VERSION_URL         "https://dzurikmiroslav.github.io/esp32-evse/firmware/version.txt"
-#define OTA_FIRMWARE_URL        "https://dzurikmiroslav.github.io/esp32-evse/firmware/"
+#define REST_BASE_PATH    "/api/v1"
+#define SCRATCH_BUFSIZE   1024
+#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define MAX_JSON_SIZE     (50 * 1024)  // 50 KB
+#define MAX_JSON_SIZE_STR "50KB"
+#define OTA_VERSION_URL   "https://dzurikmiroslav.github.io/esp32-evse/firmware/version.txt"
+#define OTA_FIRMWARE_URL  "https://dzurikmiroslav.github.io/esp32-evse/firmware/"
 
 static const char* TAG = "http_rest";
 
@@ -46,17 +46,17 @@ cJSON* read_request_json(httpd_req_t* req)
 {
     char content_type[32];
     httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
-    if (strcmp(content_type, "application/json") != 0) {  
+    if (strcmp(content_type, "application/json") != 0) {
         httpd_resp_send_custom_err(req, "415 Unsupported Media Type", "Not JSON body");
-        //httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not JSON body");
+        // httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not JSON body");
         return NULL;
     }
 
     int total_len = req->content_len;
 
     if (total_len > MAX_JSON_SIZE) {
-        httpd_resp_send_custom_err(req, "413 Content Too Large",  "JSON size must be less than " MAX_JSON_SIZE_STR "!");
-        //httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "JSON size must be less than " MAX_JSON_SIZE_STR "!");
+        httpd_resp_send_custom_err(req, "413 Content Too Large", "JSON size must be less than " MAX_JSON_SIZE_STR "!");
+        // httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "JSON size must be less than " MAX_JSON_SIZE_STR "!");
         return NULL;
     }
 
@@ -64,7 +64,7 @@ cJSON* read_request_json(httpd_req_t* req)
     if (body == NULL) {
         ESP_LOGE(TAG, "Failed to allocate memory");
         httpd_resp_send_custom_err(req, "512 Failed To Allocate Memory", "Failed to allocate memory");
-        //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
+        // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
         return NULL;
     }
 
@@ -75,7 +75,7 @@ cJSON* read_request_json(httpd_req_t* req)
         received = httpd_req_recv(req, body + cur_len, total_len);
         if (received <= 0) {
             httpd_resp_send_custom_err(req, "513 Failed To Receive Request", "Failed to receive request");
-            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed receive request");
+            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed receive request");
             free((void*)body);
             return NULL;
         }
@@ -95,7 +95,6 @@ cJSON* read_request_json(httpd_req_t* req)
     return root;
 }
 
-
 static void http_client_cleanup(esp_http_client_handle_t client)
 {
     esp_http_client_close(client);
@@ -106,7 +105,7 @@ static esp_err_t ota_get_available_version(char* version)
 {
     esp_http_client_config_t config = {
         .url = OTA_VERSION_URL,
-        .crt_bundle_attach = esp_crt_bundle_attach
+        .crt_bundle_attach = esp_crt_bundle_attach,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -195,19 +194,19 @@ esp_err_t get_handler(httpd_req_t* req)
     if (http_authorize_req(req)) {
         cJSON* root = NULL;
 
-        if (strcmp(req->uri, REST_BASE_PATH"/info") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/info") == 0) {
             root = http_json_get_info();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/boardConfig") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/boardConfig") == 0) {
             root = http_json_get_board_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/state") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/state") == 0) {
             root = http_json_get_state();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/time") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/time") == 0) {
             root = http_json_get_time();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config") == 0) {
             root = cJSON_CreateObject();
             cJSON_AddItemToObject(root, "evse", http_json_get_evse_config());
             cJSON_AddItemToObject(root, "wifi", http_json_get_wifi_config());
@@ -216,38 +215,38 @@ esp_err_t get_handler(httpd_req_t* req)
             cJSON_AddItemToObject(root, "script", http_json_get_script_config());
             cJSON_AddItemToObject(root, "scheduler", http_json_get_scheduler_config());
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/evse") == 0) {
             root = http_json_get_evse_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/wifi") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/wifi") == 0) {
             root = http_json_get_wifi_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/wifi/scan") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/wifi/scan") == 0) {
             root = http_json_get_wifi_scan();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/serial") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/serial") == 0) {
             root = http_json_get_serial_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/modbus") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/modbus") == 0) {
             root = http_json_get_modbus_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/script") == 0) {
             root = http_json_get_script_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/script/driver") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/script/driver") == 0) {
             root = http_json_get_script_drivers_config();
         }
-        if (strncmp(req->uri, REST_BASE_PATH"/config/script/driver/", strlen(REST_BASE_PATH"/config/script/driver/")) == 0) {
-            root = http_json_get_script_driver_config(atoi(req->uri +  strlen(REST_BASE_PATH"/config/script/driver/")));
+        if (strncmp(req->uri, REST_BASE_PATH "/config/script/driver/", strlen(REST_BASE_PATH "/config/script/driver/")) == 0) {
+            root = http_json_get_script_driver_config(atoi(req->uri + strlen(REST_BASE_PATH "/config/script/driver/")));
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/scheduler") == 0) {
             root = http_json_get_scheduler_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/firmware/checkUpdate") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/firmware/checkUpdate") == 0) {
             root = firmware_check_update();
             if (root == NULL) {
                 httpd_resp_send_custom_err(req, "520 Cannot Fetch Latest Version Info", "Cannot fetch latest version info");
-                //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
+                // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
                 return ESP_FAIL;
             }
         }
@@ -282,32 +281,32 @@ esp_err_t post_handler(httpd_req_t* req)
             return ESP_FAIL;
         }
 
-        if (strcmp(req->uri, REST_BASE_PATH"/config/evse") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/evse") == 0) {
             ret = http_json_set_evse_config(root);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/wifi") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/wifi") == 0) {
             ret = http_json_set_wifi_config(root, true);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/serial") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/serial") == 0) {
             ret = http_json_set_serial_config(root);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/modbus") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/modbus") == 0) {
             ret = http_json_set_modbus_config(root);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/script") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/script") == 0) {
             ret = http_json_set_script_config(root);
         }
-        if (strncmp(req->uri, REST_BASE_PATH"/config/script/driver/", strlen(REST_BASE_PATH"/config/script/driver/")) == 0) {
-            ret = http_json_set_script_driver_config(atoi(req->uri +  strlen(REST_BASE_PATH"/config/script/driver/")), root);
+        if (strncmp(req->uri, REST_BASE_PATH "/config/script/driver/", strlen(REST_BASE_PATH "/config/script/driver/")) == 0) {
+            ret = http_json_set_script_driver_config(atoi(req->uri + strlen(REST_BASE_PATH "/config/script/driver/")), root);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/config/scheduler") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/config/scheduler") == 0) {
             ret = http_json_set_scheduler_config(root);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/credentials") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/credentials") == 0) {
             set_credentials(root);
             ret = ESP_OK;
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/time") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/time") == 0) {
             ret = http_json_set_time(root);
         }
 
@@ -319,12 +318,12 @@ esp_err_t post_handler(httpd_req_t* req)
 
             return ESP_OK;
         } else {
-            if ( ret == ESP_ERR_INVALID_STATE) {
+            if (ret == ESP_ERR_INVALID_STATE) {
                 httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, NULL);
             } else {
                 httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
-            }        
-            //httpd_resp_send_err(req, ret == ESP_ERR_INVALID_STATE ? HTTPD_500_INTERNAL_SERVER_ERROR : HTTPD_400_BAD_REQUEST, NULL);
+            }
+            // httpd_resp_send_err(req, ret == ESP_ERR_INVALID_STATE ? HTTPD_500_INTERNAL_SERVER_ERROR : HTTPD_400_BAD_REQUEST, NULL);
 
             return ESP_FAIL;
         }
@@ -352,19 +351,19 @@ esp_err_t state_post_handler(httpd_req_t* req)
     if (http_authorize_req(req)) {
         httpd_resp_set_type(req, "text/plain");
 
-        if (strcmp(req->uri, REST_BASE_PATH"/state/authorize") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/state/authorize") == 0) {
             evse_authorize();
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/state/enable") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/state/enable") == 0) {
             evse_set_enabled(true);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/state/disable") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/state/disable") == 0) {
             evse_set_enabled(false);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/state/available") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/state/available") == 0) {
             evse_set_available(true);
         }
-        if (strcmp(req->uri, REST_BASE_PATH"/state/unavailable") == 0) {
+        if (strcmp(req->uri, REST_BASE_PATH "/state/unavailable") == 0) {
             evse_set_available(false);
         }
 
@@ -387,11 +386,11 @@ esp_err_t firmware_update_post_handler(httpd_req_t* req)
             if (ota_is_newer_version(app_desc->version, avl_version)) {
                 esp_http_client_config_t http_config = {
                     .url = OTA_FIRMWARE_URL CONFIG_IDF_TARGET "-evse.bin",
-                    .crt_bundle_attach = esp_crt_bundle_attach
+                    .crt_bundle_attach = esp_crt_bundle_attach,
                 };
 
                 esp_https_ota_config_t config = {
-                    .http_config = &http_config
+                    .http_config = &http_config,
                 };
 
                 esp_err_t err = esp_https_ota(&config);
@@ -401,13 +400,13 @@ esp_err_t firmware_update_post_handler(httpd_req_t* req)
                 } else {
                     ESP_LOGE(TAG, "OTA failed (%s)", esp_err_to_name(err));
                     httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
-                    //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upgrade failed");
+                    // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upgrade failed");
                     return ESP_FAIL;
                 }
             }
         } else {
             httpd_resp_send_custom_err(req, "520 Cannot Fetch Latest Version Info", "Cannot fetch latest version info");
-            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
+            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot be fetch latest version info");
             return ESP_FAIL;
         }
 
@@ -436,7 +435,7 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         if (update_partition == NULL) {
             ESP_LOGE(TAG, "No OTA partition");
             httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
-            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
+            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
             return ESP_FAIL;
         }
 
@@ -444,7 +443,7 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
             if ((received = httpd_req_recv(req, buf, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
                 ESP_LOGE(TAG, "File receive failed");
                 httpd_resp_send_custom_err(req, "522 Failed To Receive Firmware", "Failed to receive firmware");
-                //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive file");
+                // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive file");
                 return ESP_FAIL;
             } else if (image_header_was_checked == false) {
                 if (received > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
@@ -453,17 +452,16 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
                     ESP_LOGI(TAG, "New firmware version: %s", new_app_desc.version);
 
                     const esp_app_desc_t* app_desc = esp_app_get_description();
-                    if (strcmp(app_desc->project_name, new_app_desc.project_name) != 0)
-                    {
+                    if (strcmp(app_desc->project_name, new_app_desc.project_name) != 0) {
                         ESP_LOGE(TAG, "Received firmware is not %s", app_desc->project_name);
                         httpd_resp_send_custom_err(req, "523 Invalid Firmware File", "Invalid firmware file");
-                        //httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
+                        // httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
                         return ESP_FAIL;
                     }
                 } else {
                     ESP_LOGE(TAG, "Received package is not fit length");
                     httpd_resp_send_custom_err(req, "523 Invalid Firmware File", "Invalid firmware file");
-                    //httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
+                    // httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware file");
                     return ESP_FAIL;
                 }
 
@@ -473,7 +471,7 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
                 if (err != ESP_OK) {
                     ESP_LOGE(TAG, "OTA begin failed (%s)", esp_err_to_name(err));
                     httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
-                    //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+                    // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
                     return ESP_FAIL;
                 }
                 ESP_LOGI(TAG, "OTA begin succeeded");
@@ -483,7 +481,7 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "OTA write failed (%s)", esp_err_to_name(err));
                 httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
-                //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+                // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
                 return ESP_FAIL;
             }
 
@@ -497,7 +495,7 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
             }
             ESP_LOGE(TAG, "OTA end failed (%s)!", esp_err_to_name(err));
             httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
-            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
             return ESP_FAIL;
         }
 
@@ -505,7 +503,7 @@ esp_err_t firmware_upload_post_handler(httpd_req_t* req)
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "OTA set boot partition failed (%s)", esp_err_to_name(err));
             httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
-            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
+            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Firmware upload failed");
             return ESP_FAIL;
         }
 
@@ -617,65 +615,65 @@ size_t http_rest_handlers_count(void)
 void http_rest_add_handlers(httpd_handle_t server)
 {
     httpd_uri_t log_get_uri = {
-        .uri = REST_BASE_PATH"/log",
+        .uri = REST_BASE_PATH "/log",
         .method = HTTP_GET,
-        .handler = log_get_handler
+        .handler = log_get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &log_get_uri));
 
     httpd_uri_t script_output_get_uri = {
-        .uri = REST_BASE_PATH"/script/output",
+        .uri = REST_BASE_PATH "/script/output",
         .method = HTTP_GET,
-        .handler = script_output_get_handler
+        .handler = script_output_get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &script_output_get_uri));
 
     httpd_uri_t get_uri = {
-       .uri = REST_BASE_PATH"/*",
-       .method = HTTP_GET,
-       .handler = get_handler
+        .uri = REST_BASE_PATH "/*",
+        .method = HTTP_GET,
+        .handler = get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_uri));
 
     httpd_uri_t state_post_uri = {
-        .uri = REST_BASE_PATH"/state/*",
+        .uri = REST_BASE_PATH "/state/*",
         .method = HTTP_POST,
-        .handler = state_post_handler
+        .handler = state_post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &state_post_uri));
 
     httpd_uri_t restart_post_uri = {
-        .uri = REST_BASE_PATH"/restart",
+        .uri = REST_BASE_PATH "/restart",
         .method = HTTP_POST,
-        .handler = restart_post_handler
+        .handler = restart_post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &restart_post_uri));
 
     httpd_uri_t firmware_update_post_uri = {
-        .uri = REST_BASE_PATH"/firmware/update",
+        .uri = REST_BASE_PATH "/firmware/update",
         .method = HTTP_POST,
-        .handler = firmware_update_post_handler
+        .handler = firmware_update_post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_update_post_uri));
 
     httpd_uri_t firmware_upload_post_uri = {
-        .uri = REST_BASE_PATH"/firmware/upload",
+        .uri = REST_BASE_PATH "/firmware/upload",
         .method = HTTP_POST,
-        .handler = firmware_upload_post_handler
+        .handler = firmware_upload_post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &firmware_upload_post_uri));
 
     httpd_uri_t script_reload_post_uri = {
-        .uri = REST_BASE_PATH"/script/reload",
+        .uri = REST_BASE_PATH "/script/reload",
         .method = HTTP_POST,
-        .handler = script_reload_post_handler
+        .handler = script_reload_post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &script_reload_post_uri));
 
     httpd_uri_t post_uri = {
-       .uri = REST_BASE_PATH"/*",
-       .method = HTTP_POST,
-       .handler = post_handler
+        .uri = REST_BASE_PATH "/*",
+        .method = HTTP_POST,
+        .handler = post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &post_uri));
 }

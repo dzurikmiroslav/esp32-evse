@@ -1,0 +1,20 @@
+name: Check code
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Run clang-format style check
+      uses: jidicula/clang-format-action@v4.13.0
+      with:
+        clang-format-version: '18'

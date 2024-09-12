@@ -1,7 +1,6 @@
-#include <memory.h>
-
 #include "output_buffer.h"
 
+#include <memory.h>
 
 output_buffer_t* output_buffer_create(uint16_t size)
 {
@@ -24,11 +23,11 @@ void output_buffer_delete(output_buffer_t* buffer)
 void output_buffer_append_buf(output_buffer_t* buffer, const char* str, uint16_t len)
 {
     if (((buffer->append - buffer->data) + sizeof(uint16_t) + len) >= buffer->size) {
-        //rotate buffer
+        // rotate buffer
         uint8_t* pos = buffer->data;
         uint16_t rotate_count = 0;
         while ((pos - buffer->data) < buffer->size / 2) {
-            //seek first half
+            // seek first half
             uint16_t entry_len;
             memcpy((void*)&entry_len, (void*)pos, sizeof(uint16_t));
             pos += entry_len + sizeof(uint16_t);

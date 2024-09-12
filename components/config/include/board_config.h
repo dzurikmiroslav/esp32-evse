@@ -1,9 +1,9 @@
 #ifndef BOARD_CONFIG_H_
 #define BOARD_CONFIG_H_
 
-#include "hal/adc_types.h"
-#include "hal/gpio_types.h"
-#include "soc/soc_caps.h"
+#include <hal/adc_types.h>
+#include <hal/gpio_types.h>
+#include <soc/soc_caps.h>
 
 typedef enum {
     BOARD_CONFIG_ENERGY_METER_NONE,
@@ -17,8 +17,7 @@ typedef enum {
     BOARD_CONFIG_SERIAL_RS485
 } board_config_serial_t;
 
-typedef struct
-{
+typedef struct {
     char device_name[32];
 
     bool led_charging : 1;
@@ -68,7 +67,6 @@ typedef struct
     adc_channel_t energy_meter_l2_vlt_adc_channel;
     adc_channel_t energy_meter_l3_vlt_adc_channel;
     float energy_meter_vlt_scale;
-
 
     bool aux_in_1 : 1;
     char aux_in_1_name[8];

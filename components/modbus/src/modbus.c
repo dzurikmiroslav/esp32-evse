@@ -1,79 +1,81 @@
-#include <string.h>
-#include <math.h>
-#include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_log.h"
-#include "esp_timer.h"
-#include "esp_ota_ops.h"
-#include "nvs.h"
-
 #include "modbus.h"
-#include "evse.h"
+
+#include <esp_log.h>
+#include <esp_ota_ops.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <math.h>
+#include <nvs.h>
+#include <string.h>
+
+#include "sdkconfig.h"
+
 #include "energy_meter.h"
+#include "evse.h"
 #include "socket_lock.h"
 #include "temp_sensor.h"
 
-#define MODBUS_REG_STATE                100
-#define MODBUS_REG_ERROR                101 // 2 word
-#define MODBUS_REG_ENABLED              103
-#define MODBUS_REG_AVAILABLE            104
-#define MODBUS_REG_PENDING_AUTH         105
-#define MODBUS_REG_CHR_CURRENT          106
-#define MODBUS_REG_CONSUMPTION_LIM      107 // 2 word
-#define MODBUS_REG_CHR_TIME_LIM         109 // 2 word
-#define MODBUS_REG_UNDER_POWER_LIM      111
-#define MODBUS_REG_AUTHORISE            112
+#define MODBUS_REG_STATE           100
+#define MODBUS_REG_ERROR           101  // 2 word
+#define MODBUS_REG_ENABLED         103
+#define MODBUS_REG_AVAILABLE       104
+#define MODBUS_REG_PENDING_AUTH    105
+#define MODBUS_REG_CHR_CURRENT     106
+#define MODBUS_REG_CONSUMPTION_LIM 107  // 2 word
+#define MODBUS_REG_CHR_TIME_LIM    109  // 2 word
+#define MODBUS_REG_UNDER_POWER_LIM 111
+#define MODBUS_REG_AUTHORISE       112
 
-#define MODBUS_REG_EMETER_POWER         200
-#define MODBUS_REG_EMETER_SES_TIME      201 // 2 word
-#define MODBUS_REG_EMETER_CHR_TIME      203 // 2 word
-#define MODBUS_REG_EMETER_CONSUMPTION   205 // 2 word
-#define MODBUS_REG_EMETER_L1_VTL        207 // 2 word
-#define MODBUS_REG_EMETER_L2_VTL        209 // 2 word
-#define MODBUS_REG_EMETER_L3_VTL        211 // 2 word
-#define MODBUS_REG_EMETER_L1_CUR        213 // 2 word
-#define MODBUS_REG_EMETER_L2_CUR        215 // 2 word
-#define MODBUS_REG_EMETER_L3_CUR        217 // 2 word
+#define MODBUS_REG_EMETER_POWER       200
+#define MODBUS_REG_EMETER_SES_TIME    201  // 2 word
+#define MODBUS_REG_EMETER_CHR_TIME    203  // 2 word
+#define MODBUS_REG_EMETER_CONSUMPTION 205  // 2 word
+#define MODBUS_REG_EMETER_L1_VTL      207  // 2 word
+#define MODBUS_REG_EMETER_L2_VTL      209  // 2 word
+#define MODBUS_REG_EMETER_L3_VTL      211  // 2 word
+#define MODBUS_REG_EMETER_L1_CUR      213  // 2 word
+#define MODBUS_REG_EMETER_L2_CUR      215  // 2 word
+#define MODBUS_REG_EMETER_L3_CUR      217  // 2 word
 
-#define MODBUS_REG_SOCKET_OUTLET        300
-#define MODBUS_REG_RCM                  301
-#define MODBUS_REG_TEMP_THRESHOLD       302
-#define MODBUS_REG_REQ_AUTH             303
-#define MODBUS_REG_MAX_CHR_CURRENT      304
-#define MODBUS_REG_DEF_CHR_CURRENT      305
-#define MODBUS_REG_DEF_CONSUMPTION_LIM  306 //2 word
-#define MODBUS_REG_DEF_CHR_TIME_LIM     308 //2 word
-#define MODBUS_REG_DEF_UNDER_POWER_LIM  310 
-#define MODBUS_REG_LOCK_OPERATING_TIME  311 
-#define MODBUS_REG_LOCK_BRAKE_TIME      312
-#define MODBUS_REG_LOCK_DET_HI          313
-#define MODBUS_REG_LOCK_RET_COUNT       314
-#define MODBUS_REG_EMETER_MODE          315
-#define MODBUS_REG_EMETER_AC_VLT        316
-#define MODBUS_REG_EMETER_THREE_PHASES  317
+#define MODBUS_REG_SOCKET_OUTLET       300
+#define MODBUS_REG_RCM                 301
+#define MODBUS_REG_TEMP_THRESHOLD      302
+#define MODBUS_REG_REQ_AUTH            303
+#define MODBUS_REG_MAX_CHR_CURRENT     304
+#define MODBUS_REG_DEF_CHR_CURRENT     305
+#define MODBUS_REG_DEF_CONSUMPTION_LIM 306  // 2 word
+#define MODBUS_REG_DEF_CHR_TIME_LIM    308  // 2 word
+#define MODBUS_REG_DEF_UNDER_POWER_LIM 310
+#define MODBUS_REG_LOCK_OPERATING_TIME 311
+#define MODBUS_REG_LOCK_BRAKE_TIME     312
+#define MODBUS_REG_LOCK_DET_HI         313
+#define MODBUS_REG_LOCK_RET_COUNT      314
+#define MODBUS_REG_EMETER_MODE         315
+#define MODBUS_REG_EMETER_AC_VLT       316
+#define MODBUS_REG_EMETER_THREE_PHASES 317
 
-#define MODBUS_REG_UPTIME               400 //2 word
-#define MODBUS_REG_TEMP_LOW             402
-#define MODBUS_REG_TEMP_HIGH            403
-#define MODBUS_REG_TEMP_SENSOR_COUNT    404
-#define MODBUS_REG_APP_VERSION          405 //16 word
-#define MODBUS_REG_RESTART              421
+#define MODBUS_REG_UPTIME            400  // 2 word
+#define MODBUS_REG_TEMP_LOW          402
+#define MODBUS_REG_TEMP_HIGH         403
+#define MODBUS_REG_TEMP_SENSOR_COUNT 404
+#define MODBUS_REG_APP_VERSION       405  // 16 word
+#define MODBUS_REG_RESTART           421
 
-#define MODBUS_EX_NONE                  0x00
-#define MODBUS_EX_ILLEGAL_FUNCTION      0x01
-#define MODBUS_EX_ILLEGAL_DATA_ADDRESS  0x02
-#define MODBUS_EX_ILLEGAL_DATA_VALUE    0x03
-#define MODBUS_EX_SLAVE_DEVICE_FAILURE  0x04
-#define MODBUS_EX_ACKNOWLEDGE           0x05
-#define MODBUS_EX_SLAVE_BUSY            0x06
-#define MODBUS_EX_MEMORY_PARITY_ERROR   0x08
+#define MODBUS_EX_NONE                 0x00
+#define MODBUS_EX_ILLEGAL_FUNCTION     0x01
+#define MODBUS_EX_ILLEGAL_DATA_ADDRESS 0x02
+#define MODBUS_EX_ILLEGAL_DATA_VALUE   0x03
+#define MODBUS_EX_SLAVE_DEVICE_FAILURE 0x04
+#define MODBUS_EX_ACKNOWLEDGE          0x05
+#define MODBUS_EX_SLAVE_BUSY           0x06
+#define MODBUS_EX_MEMORY_PARITY_ERROR  0x08
 
-#define UINT32_GET_HI(value)            ((uint16_t)(((uint32_t) (value)) >> 16))
-#define UINT32_GET_LO(value)            ((uint16_t)(((uint32_t) (value)) & 0xFFFF))
+#define UINT32_GET_HI(value) ((uint16_t)(((uint32_t)(value)) >> 16))
+#define UINT32_GET_LO(value) ((uint16_t)(((uint32_t)(value)) & 0xFFFF))
 
-#define NVS_NAMESPACE                   "modbus"
-#define NVS_UNIT_ID                     "unit_id"
+#define NVS_NAMESPACE "modbus"
+#define NVS_UNIT_ID   "unit_id"
 
 static const char* TAG = "modbus";
 
@@ -273,7 +275,7 @@ static bool read_holding_register(uint16_t addr, uint16_t* value)
         *value = temp_sensor_get_count();
         break;
     default:
-        //string registers
+        // string registers
         if (addr >= MODBUS_REG_APP_VERSION && addr <= MODBUS_REG_APP_VERSION + 16) {
             const esp_app_desc_t* app_desc = esp_app_get_description();
             *value = app_desc->version[(addr - MODBUS_REG_APP_VERSION) * 2] << 8 | app_desc->version[(addr - MODBUS_REG_APP_VERSION) * 2 + 1];

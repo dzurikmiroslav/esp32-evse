@@ -1,22 +1,24 @@
 
-#include <time.h>
-#include "esp_log.h"
-#include "esp_sntp.h"
-#include "esp_netif_sntp.h"
-#include "nvs.h"
-
 #include "scheduler.h"
+
+#include <esp_log.h>
+#include <esp_netif_sntp.h>
+#include <esp_sntp.h>
+#include <nvs.h>
+#include <time.h>
+
 #include "evse.h"
 
-#define NVS_NAMESPACE           "scheduler"
-#define NVS_NTP_ENABLED         "ntp_en"
-#define NVS_NTP_SERVER          "ntp_server"
-#define NVS_NTP_FROM_DHCP       "ntp_from_dhcp"
-#define NVS_TIMEZONE            "timezone"
-#define NVS_SCHEDULES           "schedules"
-#define STATE_NONE              0
-#define STATE_ON                1
-#define STATE_OFF               2
+#define NVS_NAMESPACE     "scheduler"
+#define NVS_NTP_ENABLED   "ntp_en"
+#define NVS_NTP_SERVER    "ntp_server"
+#define NVS_NTP_FROM_DHCP "ntp_from_dhcp"
+#define NVS_TIMEZONE      "timezone"
+#define NVS_SCHEDULES     "schedules"
+
+#define STATE_NONE 0
+#define STATE_ON   1
+#define STATE_OFF  2
 
 static const char* TAG = "scheduler";
 
@@ -26,7 +28,7 @@ static SemaphoreHandle_t mutex;
 
 static TaskHandle_t scheduler_task = NULL;
 
-static char ntp_server[64]; // if renew_servers_after_new_IP = false, will be used static string reference
+static char ntp_server[64];  // if renew_servers_after_new_IP = false, will be used static string reference
 
 static uint8_t schedule_count = 0;
 
@@ -36,7 +38,7 @@ static uint8_t* schedules_state = NULL;
 
 static const char* tz_data[][2] = {
 #include "tz_data.h"
-    {NULL, NULL}
+    { NULL, NULL }
 };
 
 static const char* find_tz(const char* name)
@@ -102,7 +104,7 @@ static void off_action(scheduler_action_t action)
 
 static void scheduler_task_func(void* param)
 {
-    vTaskDelay(pdMS_TO_TICKS(1000)); // wait to init evse
+    vTaskDelay(pdMS_TO_TICKS(1000));  // wait to init evse
 
     while (true) {
         xSemaphoreTake(mutex, portMAX_DELAY);
@@ -298,8 +300,7 @@ esp_err_t scheduler_set_timezone(const char* value)
 
 const char* scheduler_action_to_str(scheduler_action_t action)
 {
-    switch (action)
-    {
+    switch (action) {
     case SCHEDULER_ACTION_AVAILABLE:
         return "available";
     case SCHEDULER_ACTION_CHARGING_CURRENT_6A:

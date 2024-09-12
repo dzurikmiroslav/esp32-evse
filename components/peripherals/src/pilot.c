@@ -1,18 +1,19 @@
-#include "esp_log.h"
-#include "driver/ledc.h"
-#include "rom/ets_sys.h"
-
 #include "pilot.h"
-#include "board_config.h"
+
+#include <driver/ledc.h>
+#include <esp_log.h>
+#include <rom/ets_sys.h>
+
 #include "adc.h"
+#include "board_config.h"
 
-#define PILOT_PWM_TIMER         LEDC_TIMER_0
-#define PILOT_PWM_CHANNEL       LEDC_CHANNEL_0
-#define PILOT_PWM_SPEED_MODE    LEDC_LOW_SPEED_MODE
-#define PILOT_PWM_DUTY_RES      LEDC_TIMER_10_BIT
-#define PILOT_PWM_MAX_DUTY      1023
+#define PILOT_PWM_TIMER      LEDC_TIMER_0
+#define PILOT_PWM_CHANNEL    LEDC_CHANNEL_0
+#define PILOT_PWM_SPEED_MODE LEDC_LOW_SPEED_MODE
+#define PILOT_PWM_DUTY_RES   LEDC_TIMER_10_BIT
+#define PILOT_PWM_MAX_DUTY   1023
 
-#define PILOT_SAMPLES      64
+#define PILOT_SAMPLES 64
 
 static const char* TAG = "pilot";
 
@@ -23,7 +24,7 @@ void pilot_init(void)
         .timer_num = PILOT_PWM_TIMER,
         .duty_resolution = PILOT_PWM_DUTY_RES,
         .freq_hz = 1000,
-        .clk_cfg = LEDC_AUTO_CLK
+        .clk_cfg = LEDC_AUTO_CLK,
     };
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
@@ -34,7 +35,7 @@ void pilot_init(void)
         .intr_type = LEDC_INTR_DISABLE,
         .gpio_num = board_config.pilot_pwm_gpio,
         .duty = 0,
-        .hpoint = 0
+        .hpoint = 0,
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
     ESP_ERROR_CHECK(ledc_stop(PILOT_PWM_SPEED_MODE, PILOT_PWM_CHANNEL, 1));
@@ -43,7 +44,7 @@ void pilot_init(void)
 
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_12
+        .atten = ADC_ATTEN_DB_12,
     };
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.pilot_adc_channel, &config));
 }

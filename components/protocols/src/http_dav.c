@@ -1,26 +1,26 @@
+#include "http_dav.h"
+
+#include <dirent.h>
+#include <esp_log.h>
+#include <esp_spiffs.h>
+#include <esp_vfs.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <sys/stat.h>
 #include <sys/param.h>
-#include "esp_log.h"
-#include "esp_vfs.h"
-#include "esp_spiffs.h"
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include "http_web.h"
 #include "http.h"
 
-#define DAV_BASE_PATH           "/dav"
-#define DAV_BASE_PATH_LEN       4
-#define FILE_PATH_MAX           (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
-#define SCRATCH_BUFSIZE         1024
+#define DAV_BASE_PATH     "/dav"
+#define DAV_BASE_PATH_LEN 4
+#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define SCRATCH_BUFSIZE   1024
 
 static const char* TAG = "http_dav";
 
-typedef enum
-{
+typedef enum {
     RESP_HDR_DIR,
     RESP_HDR_FILE_NOT_EXIST,
     RESP_HDR_FILE_EXIST
@@ -29,8 +29,7 @@ typedef enum
 static void set_resp_hdr(httpd_req_t* req, resp_hdr_t hdr)
 {
     httpd_resp_set_hdr(req, "DAV", "1");
-    switch (hdr)
-    {
+    switch (hdr) {
     case RESP_HDR_DIR:
         httpd_resp_set_hdr(req, "Allow", "OPTIONS,PROPFIND");
         break;
@@ -84,7 +83,7 @@ static void propfind_response_directory(httpd_req_t* req, const char* path)
     }
 
     httpd_resp_send_chunk(req, "<response>\n", HTTPD_RESP_USE_STRLEN);
-    httpd_resp_send_chunk(req, "<href>"DAV_BASE_PATH, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "<href>" DAV_BASE_PATH, HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, path, HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "</href>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<propstat>\n", HTTPD_RESP_USE_STRLEN);
@@ -109,10 +108,10 @@ static void propfind_response_file(httpd_req_t* req, const char* path)
     struct stat statbuf;
     char str[16];
     stat(path, &statbuf);
-    sprintf(str, "%"PRId32, statbuf.st_size);
+    sprintf(str, "%" PRId32, statbuf.st_size);
 
     httpd_resp_send_chunk(req, "<response>\n", HTTPD_RESP_USE_STRLEN);
-    httpd_resp_send_chunk(req, "<href>"DAV_BASE_PATH, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "<href>" DAV_BASE_PATH, HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, path, HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "</href>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<propstat>\n", HTTPD_RESP_USE_STRLEN);
@@ -128,16 +127,15 @@ static void propfind_response_file(httpd_req_t* req, const char* path)
     httpd_resp_send_chunk(req, "</response>\n", HTTPD_RESP_USE_STRLEN);
 }
 
-
 static esp_err_t options_handler(httpd_req_t* req)
 {
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
         set_resp_hdr(req, RESP_HDR_DIR);
-        //directories
+        // directories
     } else if (strcmp(path, "/data") == 0 || strcmp(path, "/cfg") == 0) {
-        //redirects
+        // redirects
         char location[8];
         strcpy(location, req->uri);
         strcat(location, "/");
@@ -146,7 +144,7 @@ static esp_err_t options_handler(httpd_req_t* req)
         httpd_resp_send(req, "", 0);
         return ESP_OK;
     } else {
-        //files
+        // files
         struct stat statbuf;
         if (stat(path, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
             set_resp_hdr(req, RESP_HDR_FILE_EXIST);
@@ -165,10 +163,10 @@ static esp_err_t propfind_handler(httpd_req_t* req)
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
-        //directories
+        // directories
         set_resp_hdr(req, RESP_HDR_DIR);
     } else if (strcmp(path, "") == 0 || strcmp(path, "/data") == 0 || strcmp(path, "/cfg") == 0) {
-        //redirects
+        // redirects
         char location[8];
         strcpy(location, req->uri);
         strcat(location, "/");
@@ -177,7 +175,7 @@ static esp_err_t propfind_handler(httpd_req_t* req)
         httpd_resp_send(req, "", 0);
         return ESP_OK;
     } else {
-        //files
+        // files
         struct stat statbuf;
         if (stat(path, &statbuf) != 0 || !S_ISREG(statbuf.st_mode)) {
             httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
@@ -287,7 +285,7 @@ static esp_err_t put_handler(httpd_req_t* req)
 
             ESP_LOGE(TAG, "File receive failed");
             httpd_resp_send_custom_err(req, "530 Failed To Receive File", "Failed to receive file");
-//            httpd_resp_send_err(req, HTTPD_530_INTERNAL_SERVER_ERROR, "Failed to receive file");
+            //            httpd_resp_send_err(req, HTTPD_530_INTERNAL_SERVER_ERROR, "Failed to receive file");
             return ESP_FAIL;
         }
 
@@ -297,7 +295,7 @@ static esp_err_t put_handler(httpd_req_t* req)
 
             ESP_LOGE(TAG, "File write failed");
             httpd_resp_send_custom_err(req, "531 Failed To Write File", "Failed to write file");
-            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
+            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
             return ESP_FAIL;
         }
 
@@ -374,7 +372,6 @@ static esp_err_t copy_handler(httpd_req_t* req)
                 httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
                 return ESP_FAIL;
             }
-
         }
     } while (len != 0);
 
@@ -394,58 +391,58 @@ size_t http_dav_handlers_count(void)
 void http_dav_add_handlers(httpd_handle_t server)
 {
     httpd_uri_t options_uri = {
-        .uri = DAV_BASE_PATH"/?*",
+        .uri = DAV_BASE_PATH "/?*",
         .method = HTTP_OPTIONS,
-        .handler = options_handler
+        .handler = options_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &options_uri));
 
     httpd_uri_t propfind_uri = {
-        .uri = DAV_BASE_PATH"/?*",
+        .uri = DAV_BASE_PATH "/?*",
         .method = HTTP_PROPFIND,
-        .handler = propfind_handler
+        .handler = propfind_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &propfind_uri));
 
     httpd_uri_t head_uri = {
-        .uri = DAV_BASE_PATH"/*",
+        .uri = DAV_BASE_PATH "/*",
         .method = HTTP_HEAD,
-        .handler = get_handler
+        .handler = get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &head_uri));
 
     httpd_uri_t get_uri = {
-        .uri = DAV_BASE_PATH"/*",
+        .uri = DAV_BASE_PATH "/*",
         .method = HTTP_GET,
-        .handler = get_handler
+        .handler = get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_uri));
 
     httpd_uri_t put_uri = {
-        .uri = DAV_BASE_PATH"/*",
+        .uri = DAV_BASE_PATH "/*",
         .method = HTTP_PUT,
-        .handler = put_handler
+        .handler = put_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &put_uri));
 
     httpd_uri_t delete_uri = {
-        .uri = DAV_BASE_PATH"/*",
+        .uri = DAV_BASE_PATH "/*",
         .method = HTTP_DELETE,
-        .handler = delete_handler
+        .handler = delete_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &delete_uri));
 
     httpd_uri_t move_uri = {
-        .uri = DAV_BASE_PATH"/*",
+        .uri = DAV_BASE_PATH "/*",
         .method = HTTP_MOVE,
-        .handler = move_handler
+        .handler = move_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &move_uri));
 
     httpd_uri_t copy_uri = {
-       .uri = DAV_BASE_PATH"/*",
-       .method = HTTP_COPY,
-       .handler = copy_handler
+        .uri = DAV_BASE_PATH "/*",
+        .method = HTTP_COPY,
+        .handler = copy_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &copy_uri));
 }

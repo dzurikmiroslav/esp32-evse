@@ -1,12 +1,13 @@
+#include "l_aux_lib.h"
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <math.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "lua.h"
-#include "lauxlib.h"
 
-#include "l_aux_lib.h"
 #include "aux_io.h"
+#include "lauxlib.h"
+#include "lua.h"
 
 static int l_write(lua_State* L)
 {
@@ -50,10 +51,10 @@ static int l_analog_read(lua_State* L)
 }
 
 static const luaL_Reg lib[] = {
-    {"write",       l_write},
-    {"read",        l_read},
-    {"analogread",  l_analog_read},
-    {NULL, NULL}
+    { "write", l_write },
+    { "read", l_read },
+    { "analogread", l_analog_read },
+    { NULL, NULL },
 };
 
 int luaopen_aux(lua_State* L)
