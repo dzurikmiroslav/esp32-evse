@@ -1,9 +1,13 @@
-name: Build with ESP-IDF
+name: Build
 
 env:
   ESP_IDF_VERSION: v5.3
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
 
 jobs:
   build:

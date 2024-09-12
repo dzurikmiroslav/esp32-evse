@@ -1,4 +1,4 @@
-name: Build release with ESP-IDF
+name: Build release
 
 env:
   ESP_IDF_VERSION: v5.3
