@@ -183,8 +183,7 @@ static void perform_rcm_selftest(void)
 
 static void enter_new_state(evse_state_t state_to_enter)
 {
-    switch (state_to_enter)
-    {
+    switch (state_to_enter) {
     case EVSE_STATE_A:
     case EVSE_STATE_E:
     case EVSE_STATE_F:
@@ -223,77 +222,12 @@ static void enter_new_state(evse_state_t state_to_enter)
         set_pilot(PILOT_STATE_PWM);
         ac_relay_set_state(true);
         break;
-static void apply_state(void)
-{
-    evse_state_t new_state = evse_get_state();  // getter method detect error state
-
-    if (prev_state != new_state) {
-        ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
-        if (error) {
-            ESP_LOGI(TAG, "Error bits %" PRIu32 "", error);
-        }
-
-        switch (new_state) {
-        case EVSE_STATE_A:
-        case EVSE_STATE_E:
-        case EVSE_STATE_F:
-            ac_relay_set_state(false);
-            set_pilot(new_state == EVSE_STATE_A ? PILOT_STATE_12V : PILOT_STATE_N12V);
-
-            if (board_config.socket_lock && socket_outlet) {
-                set_socket_lock(false);
-            }
-            authorized = false;
-            reached_limit = 0;
-            under_power_start_time = 0;
-            rcm_selftest = false;
-            c1_d1_ac_relay_wait_to = 0;
-            energy_meter_stop_session();
-            break;
-        case EVSE_STATE_B1:
-            set_pilot(PILOT_STATE_12V);
-            ac_relay_set_state(false);
-
-            c1_d1_ac_relay_wait_to = 0;
-            if (board_config.socket_lock && socket_outlet) {
-                set_socket_lock(true);
-            }
-            if (rcm) {
-                perform_rcm_selftest();
-            }
-            if (socket_outlet) {
-                cable_max_current = proximity_get_max_current();
-            }
-            energy_meter_start_session();
-            break;
-        case EVSE_STATE_B2:
-            set_pilot(PILOT_STATE_PWM);
-            ac_relay_set_state(false);
-            break;
-        case EVSE_STATE_C1:
-        case EVSE_STATE_D1:
-            set_pilot(PILOT_STATE_12V);
-            set_timeout(&c1_d1_ac_relay_wait_to, C1_D1_AC_RELAY_WAIT_TIME);
-            break;
-        case EVSE_STATE_C2:
-        case EVSE_STATE_D2:
-            set_pilot(PILOT_STATE_PWM);
-            ac_relay_set_state(true);
-            break;
-        }
-
-        prev_state = new_state;
     }
 }
 
 static bool charging_allowed(void)
 {
-    if (!enabled ||
-        !available ||
-        !authorized ||
-        reached_limit) {
-
-    if (!enabled || !available || !authorized || reached_limit != 0) {
+    if (!enabled || !available || !authorized || reached_limit) {
         return false;
     }
 
@@ -358,7 +292,7 @@ static void check_other_error_conditions()
     if (rcm && rcm_is_triggered()) {
         set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
     }
-    
+
     if (board_config.onewire && board_config.onewire_temp_sensor) {
         if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
@@ -397,13 +331,11 @@ void evse_process(void)
     check_other_error_conditions();
 
     if (error == 0 && !error_cleared) {
-        //no errors
-        //after clear error, process on next iteration, after apply_state
+        // no errors
+        // after clear error, process on next iteration, after apply_state
 
         // set limit bits in reached_limit
         check_charging_limits();
-        // no errors
-        // after clear error, process on next iteration, after apply_state
 
         switch (state) {
         case EVSE_STATE_A:
@@ -468,8 +400,6 @@ void evse_process(void)
                 break;
             }
 
-            switch (pilot_voltage)
-            {
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
@@ -502,9 +432,7 @@ void evse_process(void)
                 state = EVSE_STATE_D1;
                 break;
             }
-            
-            switch (pilot_voltage)
-            {
+
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_6:
                 state = charging_allowed() ? EVSE_STATE_C2 : EVSE_STATE_C1;
@@ -531,12 +459,12 @@ void evse_process(void)
         }
     }
 
-    evse_state_t new_state = evse_get_state(); // getter method detect error state
+    evse_state_t new_state = evse_get_state();  // getter method detect error state
 
     if (prev_state != new_state) {
         ESP_LOGI(TAG, "Enter %s state", evse_state_to_str(new_state));
         if (error) {
-            ESP_LOGI(TAG, "Error bits %"PRIu32"", error);
+            ESP_LOGI(TAG, "Error bits %" PRIu32 "", error);
         }
         enter_new_state(new_state);
         prev_state = new_state;
