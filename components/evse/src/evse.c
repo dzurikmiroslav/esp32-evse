@@ -273,6 +273,14 @@ static void check_charging_limits()
     }
 }
 
+static void force_ac_relay_off_after_timeout()
+{
+    if (is_expired(&c1_d1_ac_relay_wait_to)) {
+        ESP_LOGW(TAG, "Force switch off ac relay");
+        ac_relay_set_state(false);
+    }
+}
+
 // set and clear error condition bits, depending on the configuration
 static void check_other_error_conditions()
 {
@@ -332,17 +340,18 @@ void evse_process(void)
 
     if (error == 0 && !error_cleared) {
         // no errors
-        // after clear error, process on next iteration, after apply_state
+        // after clear error, process on next iteration, after a potential state change
 
         // set limit bits in reached_limit
         check_charging_limits();
 
+        // indepedent of the current state, state F turns off the AC relay immediately!
+        if (!available) {
+            state = EVSE_STATE_F;
+        }
+
         switch (state) {
         case EVSE_STATE_A:
-            if (!available) {
-                state = EVSE_STATE_F;
-                break;
-            }
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 // stay in current state
@@ -366,10 +375,6 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_B2:
-            if (!available) {
-                state = EVSE_STATE_F;
-                break;
-            }
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
                 state = EVSE_STATE_A;
@@ -385,14 +390,7 @@ void evse_process(void)
             }
             break;
         case EVSE_STATE_C1:
-            if (is_expired(&c1_d1_ac_relay_wait_to)) {
-                ESP_LOGW(TAG, "Force switch off ac relay");
-                ac_relay_set_state(false);
-                if (!available) {
-                    state = EVSE_STATE_F;
-                    break;
-                }
-            }
+            force_ac_relay_off_after_timeout();
             // fallthrough
         case EVSE_STATE_C2:
             switch (pilot_voltage) {
@@ -413,14 +411,7 @@ void evse_process(void)
             }
             break;
         case EVSE_STATE_D1:
-            if (is_expired(&c1_d1_ac_relay_wait_to)) {
-                ESP_LOGW(TAG, "Force switch off ac relay");
-                ac_relay_set_state(false);
-                if (!available) {
-                    state = EVSE_STATE_F;
-                    break;
-                }
-            }
+            force_ac_relay_off_after_timeout();
             // fallthrough
         case EVSE_STATE_D2:
             switch (pilot_voltage) {
