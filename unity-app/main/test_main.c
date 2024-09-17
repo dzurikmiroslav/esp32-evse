@@ -76,7 +76,7 @@ TEST_CASE("Standard charging sequence", "[evse]")
      * B2 -> A
      */
     pilot_mock_up_voltage = PILOT_VOLTAGE_12;
-    //pilot_mock_down_voltage_n12 = false;
+    // pilot_mock_down_voltage_n12 = false;
     evse_process();
 
     TEST_ASSERT_EQUAL(EVSE_STATE_A, evse_get_state());
