@@ -42,6 +42,12 @@ typedef enum {
 void evse_init(void);
 
 /**
+ * @brief Reset evse, used only in tests
+ * 
+ */
+void evse_reset(void);
+
+/**
  * @brief Set evse controller to available state or F
  *
  * @param available

@@ -395,10 +395,11 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_C2:
-            if (!enabled || !available || reached_limit) {
-                state = EVSE_STATE_C1;
-                break;
-            }
+            // this cause infinty loop to stay in D2
+            // if (!enabled || !available || reached_limit) {
+            //     state = EVSE_STATE_C1;
+            //     break;
+            // }
 
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_12:
@@ -428,10 +429,11 @@ void evse_process(void)
             }
             // fallthrough
         case EVSE_STATE_D2:
-            if (!enabled || !available || reached_limit) {
-                state = EVSE_STATE_D1;
-                break;
-            }
+            // this cause infinty loop to stay in D1
+            // if (!enabled || !available || reached_limit) {
+            //     state = EVSE_STATE_D1;
+            //     break;
+            // }
 
             switch (pilot_voltage) {
             case PILOT_VOLTAGE_6:
@@ -510,6 +512,24 @@ void evse_init()
     nvs_get_u16(nvs, NVS_DEFAULT_UNDER_POWER_LIMIT, &under_power_limit);
 
     pilot_set_level(true);
+}
+
+void evse_reset(void)
+{
+    state = EVSE_STATE_A;
+    error = 0;
+    error_cleared = false;
+    reached_limit = 0;
+    rcm_selftest = false;
+    enabled = true;
+    available = true;
+    require_auth = false;
+    authorized = false;
+    auth_grant_to = 0;
+    error_wait_to = 0;
+    under_power_start_time = 0;
+    c1_d1_ac_relay_wait_to = 0;
+    cable_max_current = 63;
 }
 
 evse_state_t evse_get_state(void)
