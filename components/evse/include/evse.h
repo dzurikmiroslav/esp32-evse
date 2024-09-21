@@ -43,7 +43,7 @@ void evse_init(void);
 
 /**
  * @brief Reset evse, used only in tests
- * 
+ *
  */
 void evse_reset(void);
 
