@@ -1,0 +1,76 @@
+name: Run Test Application (Wokwi)
+
+env:
+  ESP_IDF_VERSION: v5.3
+
+on:
+  workflow_call:
+    secrets:
+      WOKWI_CLI_TOKEN:
+        required: true
+  workflow_dispatch: {}
+
+jobs:
+  run-target:
+    name: Run Test App in simulation
+    runs-on: ubuntu-latest
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     espidf_target:
+    #       - esp32
+        #   - esp32c3
+        #   - esp32c6
+        #   - esp32h2
+        #   - esp32p4
+        #   - esp32s2
+        #   - esp32s3
+        
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+   
+      - name: Build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: $ESP_IDF_VERSION
+          target: esp32
+          path: unity-app
+
+#       - name: Install the Wokwi CLI
+#         run: curl -L https://wokwi.com/ci/install.sh | sh
+#       - name: Install Python packages for PyTest
+#         env:
+#           PIP_PREFER_BINARY: true
+#           PIP_INDEX_URL: "https://dl.espressif.com/pypi/"
+#           PIP_EXTRA_INDEX_URL: "https://pypi.org/simple"
+#         run: pip install -r test_app/requirements.txt
+#       - name: Run Test App in Wokwi Simulation
+#         working-directory: test_app
+#         env:
+#           WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+#         run: |
+#           pytest \
+#             --junit-xml=./test_app_results_${{ matrix.espidf_target }}.xml \
+#             --embedded-services idf,wokwi \
+#             --target=${{ matrix.espidf_target }}
+#       - name: Upload test results for publish-results job
+#         uses: actions/upload-artifact@v4
+#         if: always()
+#         with:
+#           name: test_app_results_wokwi${{ matrix.espidf_target }}
+#           path: test_app/*.xml
+#   publish-results:
+#     name: Publish Test App results
+#     needs: run-target
+#     runs-on: ubuntu-20.04
+#     if: always()  # (run even if the previous steps have failed)
+#     steps:
+#       - name: Download Test results
+#         uses: actions/download-artifact@v4
+#         with:
+#           path: test_results
+#       - name: Publish Test Results
+#         uses: EnricoMi/publish-unit-test-result-action@v2
+#         with:
+#           files: test_results/**/*.xml
