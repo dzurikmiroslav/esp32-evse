@@ -4,11 +4,10 @@ env:
   ESP_IDF_VERSION: v5.3
 
 on:
-  workflow_call:
-    secrets:
-      WOKWI_CLI_TOKEN:
-        required: true
-  workflow_dispatch: {}
+  push:
+    branches:
+      - '**'
+  pull_request:
 
 jobs:
   run-target:
@@ -25,7 +24,7 @@ jobs:
         #   - esp32p4
         #   - esp32s2
         #   - esp32s3
-        
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
