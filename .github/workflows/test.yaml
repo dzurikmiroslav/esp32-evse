@@ -54,6 +54,7 @@ jobs:
           pytest \
             --junit-xml=./test_app_results_esp32.xml \
             --embedded-services idf,wokwi \
+            --test-name=TEST_ALL
             --target=esp32
             
       - name: Upload test results for publish-results job
