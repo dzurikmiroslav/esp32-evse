@@ -47,7 +47,7 @@ jobs:
         run: pip install -r unity-app/requirements.txt
         
       - name: Run Test App in Wokwi Simulation
-        working-directory: test_app
+        working-directory: unity-app
         env:
           WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
         run: |
