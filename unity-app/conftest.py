@@ -1,5 +1,5 @@
-# def pytest_addoption(parser):
-#     parser.addoption("--test-name", action="store", default="test-name")
+def pytest_addoption(parser):
+    parser.addoption("--test-name", action="store", default="evse")
 
 
 def pytest_generate_tests(metafunc):
