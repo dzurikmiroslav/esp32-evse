@@ -256,11 +256,11 @@ void app_main(void)
 
     evse_init();
 
-    printf("\n#### Running all tests #####\n\n");
+    // printf("\n#### Running all tests #####\n\n");
 
-    UNITY_BEGIN();
-    unity_run_all_tests();
-    UNITY_END();
+    // UNITY_BEGIN();
+    // unity_run_all_tests();
+    // UNITY_END();
 
     unity_run_menu();
 }
