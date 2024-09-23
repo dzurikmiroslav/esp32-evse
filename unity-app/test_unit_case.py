@@ -1,8 +1,10 @@
-import pytest
-from pytest_embedded import Dut
+from pytest_embedded_idf.dut import IdfDut
 
 def test_app(dut: IdfDut):
     dut.expect_unity_test_output()
+
+# import pytest
+# from pytest_embedded import Dut
 
 # def test_unit_test(dut: Dut, test_name: str) -> None:
 #     if test_name == "TEST_ALL":
