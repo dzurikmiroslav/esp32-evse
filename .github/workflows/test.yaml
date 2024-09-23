@@ -56,12 +56,13 @@ jobs:
             --embedded-services idf,wokwi \
             --target=esp32
             
-#       - name: Upload test results for publish-results job
-#         uses: actions/upload-artifact@v4
-#         if: always()
-#         with:
-#           name: test_app_results_wokwi${{ matrix.espidf_target }}
-#           path: test_app/*.xml
+      - name: Upload test results for publish-results job
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test_app_results_wokwi
+          path: unity-app/*.xml
+          
 #   publish-results:
 #     name: Publish Test App results
 #     needs: run-target
