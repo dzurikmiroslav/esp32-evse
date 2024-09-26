@@ -34,7 +34,7 @@ jobs:
         with:
           esp_idf_version: $ESP_IDF_VERSION
           target: esp32
-          path: unity-app
+          path: test_app
 
       - name: Install the Wokwi CLI
         run: curl -L https://wokwi.com/ci/install.sh | sh
@@ -44,7 +44,7 @@ jobs:
           PIP_PREFER_BINARY: true
           PIP_INDEX_URL: "https://dl.espressif.com/pypi/"
           PIP_EXTRA_INDEX_URL: "https://pypi.org/simple"
-        run: pip install -r unity-app/requirements.txt
+        run: pip install -r test_app/requirements.txt
         
       - name: Run Test App in Wokwi Simulation
         working-directory: test_app
@@ -61,7 +61,7 @@ jobs:
         if: always()
         with:
           name: test_app_results_wokwi
-          path: unity-app/*.xml
+          path: test_app/*.xml
           
 #   publish-results:
 #     name: Publish Test App results
