@@ -47,14 +47,13 @@ jobs:
         run: pip install -r unity-app/requirements.txt
         
       - name: Run Test App in Wokwi Simulation
-        working-directory: unity-app
+        working-directory: test_app
         env:
           WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
         run: |
           pytest \
             --junit-xml=./test_app_results_esp32.xml \
             --embedded-services idf,wokwi \
-            --test-name=TEST_ALL \
             --target=esp32
             
       - name: Upload test results for publish-results job
