@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Read environment variables
-        run: echo $ESP_IDF_VERSION
+        run: echo ${{ env.ESP_IDF_VERSION }}"
         
       - name: Checkout
         uses: actions/checkout@v4
