@@ -1,8 +1,6 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <nvs_flash.h>
-#include <stdio.h>
 #include <unity.h>
 
 #include "evse.h"
@@ -241,26 +239,4 @@ TEST_CASE("Pilot error", "[evse]")
     TEST_ASSERT_EQUAL(EVSE_STATE_E, evse_get_state());
     TEST_ASSERT_TRUE(EVSE_ERR_PILOT_FAULT_BIT & evse_get_error());
     TEST_ASSERT_FALSE(ac_relay_mock_state);
-}
-
-void app_main(void)
-{
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        printf("Erasing NVS flash");
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-
-    ESP_ERROR_CHECK(ret);
-
-    evse_init();
-
-    printf("\n#### Running all tests #####\n\n");
-
-    UNITY_BEGIN();
-    unity_run_all_tests();
-    UNITY_END();
-
-    unity_run_menu();
 }
