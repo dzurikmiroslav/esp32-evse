@@ -1,7 +1,7 @@
 name: Reusable Workflow to Set Environment Variables
 
-env:
-  ESP_IDF_VERSION: v5.3
+# env:
+#   ESP_IDF_VERSION: v5.3
 
 on:
   workflow_call:
@@ -12,4 +12,4 @@ jobs:
     steps:
       - name: Set environment variables
         run: |
-            echo "ESP_IDF_VERSION=$ESP_IDF_VERSION" >> $GITHUB_ENV
+            echo "ESP_IDF_VERSION=v5.3" >> $GITHUB_ENV
