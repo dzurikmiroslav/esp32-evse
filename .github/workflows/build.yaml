@@ -23,12 +23,12 @@ jobs:
         platform: [esp32, esp32s2, esp32s3]
 
     steps:
+      - name: Read environment variables
+        run: echo $ESP_IDF_VERSION
+        
       - name: Checkout
         uses: actions/checkout@v4
    
-      # - name: Set environment variables
-      #   run: sh .github/env.sh
-
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
