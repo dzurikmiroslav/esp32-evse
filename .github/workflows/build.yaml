@@ -10,6 +10,9 @@ on:
   pull_request:
 
 jobs:
+  call-reusable-workflow:
+    uses: ./.github/workflows/env.yaml
+
   build:
     name: Build for all platforms
     runs-on: ubuntu-latest
@@ -22,8 +25,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
    
-      - name: Set environment variables
-        run: sh .github/env.sh
+      # - name: Set environment variables
+      #   run: sh .github/env.sh
 
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
