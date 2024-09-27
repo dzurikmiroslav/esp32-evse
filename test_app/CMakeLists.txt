@@ -1,7 +1,7 @@
 # This is the project CMakeLists.txt file for the test subproject
 cmake_minimum_required(VERSION 3.16)
 
-set(EXTRA_COMPONENT_DIRS "../.." "mocks")
+set(EXTRA_COMPONENT_DIRS "../components/ mocks")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(evse_test)
