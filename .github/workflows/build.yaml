@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Set environment variables
-        run: sh github/env.sh
+        run: sh .github/env.sh
 
       - name: Checkout
         uses: actions/checkout@v4
