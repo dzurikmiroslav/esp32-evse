@@ -1,7 +1,7 @@
 name: Build
 
-env:
-  ESP_IDF_VERSION: v5.3
+# env:
+#   ESP_IDF_VERSION: v5.3
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
 
 jobs:
   build:
+    name: Build for all platforms
     runs-on: ubuntu-latest
 
     strategy:
@@ -18,6 +19,9 @@ jobs:
         platform: [esp32, esp32s2, esp32s3]
 
     steps:
+      - name: Set environment variables
+        run: sh github/env.sh
+
       - name: Checkout
         uses: actions/checkout@v4
    

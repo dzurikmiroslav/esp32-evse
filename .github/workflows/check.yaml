@@ -8,6 +8,7 @@ on:
 
 jobs:
   clang-format:
+    name: Check code format
     runs-on: ubuntu-latest
     
     steps:

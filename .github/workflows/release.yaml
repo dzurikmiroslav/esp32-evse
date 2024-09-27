@@ -9,6 +9,7 @@ on:
 
 jobs:
   firmware:
+    name: Build release for all platforms
     runs-on: ubuntu-latest
 
     strategy:
