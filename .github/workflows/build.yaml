@@ -10,12 +10,13 @@ on:
   pull_request:
 
 jobs:
-  call-reusable-workflow:
-    uses: ./.github/workflows/env.yaml
+  set-envs:
+    uses: ./.github/workflows/set-envs.yaml
 
   build:
     name: Build for all platforms
     runs-on: ubuntu-latest
+    needs: set-envs
 
     strategy:
       matrix:
