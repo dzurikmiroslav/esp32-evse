@@ -11,7 +11,7 @@ on:
 
 jobs:
   env:
-    uses: ./.github/workflows/env.yaml
+    uses: .github/workflows/env.yaml
 
   build:
     name: Build for all platforms

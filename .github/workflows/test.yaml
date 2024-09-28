@@ -8,7 +8,7 @@ on:
 
 jobs:
   env:
-    uses: ./.github/workflows/env.yaml
+    uses: .github/workflows/env.yaml
 
   run-target:
     name: Run Test App in simulation
