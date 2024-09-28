@@ -6,7 +6,7 @@ on:
 
 jobs:
   env:
-    uses: .github/workflows/env.yaml
+    uses: ./.github/workflows/env.yaml
 
   firmware:
     name: Build release for all platforms
