@@ -14,17 +14,6 @@ jobs:
     name: Run Test App in simulation
     runs-on: ubuntu-latest
     needs: env
-    # strategy:
-    #   fail-fast: false
-    #   matrix:
-    #     espidf_target:
-    #       - esp32
-        #   - esp32c3
-        #   - esp32c6
-        #   - esp32h2
-        #   - esp32p4
-        #   - esp32s2
-        #   - esp32s3
 
     steps:
       - name: Checkout

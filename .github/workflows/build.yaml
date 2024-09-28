@@ -1,8 +1,5 @@
 name: Build
 
-# env:
-#   ESP_IDF_VERSION: v5.3
-
 on:
   push:
     branches:

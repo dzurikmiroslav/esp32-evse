@@ -1,17 +1,17 @@
 name: Build release
 
-env:
-  ESP_IDF_VERSION: v5.3
-
 on:
   release:
     types: [created]
 
 jobs:
+  env:
+    uses: .github/workflows/env.yaml
+
   firmware:
     name: Build release for all platforms
     runs-on: ubuntu-latest
-
+    needs: env
     strategy:
       matrix:
         platform: [esp32, esp32s2, esp32s3]
@@ -23,7 +23,7 @@ jobs:
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: $ESP_IDF_VERSION
+          esp_idf_version: ${{ needs.env.outputs.esp_idf_version }}
           target: ${{ matrix.platform }}
 
       - name: Rename file 
@@ -63,14 +63,14 @@ jobs:
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: $ESP_IDF_VERSION
+          esp_idf_version: ${{ needs.env.outputs.esp_idf_version }}
           target: ${{ matrix.platform }}
           command: export SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.board }}"; idf.py build
 
       - name: Merge
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: $ESP_IDF_VERSION
+          esp_idf_version: ${{ needs.env.outputs.esp_idf_version }}
           target: ${{ matrix.platform }}
           command: esptool.py --chip ${{ matrix.platform }} merge_bin -o build/${{ matrix.board }}.bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
             0x1000 build/bootloader/bootloader.bin \
