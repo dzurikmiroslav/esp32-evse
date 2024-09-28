@@ -1,0 +1,20 @@
+name: Load Environment Variables
+
+on:
+  workflow_call:
+    outputs:
+      esp_idf_version:
+        description: "ESP-IDF version"
+        value: ${{ jobs.load-env.outputs.esp_idf_version }}
+
+jobs:
+  load-env:
+    runs-on: ubuntu-latest
+    outputs:
+      esp_idf_version: ${{ steps.set-env.outputs.esp_idf_version }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Load environment variables
+        id: set-env
+        run: |
+          echo "esp_idf_version=v5.3.1" >> $GITHUB_OUTPUT
