@@ -1,5 +1,9 @@
 #include "energy_meter.h"
 
+uint32_t energy_meter_mock_charging_time = 0;
+
+uint32_t energy_meter_mock_consumption = 0;
+
 void energy_meter_init(void)
 {}
 
@@ -19,10 +23,10 @@ uint16_t energy_meter_get_power(void)
 
 uint32_t energy_meter_get_charging_time(void)
 {
-    return 0;
+    return energy_meter_mock_charging_time;
 }
 
 uint32_t energy_meter_get_consumption(void)
 {
-    return 0;
+    return energy_meter_mock_consumption;
 }

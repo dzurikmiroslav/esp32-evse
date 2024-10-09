@@ -21,4 +21,10 @@ extern pilot_mock_state_t pilot_mock_state;
 
 extern bool ac_relay_mock_state;
 
+// energy meter
+
+extern uint32_t energy_meter_mock_charging_time;
+
+extern uint32_t energy_meter_mock_consumption;
+
 #endif /* PERIPHERALS_MOCK_H_ */

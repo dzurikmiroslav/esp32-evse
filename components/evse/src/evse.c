@@ -357,7 +357,7 @@ void evse_process(void)
         case EVSE_STATE_B1:
             if (!authorized) {
                 if (require_auth) {
-                    authorized = !is_expired(&auth_grant_to);
+                    authorized = auth_grant_to >= xTaskGetTickCount();
                     // in any case we need a fresh authorization, if the EV is disconnected
                     auth_grant_to = 0;
                 } else {
@@ -530,6 +530,8 @@ void evse_reset(void)
     under_power_start_time = 0;
     c1_d1_ac_relay_wait_to = 0;
     cable_max_current = 63;
+    pilot_state = PILOT_STATE_12V;
+    socket_lock_locked = false;
 }
 
 evse_state_t evse_get_state(void)

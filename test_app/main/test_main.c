@@ -1,9 +1,15 @@
 #include <nvs_flash.h>
 #include <stdio.h>
 #include <unity.h>
+#include <unity_fixture.h>
 
 #include "evse.h"
 #include "peripherals_mock.h"
+
+static void run_all_tests(void)
+{
+    RUN_TEST_GROUP(evse);
+}
 
 void app_main(void)
 {
@@ -18,11 +24,5 @@ void app_main(void)
 
     evse_init();
 
-    printf("\n#### Running all tests #####\n\n");
-
-    UNITY_BEGIN();
-    unity_run_all_tests();
-    UNITY_END();
-
-    unity_run_menu();
+    UNITY_MAIN_FUNC(run_all_tests);
 }
