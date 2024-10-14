@@ -23,6 +23,8 @@ extern bool ac_relay_mock_state;
 
 // energy meter
 
+extern uint16_t energy_meter_mock_power;
+
 extern uint32_t energy_meter_mock_charging_time;
 
 extern uint32_t energy_meter_mock_consumption;

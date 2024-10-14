@@ -519,6 +519,9 @@ void evse_reset(void)
     state = EVSE_STATE_A;
     error = 0;
     error_cleared = false;
+    consumption_limit = 0;
+    charging_time_limit = 0;
+    under_power_limit = 0;
     reached_limit = 0;
     rcm_selftest = false;
     enabled = true;

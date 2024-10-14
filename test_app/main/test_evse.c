@@ -20,6 +20,9 @@ TEST_SETUP(evse)
     // EV:
     pilot_mock_up_voltage = PILOT_VOLTAGE_12;
     pilot_mock_down_voltage_n12 = false;
+    energy_meter_mock_power = 0;
+    energy_meter_mock_charging_time = 0;
+    energy_meter_mock_consumption = 0;
 
     evse_process();
 
@@ -204,7 +207,7 @@ TEST(evse, during_charging_disable_ev_not_react)
      * EV not end charging, EVSE still connected AC
      * C1
      */
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskStepTick(pdMS_TO_TICKS(1000));
     evse_process();
 
     TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
@@ -215,7 +218,7 @@ TEST(evse, during_charging_disable_ev_not_react)
      * EV not end charging, EVSE force disconnect AC
      * C1
      */
-    vTaskDelay(pdMS_TO_TICKS(5500));
+    vTaskStepTick(pdMS_TO_TICKS(5500));
     evse_process();
 
     TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
@@ -412,7 +415,7 @@ TEST(evse, during_charging_not_available_ev_not_react)
      * EV not end charging, EVSE still connected AC
      * C1
      */
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskStepTick(pdMS_TO_TICKS(1000));
     evse_process();
 
     TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
@@ -423,7 +426,7 @@ TEST(evse, during_charging_not_available_ev_not_react)
      * EV not end charging, EVSE force disconnect AC
      * C1- > F
      */
-    vTaskDelay(pdMS_TO_TICKS(5500));
+    vTaskStepTick(pdMS_TO_TICKS(5500));
     evse_process();
 
     TEST_ASSERT_EQUAL(EVSE_STATE_F, evse_get_state());
@@ -557,7 +560,236 @@ TEST(evse, pilot_error)
     evse_process();
     TEST_ASSERT_EQUAL(EVSE_STATE_E, evse_get_state());
     TEST_ASSERT_TRUE(EVSE_ERR_PILOT_FAULT_BIT & evse_get_error());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_LOW, pilot_mock_state);
     TEST_ASSERT_FALSE(ac_relay_mock_state);
+
+    /**
+     * Stay in error
+     * E
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_12;
+    evse_process();
+    TEST_ASSERT_EQUAL(EVSE_STATE_E, evse_get_state());
+    TEST_ASSERT_TRUE(EVSE_ERR_PILOT_FAULT_BIT & evse_get_error());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_LOW, pilot_mock_state);
+    TEST_ASSERT_FALSE(ac_relay_mock_state);
+
+    /**
+     * After 1min error cleared
+     * E -> A
+     */
+    vTaskStepTick(pdMS_TO_TICKS(61000));
+
+    evse_process();
+    TEST_ASSERT_EQUAL(EVSE_STATE_A, evse_get_state());
+    TEST_ASSERT_EQUAL(0, evse_get_error());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_FALSE(ac_relay_mock_state);
+}
+
+TEST(evse, charging_time_limit)
+{
+    uint32_t limit = 3600;  // 1h (in s)
+    evse_set_charging_time_limit(limit);
+
+    /**
+     * EV connect
+     * A -> B2
+     */
+    ev_connect_sequence();
+
+    /**
+     * EV require charging
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    pilot_mock_down_voltage_n12 = true;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit not reached yet
+     */
+    energy_meter_mock_charging_time = limit - 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit reached, stop charging
+     * C2 -> C1
+     */
+    energy_meter_mock_charging_time = limit + 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Increase limit, start charging
+     * C1 -> C2
+     */
+    limit *= 2;
+    evse_set_charging_time_limit(limit);
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit reached, stop charging
+     * C2 -> C1
+     */
+    energy_meter_mock_charging_time = limit + 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+}
+
+TEST(evse, consumption_limit)
+{
+    uint32_t limit = 3600000;  // 1kWh (in Ws)
+    evse_set_consumption_limit(limit);
+
+    /**
+     * EV connect
+     * A -> B2
+     */
+    ev_connect_sequence();
+
+    /**
+     * EV require charging
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    pilot_mock_down_voltage_n12 = true;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit not reached yet
+     */
+    energy_meter_mock_consumption = limit - 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit reached, stop charging
+     * C2 -> C1
+     */
+    energy_meter_mock_consumption = limit + 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Increase limit, start charging
+     * C1 -> C2
+     */
+    limit *= 2;
+    evse_set_consumption_limit(limit);
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit reached, stop charging
+     * C2 -> C1
+     */
+    energy_meter_mock_consumption = limit + 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+}
+
+TEST(evse, under_power_limit)
+{
+    uint16_t limit = 10000;  // 10kW (in W)
+    evse_set_under_power_limit(limit);
+
+    /**
+     * EV connect
+     * A -> B2
+     */
+    ev_connect_sequence();
+
+    /**
+     * EV require charging
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    pilot_mock_down_voltage_n12 = true;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit not reached yet
+     */
+    vTaskStepTick(pdMS_TO_TICKS(61000));  // must be 1min under limit to react
+
+    energy_meter_mock_power = limit + 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit reached, not react yet
+     * C2
+     */
+    energy_meter_mock_power = limit - 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit reached, not react yet
+     * C2
+     */
+    vTaskStepTick(pdMS_TO_TICKS(59000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * After 1min react
+     * C2 -> C1
+     */
+    vTaskStepTick(pdMS_TO_TICKS(2000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
 }
 
 TEST_GROUP_RUNNER(evse)
@@ -571,4 +803,7 @@ TEST_GROUP_RUNNER(evse)
     RUN_TEST_CASE(evse, before_charging_not_available);
     RUN_TEST_CASE(evse, require_auth);
     RUN_TEST_CASE(evse, pilot_error);
+    RUN_TEST_CASE(evse, charging_time_limit);
+    RUN_TEST_CASE(evse, consumption_limit);
+    RUN_TEST_CASE(evse, under_power_limit);
 }
