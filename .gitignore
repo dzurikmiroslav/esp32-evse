@@ -1,7 +1,8 @@
-/build/
-sdkconfig
-sdkconfig.old
+/**/build/
+/**/sdkconfig
+/**/sdkconfig.old
 .cproject
 .project
 .settings
 .vscode
+unity-app
