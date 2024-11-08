@@ -182,8 +182,8 @@ script_component_list_t* script_get_components(void);
 
 /**
  * @brief Free script components list with all entries
- * 
- * @param list 
+ *
+ * @param list
  */
 void script_components_free(script_component_list_t* list);
 
