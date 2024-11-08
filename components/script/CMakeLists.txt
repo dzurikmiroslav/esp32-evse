@@ -32,15 +32,23 @@ set(srcs
     "lib/lua/lctype.c"
     "lib/lua/ldebug.c"
     "src/script.c"
+    "src/script_watchdog.c"
+    "src/component_params.c"
+    "src/l_component.c"
     "src/l_evse_lib.c"
     "src/l_mqtt_lib.c"
     "src/l_json_lib.c"
     "src/l_aux_lib.c"
     "src/l_board_config_lib.c"
+    "src/l_serial_lib.c"
+    "src/l_modbus_lib.c"
     )
 
-idf_component_register(SRCS "${srcs}"
+idf_component_register(SRC_DIRS "src" "lib/lua" "lib/yaml/src"
                     INCLUDE_DIRS "include" 
-                    PRIV_INCLUDE_DIRS "src" "lib/lua"
+                    PRIV_INCLUDE_DIRS "src" "lib/lua" "lib/yaml/include"
                     PRIV_REQUIRES nvs_flash app_update json mqtt esp_timer
                     REQUIRES config evse peripherals protocols serial logger)
+
+set_source_files_properties(lib/yaml/src/emitter.c PROPERTIES COMPILE_FLAGS "-Wno-unused-value -Wno-return-type")
+set_source_files_properties(lib/yaml/src/api.c PROPERTIES COMPILE_FLAGS "-DHAVE_CONFIG_H")

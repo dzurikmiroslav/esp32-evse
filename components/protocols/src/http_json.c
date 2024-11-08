@@ -309,6 +309,7 @@ cJSON* http_json_get_script_config(void)
     cJSON* json = cJSON_CreateObject();
 
     cJSON_AddBoolToObject(json, "enabled", script_is_enabled());
+    cJSON_AddBoolToObject(json, "autoReload", script_is_auto_reload());
 
     return json;
 }
@@ -316,96 +317,98 @@ cJSON* http_json_get_script_config(void)
 esp_err_t http_json_set_script_config(cJSON* json)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
+    bool auto_reload = cJSON_IsTrue(cJSON_GetObjectItem(json, "autoReload"));
 
     script_set_enabled(enabled);
+    script_set_auto_reload(auto_reload);
 
     return ESP_OK;
 }
 
-cJSON* http_json_get_script_driver_config(uint8_t index)
-{
-    cJSON* json = cJSON_CreateObject();
-
-    script_driver_t* driver = script_driver_get(index);
-    if (driver != NULL) {
-        cJSON_AddStringToObject(json, "name", driver->name);
-        cJSON_AddStringToObject(json, "description", driver->description);
-
-        cJSON* cfg_entries_json = cJSON_CreateArray();
-        for (uint8_t i = 0; i < driver->cfg_entries_count; i++) {
-            script_driver_cfg_meta_entry_t* cfg_entry = &driver->cfg_entries[i];
-            if (cfg_entry->type != SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE) {
-                cJSON* cfg_entry_json = cJSON_CreateObject();
-                cJSON_AddStringToObject(cfg_entry_json, "key", cfg_entry->key);
-                cJSON_AddStringToObject(cfg_entry_json, "name", cfg_entry->name);
-                cJSON_AddStringToObject(cfg_entry_json, "type", script_driver_cfg_entry_type_to_str(cfg_entry->type));
-                switch (cfg_entry->type) {
-                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING:
-                    cJSON_AddStringToObject(cfg_entry_json, "value", cfg_entry->value.string);
-                    break;
-                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER:
-                    cJSON_AddNumberToObject(cfg_entry_json, "value", cfg_entry->value.number);
-                    break;
-                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN:
-                    cJSON_AddBoolToObject(cfg_entry_json, "value", cfg_entry->value.boolean);
-                    break;
-                default:
-                    break;
-                }
-                cJSON_AddItemToArray(cfg_entries_json, cfg_entry_json);
-            }
-        }
-        cJSON_AddItemToObject(json, "config", cfg_entries_json);
-
-        script_driver_free(driver);
-    }
-
-    return json;
-}
-
-cJSON* http_json_get_script_drivers_config(void)
+cJSON* http_json_get_script_components(void)
 {
     cJSON* json = cJSON_CreateArray();
 
-    uint8_t count = script_driver_get_count();
-    for (uint8_t i = 0; i < count; i++) {
-        cJSON_AddItemToArray(json, http_json_get_script_driver_config(i));
+    script_component_list_t* component_list = script_get_components();
+    script_component_entry_t* component;
+    SLIST_FOREACH (component, component_list, entries) {
+        cJSON* component_json = cJSON_CreateObject();
+        cJSON_AddStringToObject(component_json, "id", component->id);
+        cJSON_AddStringToObject(component_json, "name", component->name);
+        cJSON_AddStringToObject(component_json, "description", component->description);
+        cJSON_AddItemToArray(json, component_json);
     }
 
     return json;
 }
 
-esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json)
+cJSON* http_json_get_script_component_config(const char* id)
 {
-    cJSON* config_json = cJSON_GetObjectItem(json, "config");
-    if (cJSON_IsArray(config_json)) {
-        uint8_t cfg_entries_count = cJSON_GetArraySize(config_json);
-        script_driver_cfg_entry_t* cfg_entries = (script_driver_cfg_entry_t*)malloc(sizeof(script_driver_cfg_entry_t) * cfg_entries_count);
+    cJSON* json = cJSON_CreateObject();
 
-        uint8_t i = 0;
-        cJSON* entry_json = NULL;
-        cJSON_ArrayForEach (entry_json, config_json) {
-            script_driver_cfg_entry_t* cfg_entry = &cfg_entries[i];
-            cfg_entry->key = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(entry_json, "key")));
-            cJSON* value_json = cJSON_GetObjectItem(entry_json, "value");
+    script_component_param_list_t* param_list = script_get_component_params(id);
+    if (param_list) {
+        cJSON* params_json = cJSON_CreateArray();
+        script_component_param_entry_t* param;
+        SLIST_FOREACH (param, param_list, entries) {
+            cJSON* param_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(param_json, "key", param->key);
+            cJSON_AddStringToObject(param_json, "name", param->name);
+            cJSON_AddStringToObject(param_json, "type", script_component_param_type_to_str(param->type));
+            switch (param->type) {
+            case SCRIPT_COMPONENT_PARAM_TYPE_STRING:
+                cJSON_AddStringToObject(param_json, "value", param->value.string);
+                break;
+            case SCRIPT_COMPONENT_PARAM_TYPE_NUMBER:
+                cJSON_AddNumberToObject(param_json, "value", param->value.number);
+                break;
+            case SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN:
+                cJSON_AddBoolToObject(param_json, "value", param->value.boolean);
+                break;
+            default:
+                break;
+            }
+            cJSON_AddItemToArray(params_json, param_json);
+        }
+        cJSON_AddItemToObject(json, "params", params_json);
+
+        script_component_params_free(param_list);
+    }
+
+    return json;
+}
+
+esp_err_t http_json_set_script_component_config(const char* id, cJSON* json)
+{
+    cJSON* params_json = cJSON_GetObjectItem(json, "params");
+    if (cJSON_IsArray(params_json)) {
+        script_component_param_list_t* param_list = (script_component_param_list_t*)malloc(sizeof(script_component_param_list_t));
+        SLIST_INIT(param_list);
+
+        cJSON* param_json = NULL;
+        cJSON_ArrayForEach (param_json, params_json) {
+            script_component_param_entry_t* param = (script_component_param_entry_t*)malloc(sizeof(script_component_param_entry_t));
+            param->key = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(param_json, "key")));
+            param->name = NULL;
+            cJSON* value_json = cJSON_GetObjectItem(param_json, "value");
             if (cJSON_IsString(value_json)) {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING;
-                cfg_entry->value.string = strdup(value_json->valuestring);
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_STRING;
+                param->value.string = strdup(value_json->valuestring);
             } else if (cJSON_IsNumber(value_json)) {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER;
-                cfg_entry->value.number = value_json->valuedouble;
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_NUMBER;
+                param->value.number = value_json->valuedouble;
             } else if (cJSON_IsBool(value_json)) {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN;
-                cfg_entry->value.boolean = cJSON_IsTrue(value_json);
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN;
+                param->value.boolean = cJSON_IsTrue(value_json);
             } else {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE;
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_NONE;
             }
 
-            i++;
-        };
+            SLIST_INSERT_HEAD(param_list, param, entries);
+        }
 
-        script_driver_set_config(index, cfg_entries, cfg_entries_count);
-        script_driver_cfg_entries_free(cfg_entries, cfg_entries_count);
+        script_set_component_params(id, param_list);
+        script_component_params_free(param_list);
     }
 
     return ESP_OK;

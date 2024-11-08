@@ -10,6 +10,7 @@
 #include "serial_logger.h"
 #include "serial_modbus.h"
 #include "serial_nextion.h"
+#include "serial_script.h"
 
 #define BAUD_RATE_MIN 300
 #define BAUD_RATE_MAX 1000000
@@ -41,6 +42,9 @@ static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t 
     case SERIAL_MODE_NEXTION:
         serial_nextion_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
         break;
+    case SERIAL_MODE_SCRIPT:
+        serial_script_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        break;
     default:
         break;
     }
@@ -57,6 +61,9 @@ static void serial_stop(serial_id_t id)
         break;
     case SERIAL_MODE_NEXTION:
         serial_nextion_stop();
+        break;
+    case SERIAL_MODE_SCRIPT:
+        serial_script_stop();
         break;
     default:
         break;
@@ -258,6 +265,8 @@ const char* serial_mode_to_str(serial_mode_t mode)
         return "modbus";
     case SERIAL_MODE_NEXTION:
         return "nextion";
+    case SERIAL_MODE_SCRIPT:
+        return "script";
     default:
         return "none";
     }
@@ -273,6 +282,9 @@ serial_mode_t serial_str_to_mode(const char* str)
     }
     if (!strcmp(str, "nextion")) {
         return SERIAL_MODE_NEXTION;
+    }
+    if (!strcmp(str, "script")) {
+        return SERIAL_MODE_SCRIPT;
     }
     return SERIAL_MODE_NONE;
 }

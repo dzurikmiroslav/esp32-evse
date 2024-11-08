@@ -43,13 +43,17 @@ static cJSON* encode_child(lua_State* L)
 {
     cJSON* obj;
 
-    if (lua_isboolean(L, -1)) {
-        obj = cJSON_CreateBool(lua_toboolean(L, -1));
-    } else if (lua_isnumber(L, -1)) {
-        obj = cJSON_CreateNumber(lua_tonumber(L, -1));
-    } else if (lua_isstring(L, -1)) {
+    switch (lua_type(L, -1)) {
+    case LUA_TSTRING:
         obj = cJSON_CreateString(lua_tostring(L, -1));
-    } else if (lua_istable(L, -1)) {
+        break;
+    case LUA_TNUMBER:
+        obj = cJSON_CreateNumber(lua_tonumber(L, -1));
+        break;
+    case LUA_TBOOLEAN:
+        obj = cJSON_CreateBool(lua_toboolean(L, -1));
+        break;
+    case LUA_TTABLE:
         int len = lua_rawlen(L, -1);
         if (len > 0) {
             // table as array
@@ -68,7 +72,8 @@ static cJSON* encode_child(lua_State* L)
                 lua_pop(L, 1);
             }
         }
-    } else {
+        break;
+    default:
         obj = cJSON_CreateNull();
     }
 

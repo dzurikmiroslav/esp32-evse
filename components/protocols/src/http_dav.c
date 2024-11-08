@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "http.h"
+#include "script.h"
 
 #define DAV_BASE_PATH     "/dav"
 #define DAV_BASE_PATH_LEN 4
@@ -132,8 +133,8 @@ static esp_err_t options_handler(httpd_req_t* req)
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
-        set_resp_hdr(req, RESP_HDR_DIR);
         // directories
+        set_resp_hdr(req, RESP_HDR_DIR);
     } else if (strcmp(path, "/data") == 0 || strcmp(path, "/cfg") == 0) {
         // redirects
         char location[8];
@@ -285,7 +286,6 @@ static esp_err_t put_handler(httpd_req_t* req)
 
             ESP_LOGE(TAG, "File receive failed");
             httpd_resp_send_custom_err(req, "530 Failed To Receive File", "Failed to receive file");
-            //            httpd_resp_send_err(req, HTTPD_530_INTERNAL_SERVER_ERROR, "Failed to receive file");
             return ESP_FAIL;
         }
 
@@ -295,7 +295,6 @@ static esp_err_t put_handler(httpd_req_t* req)
 
             ESP_LOGE(TAG, "File write failed");
             httpd_resp_send_custom_err(req, "531 Failed To Write File", "Failed to write file");
-            // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to write file to storage");
             return ESP_FAIL;
         }
 
@@ -303,6 +302,8 @@ static esp_err_t put_handler(httpd_req_t* req)
     }
 
     fclose(fd);
+
+    script_file_changed(path);
 
     httpd_resp_send_chunk(req, NULL, 0);
 
@@ -314,6 +315,8 @@ static esp_err_t delete_handler(httpd_req_t* req)
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     unlink(path);
+
+    script_file_changed(path);
 
     httpd_resp_send_chunk(req, NULL, 0);
 
@@ -328,6 +331,9 @@ static esp_err_t move_handler(httpd_req_t* req)
     get_hdr_dest(req, dest);
 
     rename(path, dest);
+
+    script_file_changed(path);
+    script_file_changed(dest);
 
     httpd_resp_send_chunk(req, NULL, 0);
 
@@ -377,6 +383,8 @@ static esp_err_t copy_handler(httpd_req_t* req)
 
     fclose(src_fd);
     fclose(dst_fd);
+
+    script_file_changed(dest);
 
     httpd_resp_send_chunk(req, NULL, 0);
 

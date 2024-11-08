@@ -3,6 +3,7 @@
 
 #include <esp_err.h>
 #include <stdbool.h>
+#include <sys/queue.h>
 
 /**
  * @brief Initialize script VM
@@ -32,6 +33,28 @@ void script_set_enabled(bool enabled);
 bool script_is_enabled(void);
 
 /**
+ * @brief Set auto reload, stored in NVS
+ *
+ * @param auto_reload
+ */
+void script_set_auto_reload(bool auto_reload);
+
+/**
+ * @brief Get auto reload, stored in NVS
+ *
+ * @return true
+ * @return false
+ */
+bool script_is_auto_reload(void);
+
+/**
+ * @brief Notify script file was changed
+ *
+ * @param path
+ */
+void script_file_changed(const char* path);
+
+/**
  * @brief Get entries count
  *
  * @return uint16_t
@@ -56,53 +79,112 @@ bool script_output_read(uint16_t* index, char** str, uint16_t* len);
  */
 uint8_t script_driver_get_count(void);
 
+/**
+ * @brief Script component param type
+ *
+ */
 typedef enum {
-    SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE,
-    SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING,
-    SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER,
-    SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN
-} script_driver_cfg_entry_type_t;
+    SCRIPT_COMPONENT_PARAM_TYPE_NONE,
+    SCRIPT_COMPONENT_PARAM_TYPE_STRING,
+    SCRIPT_COMPONENT_PARAM_TYPE_NUMBER,
+    SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN
+} script_component_param_type_t;
 
-script_driver_cfg_entry_type_t script_str_to_driver_cfg_entry_type(const char* str);
+/**
+ * @brief Parse from string
+ *
+ * @param str
+ * @return script_component_param_type_t
+ */
+script_component_param_type_t script_str_to_component_param_type(const char* str);
 
-const char* script_driver_cfg_entry_type_to_str(script_driver_cfg_entry_type_t type);
+/**
+ * @brief Serialize to string
+ *
+ * @param type
+ * @return const char*
+ */
+const char* script_component_param_type_to_str(script_component_param_type_t type);
 
-typedef struct {
+/**
+ * @brief Script component parameter
+ *
+ */
+typedef struct script_component_param_entry_s {
     char* key;
     char* name;
-    script_driver_cfg_entry_type_t type;
+    script_component_param_type_t type;
 
     union {
         char* string;
         double number;
         bool boolean;
     } value;
-} script_driver_cfg_meta_entry_t;
 
-typedef struct {
+    SLIST_ENTRY(script_component_param_entry_s) entries;
+} script_component_param_entry_t;
+
+/**
+ * @brief Script component parameter list
+ *
+ * @return typedef
+ */
+typedef SLIST_HEAD(script_component_param_list_s, script_component_param_entry_s) script_component_param_list_t;
+
+/**
+ * @brief Get component parameters list, stored in file
+ *
+ * @param id Component id
+ * @return script_component_param_list_t*
+ */
+script_component_param_list_t* script_get_component_params(const char* id);
+
+/**
+ * @brief Set component parameters list, stored in file
+ *
+ * @param id Component id
+ * @param list
+ */
+void script_set_component_params(const char* id, script_component_param_list_t* list);
+
+/**
+ * @brief Free component parameters list with all entries
+ *
+ * @param list
+ */
+void script_component_params_free(script_component_param_list_t* list);
+
+/**
+ * @brief Script component
+ *
+ */
+typedef struct script_component_entry_s {
+    char* id;
     char* name;
     char* description;
-    uint8_t cfg_entries_count;
-    script_driver_cfg_meta_entry_t* cfg_entries;
-} script_driver_t;
 
-typedef struct {
-    char* key;
-    script_driver_cfg_entry_type_t type;
+    SLIST_ENTRY(script_component_entry_s) entries;
+} script_component_entry_t;
 
-    union {
-        char* string;
-        double number;
-        bool boolean;
-    } value;
-} script_driver_cfg_entry_t;
+/**
+ * @brief Script components list
+ *
+ * @return typedef
+ */
+typedef SLIST_HEAD(script_component_list_s, script_component_entry_s) script_component_list_t;
 
-script_driver_t* script_driver_get(uint8_t index);
+/**
+ * @brief Get script components list
+ *
+ * @return script_component_list_t*
+ */
+script_component_list_t* script_get_components(void);
 
-void script_driver_free(script_driver_t* script_driver);
-
-void script_driver_cfg_entries_free(script_driver_cfg_entry_t* cfg_entries, uint8_t cfg_entries_count);
-
-void script_driver_set_config(uint8_t driver_index, const script_driver_cfg_entry_t* cfg_entries, uint8_t cfg_entries_count);
+/**
+ * @brief Free script components list with all entries
+ * 
+ * @param list 
+ */
+void script_components_free(script_component_list_t* list);
 
 #endif /* SCRIPT_H_ */

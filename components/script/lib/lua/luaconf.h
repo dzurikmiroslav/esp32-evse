@@ -785,10 +785,14 @@
 ** without modifying the main part of the file.
 */
 
+#ifndef UNIT_TEST
+
 void script_output_append_buf(const char *str, uint16_t len);
 
 #define lua_writestring(s,l)	script_output_append_buf(s, l)
 #define lua_writeline()			script_output_append_buf("\n", 1)
+
+#endif /* UNIT_TEST */
 
 #undef LUA_PATH_DEFAULT
 #define LUA_PATH_DEFAULT		"/data/?.lua;" "/data/?/init.lua"

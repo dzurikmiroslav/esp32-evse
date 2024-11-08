@@ -1,0 +1,5 @@
+component1:
+  string1: value1
+  number1: 321
+  boolean1: false
+  string2:

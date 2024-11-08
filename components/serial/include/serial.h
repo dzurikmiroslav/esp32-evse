@@ -26,6 +26,7 @@ typedef enum {
     SERIAL_MODE_LOG,
     SERIAL_MODE_MODBUS,
     SERIAL_MODE_NEXTION,
+    SERIAL_MODE_SCRIPT,
     SERIAL_MODE_MAX
 } serial_mode_t;
 
