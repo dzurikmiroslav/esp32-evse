@@ -9,7 +9,7 @@
 
 #define PARAMS_YAML     "/data/params.yaml"
 #define PARAMS_TMP_YAML "/data/params_tmp.yaml"
-#define BUF_SIZE      256
+#define BUF_SIZE        256
 
 #define LOG_PARSER_PROBLEM(parser) ESP_LOGW(TAG, "Parsing error: %s (line: %zu column: %zu)", parser.problem, parser.problem_mark.line, parser.problem_mark.column)
 
@@ -219,7 +219,7 @@ void yaml_file_append(FILE* dst, const char* key, component_param_list_t* list)
         yaml_scalar_event_initialize(&event, NULL, NULL, (yaml_char_t*)entry->key, -1, 1, 1, YAML_PLAIN_SCALAR_STYLE);
         if (!yaml_emitter_emit(&emitter, &event)) goto error;
 
-        yaml_scalar_event_initialize(&event, NULL, NULL, (yaml_char_t*)(entry->value ? entry->value : "") , -1, 1, 1, YAML_PLAIN_SCALAR_STYLE);
+        yaml_scalar_event_initialize(&event, NULL, NULL, (yaml_char_t*)(entry->value ? entry->value : ""), -1, 1, 1, YAML_PLAIN_SCALAR_STYLE);
         if (!yaml_emitter_emit(&emitter, &event)) goto error;
     }
 

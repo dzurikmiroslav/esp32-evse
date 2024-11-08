@@ -13,19 +13,19 @@
 
 // static int l_get_available(lua_State* L)
 // {
-    
+
 //     return 0;
 // }
 
 // static int l_read(lua_State* L)
 // {
-   
+
 //     return 0;
 // }
 
 // static int l_write(lua_State* L)
 // {
-   
+
 //     return 0;
 // }
 
