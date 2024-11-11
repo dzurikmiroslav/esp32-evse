@@ -57,38 +57,15 @@ static void run_all_tests(void)
 //     ESP_ERROR_CHECK(esp_wifi_start());
 // }
 
-static void fs_info(esp_vfs_spiffs_conf_t* conf)
-{
-    size_t total = 0, used = 0;
-    esp_err_t ret = esp_spiffs_info(conf->partition_label, &total, &used);
-    if (ret != ESP_OK) {
-        printf("Failed to get partition %s information %s\n", conf->partition_label, esp_err_to_name(ret));
-    } else {
-        printf("Partition %s size: total: %d, used: %d\n", conf->partition_label, total, used);
-    }
-}
-
 static void fs_init(void)
 {
     esp_vfs_spiffs_conf_t cfg_conf = {
         .base_path = "/cfg",
         .partition_label = "cfg",
         .max_files = 1,
-        .format_if_mount_failed = false,
+        .format_if_mount_failed = true,
     };
-    esp_err_t ret = esp_vfs_spiffs_register(&cfg_conf);
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            printf("cfg Failed to mount or format filesystem\n");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            printf("cfg Failed to find SPIFFS partition\n");
-        } else {
-            printf("cfg Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
-        }
-        return;
-    }
-
-    //    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
 
     esp_vfs_spiffs_conf_t data_conf = {
         .base_path = "/data",
@@ -96,21 +73,7 @@ static void fs_init(void)
         .max_files = 5,
         .format_if_mount_failed = true,
     };
-    ret = esp_vfs_spiffs_register(&data_conf);
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            printf("data Failed to mount or format filesystem\n");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            printf("data Failed to find SPIFFS partition\n");
-        } else {
-            printf("data Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
-        }
-        return;
-    }
-    //    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
-
-    fs_info(&cfg_conf);
-    fs_info(&data_conf);
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
 }
 
 void app_main(void)
