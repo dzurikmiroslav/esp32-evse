@@ -19,16 +19,16 @@ static void run_all_tests(void)
     RUN_TEST_GROUP(script);
 }
 
-static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
-{
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_wifi_connect();
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-    }
-}
+// static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+// {
+//     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+//         esp_wifi_connect();
+//     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+//         esp_wifi_connect();
+//     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+//         ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+//     }
+// }
 
 // void wifi_init(void)
 // {
@@ -57,6 +57,17 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 //     ESP_ERROR_CHECK(esp_wifi_start());
 // }
 
+static void fs_info(esp_vfs_spiffs_conf_t* conf)
+{
+    size_t total = 0, used = 0;
+    esp_err_t ret = esp_spiffs_info(conf->partition_label, &total, &used);
+    if (ret != ESP_OK) {
+        printf("Failed to get partition %s information %s\n", conf->partition_label, esp_err_to_name(ret));
+    } else {
+        printf("Partition %s size: total: %d, used: %d\n", conf->partition_label, total, used);
+    }
+}
+
 static void fs_init(void)
 {
     esp_vfs_spiffs_conf_t cfg_conf = {
@@ -65,7 +76,19 @@ static void fs_init(void)
         .max_files = 1,
         .format_if_mount_failed = false,
     };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
+    esp_err_t ret = esp_vfs_spiffs_register(&cfg_conf);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            printf("Failed to mount or format filesystem\n");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            printf("Failed to find SPIFFS partition\n");
+        } else {
+            printf("Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
+        }
+        return;
+    }
+
+    //    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
 
     esp_vfs_spiffs_conf_t data_conf = {
         .base_path = "/data",
@@ -73,7 +96,21 @@ static void fs_init(void)
         .max_files = 5,
         .format_if_mount_failed = true,
     };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
+    ret = esp_vfs_spiffs_register(&data_conf);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            printf("Failed to mount or format filesystem\n");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            printf("Failed to find SPIFFS partition\n");
+        } else {
+            printf("Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
+        }
+        return;
+    }
+    //    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
+
+    fs_info(&cfg_conf);
+    fs_info(&data_conf);
 }
 
 void app_main(void)
@@ -88,7 +125,7 @@ void app_main(void)
 
     fs_init();
 
-    //wifi_init();
+    // wifi_init();
 
     script_mutex = xSemaphoreCreateMutex();
 
