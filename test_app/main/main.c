@@ -79,11 +79,11 @@ static void fs_init(void)
     esp_err_t ret = esp_vfs_spiffs_register(&cfg_conf);
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
-            printf("Failed to mount or format filesystem\n");
+            printf("cfg Failed to mount or format filesystem\n");
         } else if (ret == ESP_ERR_NOT_FOUND) {
-            printf("Failed to find SPIFFS partition\n");
+            printf("cfg Failed to find SPIFFS partition\n");
         } else {
-            printf("Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
+            printf("cfg Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
         }
         return;
     }
@@ -99,11 +99,11 @@ static void fs_init(void)
     ret = esp_vfs_spiffs_register(&data_conf);
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
-            printf("Failed to mount or format filesystem\n");
+            printf("data Failed to mount or format filesystem\n");
         } else if (ret == ESP_ERR_NOT_FOUND) {
-            printf("Failed to find SPIFFS partition\n");
+            printf("data Failed to find SPIFFS partition\n");
         } else {
-            printf("Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
+            printf("data Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
         }
         return;
     }
