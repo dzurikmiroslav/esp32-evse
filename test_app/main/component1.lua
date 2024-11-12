@@ -24,8 +24,10 @@ addcomponent({
         paramboolean1 = tostring(params.boolean1)
         return coroutine.create(function()
             stage = "begin"
-            while coroutine.yield() do
-                stage = "loop"
+            local counter = 1
+            while coroutine.yield(1000) do
+                stage = "loop" .. counter
+                counter = counter + 1
             end
             stage = "end"
         end)

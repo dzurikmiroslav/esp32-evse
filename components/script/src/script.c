@@ -108,7 +108,7 @@ static void script_task_func(void* param)
         }
         xSemaphoreTake(script_mutex, portMAX_DELAY);
         script_watchdog_reset();
-        l_component_resume(L, true);
+        l_component_resume(L, false);
         xSemaphoreGive(script_mutex);
 
         int top = lua_gettop(L);
@@ -119,7 +119,7 @@ static void script_task_func(void* param)
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 
-    l_component_resume(L, false);
+    l_component_resume(L, true);
 
     lua_close(L);
     L = NULL;

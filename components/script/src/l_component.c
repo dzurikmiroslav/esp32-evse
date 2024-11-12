@@ -1,6 +1,8 @@
 #include "l_component.h"
 
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <string.h>
 #include <sys/queue.h>
 
@@ -19,6 +21,7 @@ typedef struct component_entry_s {
     int params_ref;
     int start_ref;
     int coroutine_ref;
+    TickType_t resume_after;
 
     SLIST_ENTRY(component_entry_s) entries;
 } component_entry_t;
@@ -133,13 +136,13 @@ static void component_restart_coroutine(lua_State* L, component_entry_t* compone
     if (lua_isthread(L, -1)) {
         lua_State* co = lua_tothread(L, -1);
         if (lua_status(co) == LUA_YIELD) {
-            int nresults;
+            int nresults = 0;
             lua_pushboolean(co, false);
             int status = lua_resume(co, L, 1, &nresults);
             lua_pop(co, nresults);
 
             if (status == LUA_YIELD) {
-                ESP_LOGI(TAG, "Coroutine not stop itsef");
+                ESP_LOGI(TAG, "Coroutine not stop itself");
                 lua_closethread(L, co);
             }
         }
@@ -148,6 +151,7 @@ static void component_restart_coroutine(lua_State* L, component_entry_t* compone
 
     luaL_unref(L, LUA_REGISTRYINDEX, component_entry->coroutine_ref);
     component_entry->coroutine_ref = LUA_NOREF;
+    component_entry->resume_after = 0;
 
     // start new coroutine
     lua_rawgeti(L, LUA_REGISTRYINDEX, component_entry->start_ref);
@@ -258,23 +262,34 @@ void l_component_register(lua_State* L)
     components_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 }
 
-void l_component_resume(lua_State* L, bool not_terminate)
+void l_component_resume(lua_State* L, bool finalize)
 {
     component_list_t* component_list = get_component_list(L);
     component_entry_t* component;
     SLIST_FOREACH (component, component_list, entries) {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, component->coroutine_ref);
-        if (lua_isthread(L, -1)) {
-            lua_State* co = lua_tothread(L, -1);
-            int status = lua_status(co);
-            if (status == LUA_YIELD || status == LUA_OK) {
-                int nresults;
-                lua_pushboolean(co, not_terminate);
-                lua_resume(co, L, 1, &nresults);
-                lua_pop(co, nresults);
+        if (finalize || component->resume_after == 0 || component->resume_after < xTaskGetTickCount()) {
+            lua_rawgeti(L, LUA_REGISTRYINDEX, component->coroutine_ref);
+            if (lua_isthread(L, -1)) {
+                lua_State* co = lua_tothread(L, -1);
+                int status = lua_status(co);
+                if (status == LUA_YIELD || status == LUA_OK) {
+                    int nresults = 0;
+                    lua_pushboolean(co, !finalize);
+                    status = lua_resume(co, L, 1, &nresults);
+                    if (status == LUA_YIELD || status == LUA_OK) {
+                        if (nresults > 0 && lua_isinteger(co, -nresults)) {
+                            component->resume_after = xTaskGetTickCount() + pdMS_TO_TICKS(lua_tointeger(co, -nresults));
+                        }
+                    } else {
+                        const char* err = lua_tostring(co, -1);
+                        lua_writestring(err, strlen(err));
+                        lua_writeline();
+                    }
+                    lua_pop(co, nresults);
+                }
             }
+            lua_pop(L, 1);
         }
-        lua_pop(L, 1);
     }
 }
 

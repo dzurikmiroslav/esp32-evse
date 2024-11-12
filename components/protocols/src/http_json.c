@@ -344,10 +344,11 @@ cJSON* http_json_get_script_components(void)
 
 cJSON* http_json_get_script_component_config(const char* id)
 {
-    cJSON* json = cJSON_CreateObject();
+    cJSON* json;
 
     script_component_param_list_t* param_list = script_get_component_params(id);
     if (param_list) {
+        json = cJSON_CreateObject();
         cJSON* params_json = cJSON_CreateArray();
         script_component_param_entry_t* param;
         SLIST_FOREACH (param, param_list, entries) {
@@ -373,6 +374,8 @@ cJSON* http_json_get_script_component_config(const char* id)
         cJSON_AddItemToObject(json, "params", params_json);
 
         script_component_params_free(param_list);
+    } else {
+        json = cJSON_CreateNull();
     }
 
     return json;

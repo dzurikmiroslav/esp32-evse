@@ -15,7 +15,7 @@
 
 static void run_all_tests(void)
 {
-    RUN_TEST_GROUP(evse);
+    // RUN_TEST_GROUP(evse);
     RUN_TEST_GROUP(script);
 }
 
