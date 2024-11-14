@@ -1,6 +1,5 @@
 #include "wifi.h"
 
-#include <sys/param.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_mac.h>
@@ -11,6 +10,7 @@
 #include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
+#include <sys/param.h>
 // #include <mdns.h>
 
 #define AP_SSID "evse-%02x%02x%02x"
