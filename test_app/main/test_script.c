@@ -265,29 +265,29 @@ TEST(script, component)
     script_component_params_free(component_params);
 
     // test yield/resume
-    l_component_resume(L, false);
-    TEST_ASSERT_EQUAL_STRING("begin", get_global_var("stage"));
+    l_component_resume(L);
+    TEST_ASSERT_EQUAL_STRING("loop1", get_global_var("stage"));
 
-    vTaskStepTick(pdMS_TO_TICKS(1100));
-    l_component_resume(L, false);
+    l_component_resume(L);
     TEST_ASSERT_EQUAL_STRING("loop1", get_global_var("stage"));
 
     vTaskStepTick(pdMS_TO_TICKS(1100));
-    l_component_resume(L, false);
+    l_component_resume(L);
     TEST_ASSERT_EQUAL_STRING("loop2", get_global_var("stage"));
+
+    vTaskStepTick(pdMS_TO_TICKS(1100));
+    l_component_resume(L);
+    TEST_ASSERT_EQUAL_STRING("loop3", get_global_var("stage"));
 
     l_component_restart(L, "component1");
     TEST_ASSERT_EQUAL_STRING("start", get_global_var("stage"));
 
-    l_component_resume(L, false);
-    TEST_ASSERT_EQUAL_STRING("begin", get_global_var("stage"));
-
-    vTaskStepTick(pdMS_TO_TICKS(1100));
-    l_component_resume(L, false);
+    l_component_resume(L);
     TEST_ASSERT_EQUAL_STRING("loop1", get_global_var("stage"));
 
-    l_component_resume(L, true);
-    TEST_ASSERT_EQUAL_STRING("end", get_global_var("stage"));
+    vTaskStepTick(pdMS_TO_TICKS(1100));
+    l_component_resume(L);
+    TEST_ASSERT_EQUAL_STRING("loop2", get_global_var("stage"));
 
     TEST_ASSERT_EQUAL(0, lua_gettop(L));  // after all Lua stack should be empty
 }
@@ -452,10 +452,10 @@ TEST(script, json)
 
 TEST_GROUP_RUNNER(script)
 {
-    // RUN_TEST_CASE(script, watchdog);
+    RUN_TEST_CASE(script, watchdog);
     RUN_TEST_CASE(script, component);
-    // RUN_TEST_CASE(script, component_params);
-    // RUN_TEST_CASE(script, evse);
-    // RUN_TEST_CASE(script, board_config)
-    // RUN_TEST_CASE(script, json);
+    RUN_TEST_CASE(script, component_params);
+    RUN_TEST_CASE(script, evse);
+    RUN_TEST_CASE(script, board_config)
+    RUN_TEST_CASE(script, json);
 }

@@ -14,7 +14,6 @@
 #include "l_component.h"
 #include "l_evse_lib.h"
 #include "l_json_lib.h"
-#include "l_modbus_lib.h"
 #include "l_mqtt_lib.h"
 #include "l_serial_lib.h"
 #include "lauxlib.h"
@@ -25,9 +24,7 @@
 #include "script_utils.h"
 #include "script_watchdog.h"
 
-#define START_TIMEOUT       10000
 #define SHUTDOWN_TIMEOUT    1000
-#define HEARTBEAT_THRESHOLD 5
 #define OUTPUT_BUFFER_SIZE  4096
 
 #define NVS_NAMESPACE   "script"
@@ -83,9 +80,6 @@ static void script_task_func(void* param)
     luaL_requiref(L, "serial", luaopen_serial, 0);
     lua_pop(L, 1);
 
-    luaL_requiref(L, "modbus", luaopen_modbus, 0);
-    lua_pop(L, 1);
-
     lua_gc(L, LUA_GCSETPAUSE, 110);
     lua_gc(L, LUA_GCSETSTEPMUL, 200);
 
@@ -108,7 +102,7 @@ static void script_task_func(void* param)
         }
         xSemaphoreTake(script_mutex, portMAX_DELAY);
         script_watchdog_reset();
-        l_component_resume(L, false);
+        l_component_resume(L);
         xSemaphoreGive(script_mutex);
 
         int top = lua_gettop(L);
@@ -118,8 +112,6 @@ static void script_task_func(void* param)
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }
-
-    l_component_resume(L, true);
 
     lua_close(L);
     L = NULL;

@@ -115,47 +115,44 @@ static void l_process_params(lua_State* L, component_param_list_t* param_list)
     lua_remove(L, -2);
 }
 
-static void component_process_params(lua_State* L, component_entry_t* component_entry)
+static void component_process_params(lua_State* L, component_entry_t* component)
 {
-    luaL_unref(L, LUA_REGISTRYINDEX, component_entry->params_ref);
+    luaL_unref(L, LUA_REGISTRYINDEX, component->params_ref);
 
-    component_param_list_t* param_list = component_params_read(component_entry->id);
+    component_param_list_t* param_list = component_params_read(component->id);
 
-    lua_rawgeti(L, LUA_REGISTRYINDEX, component_entry->params_def_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, component->params_def_ref);
 
     l_process_params(L, param_list);
-    component_entry->params_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    component->params_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     if (param_list) component_params_free(param_list);
 }
 
-static void component_restart_coroutine(lua_State* L, component_entry_t* component_entry)
+static void component_restart_coroutine(lua_State* L, component_entry_t* component)
 {
     // end previous coroutine
-    lua_rawgeti(L, LUA_REGISTRYINDEX, component_entry->coroutine_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, component->coroutine_ref);
     if (lua_isthread(L, -1)) {
         lua_State* co = lua_tothread(L, -1);
         if (lua_status(co) == LUA_YIELD) {
-            int nresults = 0;
-            lua_pushboolean(co, false);
-            int status = lua_resume(co, L, 1, &nresults);
-            lua_pop(co, nresults);
-
-            if (status == LUA_YIELD) {
-                ESP_LOGI(TAG, "Coroutine not stop itself");
-                lua_closethread(L, co);
-            }
+            lua_closethread(L, co);
+        } else {
+            lua_pop(L, 1);
         }
+    } else {
+        lua_pop(L, 1);
     }
-    lua_pop(L, 1);
 
-    luaL_unref(L, LUA_REGISTRYINDEX, component_entry->coroutine_ref);
-    component_entry->coroutine_ref = LUA_NOREF;
-    component_entry->resume_after = 0;
+    luaL_unref(L, LUA_REGISTRYINDEX, component->coroutine_ref);
+    component->coroutine_ref = LUA_NOREF;
+    component->resume_after = 0;
+
+    lua_gc(L, LUA_GCCOLLECT, 0);
 
     // start new coroutine
-    lua_rawgeti(L, LUA_REGISTRYINDEX, component_entry->start_ref);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, component_entry->params_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, component->start_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, component->params_ref);
     if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
         const char* err = lua_tostring(L, -1);
         lua_writestring(err, strlen(err));
@@ -163,7 +160,7 @@ static void component_restart_coroutine(lua_State* L, component_entry_t* compone
         lua_pop(L, 1);
     } else {
         if (lua_isthread(L, -1)) {
-            component_entry->coroutine_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+            component->coroutine_ref = luaL_ref(L, LUA_REGISTRYINDEX);
         } else {
             lua_pop(L, 1);
         }
@@ -202,28 +199,28 @@ static int l_add_component(lua_State* L)
     lua_pop(L, 1);
 
     component_list_t* component_list = get_component_list(L);
-    component_entry_t* component_entry;
-    SLIST_FOREACH (component_entry, component_list, entries) {
-        if (strcmp(id, component_entry->id) == 0) {
+    component_entry_t* component;
+    SLIST_FOREACH (component, component_list, entries) {
+        if (strcmp(id, component->id) == 0) {
             luaL_argerror(L, 1, "component with duplicate id");
         }
     }
 
-    component_entry = (component_entry_t*)malloc(sizeof(component_entry_t));
-    component_entry->id = strdup(id);
-    component_entry->name = strdup(name);
-    component_entry->description = description ? strdup(description) : NULL;
+    component = (component_entry_t*)malloc(sizeof(component_entry_t));
+    component->id = strdup(id);
+    component->name = strdup(name);
+    component->description = description ? strdup(description) : NULL;
     lua_getfield(L, 1, "params");
-    component_entry->params_def_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    component->params_def_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     lua_getfield(L, 1, "start");
-    component_entry->start_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    component_entry->params_ref = LUA_NOREF;
-    component_entry->coroutine_ref = LUA_NOREF;
+    component->start_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    component->params_ref = LUA_NOREF;
+    component->coroutine_ref = LUA_NOREF;
 
-    component_process_params(L, component_entry);
-    component_restart_coroutine(L, component_entry);
+    component_process_params(L, component);
+    component_restart_coroutine(L, component);
 
-    SLIST_INSERT_HEAD(component_list, component_entry, entries);
+    SLIST_INSERT_HEAD(component_list, component, entries);
 
     return 0;
 }
@@ -262,20 +259,19 @@ void l_component_register(lua_State* L)
     components_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 }
 
-void l_component_resume(lua_State* L, bool finalize)
+void l_component_resume(lua_State* L)
 {
     component_list_t* component_list = get_component_list(L);
     component_entry_t* component;
     SLIST_FOREACH (component, component_list, entries) {
-        if (finalize || component->resume_after == 0 || component->resume_after < xTaskGetTickCount()) {
+        if (component->resume_after == 0 || component->resume_after < xTaskGetTickCount()) {
             lua_rawgeti(L, LUA_REGISTRYINDEX, component->coroutine_ref);
             if (lua_isthread(L, -1)) {
                 lua_State* co = lua_tothread(L, -1);
                 int status = lua_status(co);
                 if (status == LUA_YIELD || status == LUA_OK) {
                     int nresults = 0;
-                    lua_pushboolean(co, !finalize);
-                    status = lua_resume(co, L, 1, &nresults);
+                    status = lua_resume(co, L, 0, &nresults);
                     if (status == LUA_YIELD || status == LUA_OK) {
                         if (nresults > 0 && lua_isinteger(co, -nresults)) {
                             component->resume_after = xTaskGetTickCount() + pdMS_TO_TICKS(lua_tointeger(co, -nresults));

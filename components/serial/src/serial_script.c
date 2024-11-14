@@ -1,10 +1,10 @@
 #include "serial_script.h"
 
-#include <driver/uart_vfs.h>
 #include <esp_log.h>
 
 #define BUF_SIZE         256
 #define EVENT_QUEUE_SIZE 20
+#define VFS_PATH         "/dev/serial"
 
 static const char* TAG = "serial_script";
 
@@ -35,7 +35,7 @@ void serial_script_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
         ESP_LOGE(TAG, "uart_driver_install() returned 0x%x", err);
         return;
     }
-    uart_vfs_dev_use_driver(uart_num);
+
     port = uart_num;
 
     if (rs485) {
@@ -81,14 +81,26 @@ esp_err_t serial_script_write(const char* buf, size_t len)
     return ESP_OK;
 }
 
-esp_err_t serial_script_read(char* buf, size_t* len, uint32_t timeout)
+esp_err_t serial_script_flush(void)
 {
     if (port == -1) {
         ESP_LOGW(TAG, "No script serial available");
         return ESP_ERR_NOT_FOUND;
     }
 
-    *len = uart_read_bytes(port, buf, *len, pdMS_TO_TICKS(timeout));
+    uart_flush(port);
+
+    return ESP_OK;
+}
+
+esp_err_t serial_script_read(char* buf, size_t* len)
+{
+    if (port == -1) {
+        ESP_LOGW(TAG, "No script serial available");
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    *len = uart_read_bytes(port, buf, *len, 0);
 
     return ESP_OK;
 }

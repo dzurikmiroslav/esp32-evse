@@ -41,7 +41,6 @@ set(srcs
     "src/l_aux_lib.c"
     "src/l_board_config_lib.c"
     "src/l_serial_lib.c"
-    "src/l_modbus_lib.c"
     )
 
 idf_component_register(SRC_DIRS "src" "lib/lua" "lib/yaml/src"

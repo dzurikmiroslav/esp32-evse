@@ -8,7 +8,7 @@
 
 void l_component_register(lua_State* L);
 
-void l_component_resume(lua_State* L, bool finalize);
+void l_component_resume(lua_State* L);
 
 script_component_list_t* l_component_get_components(lua_State* L);
 
