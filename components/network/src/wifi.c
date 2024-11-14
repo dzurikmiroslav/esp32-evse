@@ -1,5 +1,6 @@
 #include "wifi.h"
 
+#include <sys/param.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_mac.h>
@@ -213,7 +214,7 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
         scan_aps[i].auth = ap_info[i].authmode != WIFI_AUTH_OPEN;
     }
 
-    return ap_count;
+    return MIN(ap_count, WIFI_SCAN_SCAN_LIST_SIZE);
 }
 
 bool wifi_get_enabled(void)
