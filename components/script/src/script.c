@@ -24,8 +24,8 @@
 #include "script_utils.h"
 #include "script_watchdog.h"
 
-#define SHUTDOWN_TIMEOUT    1000
-#define OUTPUT_BUFFER_SIZE  4096
+#define SHUTDOWN_TIMEOUT   1000
+#define OUTPUT_BUFFER_SIZE 4096
 
 #define NVS_NAMESPACE   "script"
 #define NVS_ENABLED     "enabled"

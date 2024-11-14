@@ -11,7 +11,7 @@
 #include "lua.h"
 #include "script.h"
 
-static const char* TAG = "l_component";
+// static const char* TAG = "l_component";
 
 typedef struct component_entry_s {
     char* id;

@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 list(APPEND EXTRA_COMPONENT_DIRS "../components/")
+list(APPEND EXTRA_COMPONENT_DIRS "../libs/")
 list(APPEND EXTRA_COMPONENT_DIRS "mocks")
 
 add_definitions(-DUNIT_TEST=1)
