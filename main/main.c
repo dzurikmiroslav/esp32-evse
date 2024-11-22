@@ -249,7 +249,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-     board_config_load();
+    board_config_load();
 
     wifi_init();
     peripherals_init();
