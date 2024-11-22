@@ -371,7 +371,7 @@ TEST(script, evse)
     TEST_ASSERT_EQUAL(0, lua_gettop(L));  // after all Lua stack should be empty
 }
 
-TEST(script, board_config)
+TEST(script, config)
 {
     TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "boardconfig = require(\"boardconfig\")"));
 
@@ -456,6 +456,6 @@ TEST_GROUP_RUNNER(script)
     RUN_TEST_CASE(script, component);
     RUN_TEST_CASE(script, component_params);
     RUN_TEST_CASE(script, evse);
-    RUN_TEST_CASE(script, board_config)
+    RUN_TEST_CASE(script, config)
     RUN_TEST_CASE(script, json);
 }

@@ -25,7 +25,7 @@
 
 void rcm_init(void)
 {
-    if (board_config.rcm) {
+    if (board_cfg_is_rcm(board_config)) {
         gpio_config_t io_conf = { 0 };
 
         io_conf.mode = GPIO_MODE_OUTPUT;

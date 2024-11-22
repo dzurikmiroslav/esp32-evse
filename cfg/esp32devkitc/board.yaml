@@ -1,0 +1,71 @@
+deviceName: ESP32-DevKitC EVSE
+
+ledChargingGpio: 19
+ledErrorGpio: 18
+ledWifiGpio: 17
+
+buttonWifiGpio: 0
+
+pilot:
+  gpio: 28
+  adcChannel: 0
+  levels: [2405, 2099, 1792, 1484, 728]
+
+proximity:
+  adcChannel: 3
+  levels: [1650, 820, 430]
+
+acRelayGpio: 26
+
+socketLock:
+  aGpio:
+  bGpio:
+  detectionGpio:
+  detectionDelay:
+  minBreakTime:
+
+rcm:
+  gpio:
+  testGpio:
+
+energyMeter:
+  currentAdcChannels: [7,8,9]
+  currentScale: 0.090909091
+  voltageAdcChannels: [10,11,12]
+  voltageScale: 0.090909091
+
+# Max 4 items
+auxIn:
+  - name: Test
+    gpio: 60
+
+# Max 4 items
+auxOut:
+  - name: Test
+    gpio: 60
+
+# Max 4 items
+aixAIn:
+  - name: Test
+    adcChannel: 1
+
+serial:
+  - type: uart
+    name: UART via USB
+    rxdGpio: 3
+    txdGpio: 1
+    rtsGpio:
+  - type: rs485
+    name: RS485
+    rxdGpio: 32
+    txdGpio: 25
+    rtsGpio: 33
+  - type: uart
+    name: UART
+    rxdGpio: 2
+    txdGpio: 15
+    rtsGpio:
+
+onewire:
+  gpio: 16
+  tempSensor: true

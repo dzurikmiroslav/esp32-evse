@@ -1,5 +1,3 @@
-set(srcs
-    "src/board_config.c")
-
-idf_component_register(SRCS "${srcs}" 
-                    INCLUDE_DIRS "include")
+idf_component_register(SRC_DIRS "src"
+                    INCLUDE_DIRS "include"
+                    PRIV_REQUIRES yaml)

@@ -28,22 +28,20 @@ static nvs_handle_t nvs;
 
 static serial_mode_t modes[SERIAL_ID_MAX];
 
-static board_config_serial_t serial_board_config[SERIAL_ID_MAX];
-
 static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
 {
     switch (modes[id]) {
     case SERIAL_MODE_LOG:
-        serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serial[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
         break;
     case SERIAL_MODE_MODBUS:
-        serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serial[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
         break;
     case SERIAL_MODE_NEXTION:
-        serial_nextion_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        serial_nextion_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serial[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
         break;
     case SERIAL_MODE_SCRIPT:
-        serial_script_start(id, baud_rate, data_bits, stop_bits, parity, serial_board_config[id] == BOARD_CONFIG_SERIAL_RS485);
+        serial_script_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serial[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
         break;
     default:
         break;
@@ -74,34 +72,14 @@ void serial_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
-    serial_board_config[SERIAL_ID_1] = board_config.serial_1;
-    if (board_config.serial_1 == BOARD_CONFIG_SERIAL_UART) {
-        ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_1, board_config.serial_1_txd_gpio, board_config.serial_1_rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    }
-    if (board_config.serial_1 == BOARD_CONFIG_SERIAL_RS485) {
-        ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_1, board_config.serial_1_txd_gpio, board_config.serial_1_rxd_gpio, board_config.serial_1_rts_gpio, UART_PIN_NO_CHANGE));
-    }
-
-    serial_board_config[SERIAL_ID_2] = board_config.serial_2;
-    if (board_config.serial_2 == BOARD_CONFIG_SERIAL_UART) {
-        ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_2, board_config.serial_2_txd_gpio, board_config.serial_2_rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    }
-    if (board_config.serial_2 == BOARD_CONFIG_SERIAL_RS485) {
-        ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_2, board_config.serial_2_txd_gpio, board_config.serial_2_rxd_gpio, board_config.serial_2_rts_gpio, UART_PIN_NO_CHANGE));
-    }
-
-#if SOC_UART_NUM > 2
-    serial_board_config[SERIAL_ID_3] = board_config.serial_3;
-    if (board_config.serial_3 == BOARD_CONFIG_SERIAL_UART) {
-        ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_3, board_config.serial_3_txd_gpio, board_config.serial_3_rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    }
-    if (board_config.serial_3 == BOARD_CONFIG_SERIAL_RS485) {
-        ESP_ERROR_CHECK(uart_set_pin(SERIAL_ID_3, board_config.serial_3_txd_gpio, board_config.serial_3_rxd_gpio, board_config.serial_3_rts_gpio, UART_PIN_NO_CHANGE));
-    }
-#endif
-
     for (serial_id_t id = SERIAL_ID_1; id < SERIAL_ID_MAX; id++) {
-        if (serial_board_config[id] != BOARD_CONFIG_SERIAL_NONE) {
+        if (board_config.serial[id].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            if (board_config.serial[id].type != BOARD_CFG_SERIAL_TYPE_UART) {
+                ESP_ERROR_CHECK(uart_set_pin(id, board_config.serial[id].txd_gpio, board_config.serial[id].rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+            } else {
+                ESP_ERROR_CHECK(uart_set_pin(id, board_config.serial[id].txd_gpio, board_config.serial[id].rxd_gpio, board_config.serial[id].rts_gpio, UART_PIN_NO_CHANGE));
+            }
+
             uint8_t u8 = id == SERIAL_ID_1 ? SERIAL_MODE_LOG : SERIAL_MODE_NONE;  // SERIAL_ID_1 is default system log
             char key[12];
             sprintf(key, NVS_MODE, id);
@@ -124,7 +102,7 @@ bool serial_is_available(serial_id_t id)
         return false;
     }
 
-    return serial_board_config[id] != BOARD_CONFIG_SERIAL_NONE;
+    return board_config.serial[id].type != BOARD_CFG_SERIAL_TYPE_NONE;
 }
 
 serial_mode_t serial_get_mode(serial_id_t id)
@@ -190,7 +168,7 @@ esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, u
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (serial_board_config[id] == BOARD_CONFIG_SERIAL_NONE) {
+    if (board_config.serial[id].type == BOARD_CFG_SERIAL_TYPE_NONE) {
         ESP_LOGE(TAG, "Serial not available");
         return ESP_ERR_NOT_SUPPORTED;
     }

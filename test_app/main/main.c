@@ -17,6 +17,7 @@ static void run_all_tests(void)
 {
     RUN_TEST_GROUP(evse);
     RUN_TEST_GROUP(script);
+    RUN_TEST_GROUP(config);
 }
 
 // static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)

@@ -112,7 +112,7 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 {
     BaseType_t higher_task_woken = pdFALSE;
 
-    if (gpio_get_level(board_config.button_wifi_gpio)) {
+    if (gpio_get_level(board_config.button_gpio)) {
         xTaskNotifyFromISR(user_input_task, RELEASED_BIT, eSetBits, &higher_task_woken);
     } else {
         xTaskNotifyFromISR(user_input_task, PRESS_BIT, eSetBits, &higher_task_woken);
@@ -126,14 +126,14 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 static void button_init(void)
 {
     gpio_config_t conf = {
-        .pin_bit_mask = BIT64(board_config.button_wifi_gpio),
+        .pin_bit_mask = BIT64(board_config.button_gpio),
         .mode = GPIO_MODE_INPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .intr_type = GPIO_INTR_ANYEDGE,
     };
     ESP_ERROR_CHECK(gpio_config(&conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_gpio, button_isr_handler, NULL));
 }
 
 static void fs_info(esp_vfs_spiffs_conf_t* conf)
@@ -249,7 +249,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    board_config_load();
+     board_config_load();
 
     wifi_init();
     peripherals_init();

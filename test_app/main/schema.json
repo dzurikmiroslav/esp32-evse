@@ -1,0 +1,299 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/Welcome10",
+    "definitions": {
+        "Welcome10": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "deviceName": {
+                    "type": "string"
+                },
+                "ledChargingGpio": {
+                    "type": "integer"
+                },
+                "ledErrorGpio": {
+                    "type": "integer"
+                },
+                "ledWifiGpio": {
+                    "type": "integer"
+                },
+                "buttonWifiGpio": {
+                    "type": "integer"
+                },
+                "pilot": {
+                    "$ref": "#/definitions/Pilot"
+                },
+                "proximity": {
+                    "$ref": "#/definitions/Proximity"
+                },
+                "acRelayGpio": {
+                    "type": "integer"
+                },
+                "socketLock": {
+                    "$ref": "#/definitions/SocketLock"
+                },
+                "rcm": {
+                    "$ref": "#/definitions/Rcm"
+                },
+                "energyMeter": {
+                    "$ref": "#/definitions/EnergyMeter"
+                },
+                "auxIn": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Aux"
+                    }
+                },
+                "auxOut": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Aux"
+                    }
+                },
+                "auxAnalogIn": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AuxAnalogIn"
+                    }
+                },
+                "serial": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Serial"
+                    }
+                },
+                "onewire": {
+                    "$ref": "#/definitions/Onewire"
+                }
+            },
+            "required": [
+                "acRelayGpio",
+                "auxAnalogIn",
+                "auxIn",
+                "auxOut",
+                "buttonWifiGpio",
+                "deviceName",
+                "energyMeter",
+                "ledChargingGpio",
+                "ledErrorGpio",
+                "ledWifiGpio",
+                "onewire",
+                "pilot",
+                "proximity",
+                "rcm",
+                "serial",
+                "socketLock"
+            ],
+            "title": "Welcome10"
+        },
+        "AuxAnalogIn": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "adcChannel": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "adcChannel",
+                "name"
+            ],
+            "title": "AuxAnalogIn"
+        },
+        "Aux": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "gpio": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "gpio",
+                "name"
+            ],
+            "title": "Aux"
+        },
+        "EnergyMeter": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "currentAdcChannels": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "currentScale": {
+                    "type": "number"
+                },
+                "voltageAdcChannels": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "voltageScale": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "currentAdcChannels",
+                "currentScale",
+                "voltageAdcChannels",
+                "voltageScale"
+            ],
+            "title": "EnergyMeter"
+        },
+        "Onewire": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer"
+                },
+                "temperatureSensor": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "gpio",
+                "temperatureSensor"
+            ],
+            "title": "Onewire"
+        },
+        "Pilot": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer"
+                },
+                "adcChannel": {
+                    "type": "integer"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "adcChannel",
+                "gpio",
+                "levels"
+            ],
+            "title": "Pilot"
+        },
+        "Proximity": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "adcChannel": {
+                    "type": "integer"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "adcChannel",
+                "levels"
+            ],
+            "title": "Proximity"
+        },
+        "Rcm": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer"
+                },
+                "testGpio": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "gpio",
+                "testGpio"
+            ],
+            "title": "Rcm"
+        },
+        "Serial": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rxdGpio": {
+                    "type": "integer"
+                },
+                "txdGpio": {
+                    "type": "integer"
+                },
+                "rtsGpio": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "name",
+                "rtsGpio",
+                "rxdGpio",
+                "txdGpio",
+                "type"
+            ],
+            "title": "Serial"
+        },
+        "SocketLock": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "aGpio": {
+                    "type": "integer"
+                },
+                "bGpio": {
+                    "type": "integer"
+                },
+                "detectionGpio": {
+                    "type": "integer"
+                },
+                "detectionDelay": {
+                    "type": "integer"
+                },
+                "minBreakTime": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "aGpio",
+                "bGpio",
+                "detectionDelay",
+                "detectionGpio",
+                "minBreakTime"
+            ],
+            "title": "SocketLock"
+        }
+    }
+}

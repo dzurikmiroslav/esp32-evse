@@ -608,12 +608,12 @@ cJSON* http_json_get_info(void)
     return json;
 }
 
-static const char* serial_to_str(board_config_serial_t serial)
+static const char* serial_type_to_str(board_cfg_serial_type_t type)
 {
-    switch (serial) {
-    case BOARD_CONFIG_SERIAL_UART:
+    switch (type) {
+    case BOARD_CFG_SERIAL_TYPE_UART:
         return "uart";
-    case BOARD_CONFIG_SERIAL_RS485:
+    case BOARD_CFG_SERIAL_TYPE_RS485:
         return "rs485";
     default:
         return "none";
@@ -625,71 +625,58 @@ cJSON* http_json_get_board_config(void)
     cJSON* json = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json, "deviceName", board_config.device_name);
-    cJSON_AddBoolToObject(json, "socketLock", board_config.socket_lock);
-    cJSON_AddBoolToObject(json, "proximity", board_config.proximity);
+    cJSON_AddBoolToObject(json, "socketLock", board_cfg_is_socket_lock(board_config));
+    cJSON_AddBoolToObject(json, "proximity", board_cfg_is_proximity(board_config));
     cJSON_AddNumberToObject(json, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
-    cJSON_AddBoolToObject(json, "rcm", board_config.rcm);
-    cJSON_AddBoolToObject(json, "temperatureSensor", board_config.onewire && board_config.onewire_temp_sensor);
-    switch (board_config.energy_meter) {
-    case BOARD_CONFIG_ENERGY_METER_CUR:
-        cJSON_AddStringToObject(json, "energyMeter", "cur");
-        break;
-    case BOARD_CONFIG_ENERGY_METER_CUR_VLT:
-        cJSON_AddStringToObject(json, "energyMeter", "cur_vlt");
-        break;
-    default:
-        cJSON_AddStringToObject(json, "energyMeter", "none");
+    cJSON_AddBoolToObject(json, "rcm", board_cfg_is_rcm(board_config));
+    cJSON_AddBoolToObject(json, "temperatureSensor", board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
+    
+    const char* energy_meter = "none";
+    bool energy_meter_three_phases = false;
+    if (board_cfg_is_energy_meter_cur(board_config)) {
+        if (board_cfg_is_energy_meter_vlt(board_config)) {
+            energy_meter = "cur_vlt";
+            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
+        } else {
+            energy_meter = "cur";
+            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config);
+        }
     }
-    cJSON_AddBoolToObject(json, "energyMeterThreePhases", board_config.energy_meter_three_phases);
+    cJSON_AddStringToObject(json, "energyMeter", energy_meter);
+    cJSON_AddBoolToObject(json, "energyMeterThreePhases", energy_meter_three_phases);
 
-    cJSON_AddStringToObject(json, "serial1", serial_to_str(board_config.serial_1));
-    cJSON_AddStringToObject(json, "serial1Name", board_config.serial_1_name);
-    cJSON_AddStringToObject(json, "serial2", serial_to_str(board_config.serial_2));
-    cJSON_AddStringToObject(json, "serial2Name", board_config.serial_2_name);
-#if SOC_UART_NUM > 2
-    cJSON_AddStringToObject(json, "serial3", serial_to_str(board_config.serial_3));
-    cJSON_AddStringToObject(json, "serial3Name", board_config.serial_3_name);
-#else
-    cJSON_AddStringToObject(json, "serial3", serial_to_str(BOARD_CONFIG_SERIAL_NONE));
-    cJSON_AddStringToObject(json, "serial3Name", "");
-#endif
+    cJSON* serials_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        if (board_config.serial[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            cJSON* serial_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(serial_json, "type", serial_type_to_str(board_config.serial[i].type));
+            cJSON_AddStringToObject(serial_json, "name", board_config.serial[i].name);
+            cJSON_AddItemToArray(serials_json, serial_json);
+        }
+    }
+    cJSON_AddItemToObject(json, "serial", serials_json);
 
     cJSON* aux_json = cJSON_CreateArray();
-    if (board_config.aux_in_1) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_1_name));
-    }
-    if (board_config.aux_in_2) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_2_name));
-    }
-    if (board_config.aux_in_3) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_3_name));
-    }
-    if (board_config.aux_in_4) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_4_name));
+    for (int i = 0; i < BOARD_CFG_AUX_IN_COUNT; i++) {
+        if (board_cfg_is_aux_in(board_config, i)) {
+            cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in[i].name));
+        }
     }
     cJSON_AddItemToObject(json, "auxIn", aux_json);
 
     aux_json = cJSON_CreateArray();
-    if (board_config.aux_out_1) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_1_name));
-    }
-    if (board_config.aux_out_2) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_2_name));
-    }
-    if (board_config.aux_out_3) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_3_name));
-    }
-    if (board_config.aux_out_4) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_4_name));
+    for (int i = 0; i < BOARD_CFG_AUX_OUT_COUNT; i++) {
+        if (board_cfg_is_aux_out(board_config, i)) {
+            cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out[i].name));
+        }
     }
     cJSON_AddItemToObject(json, "auxOut", aux_json);
 
     aux_json = cJSON_CreateArray();
-    if (board_config.aux_ain_1) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_ain_1_name));
-    }
-    if (board_config.aux_ain_2) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_ain_2_name));
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_IN_COUNT; i++) {
+        if (board_cfg_is_aux_analog_in(board_config, i)) {
+            cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_analog_in[i].name));
+        }
     }
     cJSON_AddItemToObject(json, "auxAin", aux_json);
 
