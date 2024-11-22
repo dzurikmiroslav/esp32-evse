@@ -10,6 +10,7 @@
 #include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
+#include <sys/param.h>
 // #include <mdns.h>
 
 #define AP_SSID "evse-%02x%02x%02x"
@@ -213,7 +214,7 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
         scan_aps[i].auth = ap_info[i].authmode != WIFI_AUTH_OPEN;
     }
 
-    return ap_count;
+    return MIN(ap_count, WIFI_SCAN_SCAN_LIST_SIZE);
 }
 
 bool wifi_get_enabled(void)
