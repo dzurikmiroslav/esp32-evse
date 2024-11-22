@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../board-config-schema-1.json
+
+deviceName: ESP32 minimal EVSE
+
+buttonGpio: 0
+
+pilot:
+  gpio: 33
+  adcChannel: 7
+  levels: [2410, 2104, 1797, 1491, 265]
+
+acRelayGpio: 32
+
+serial:
+  - type: uart
+    name: UART via USB
+    rxdGpio: 3
+    txdGpio: 1

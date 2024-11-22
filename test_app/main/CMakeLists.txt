@@ -1,7 +1,7 @@
 list(APPEND EXTRA_COMPONENT_DIRS "../mocks")
 
 set(embed_files
-    "component1.lua"
+    "script.lua"
     "params.yaml"
     "board.yaml")
 

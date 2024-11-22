@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=../board-config-schema-1.json
+
+deviceName: Custom EVSE
+
+# ledChargingGpio: gpio
+# ledErrorGpio: gpio
+# ledWifiGpio: gpio
+
+buttonGpio: 0
+
+pilot:
+  gpio: 33
+  adcChannel: 7
+  levels: [2410, 2104, 1797, 1491, 265]
+
+# proximity:
+#   adcChannel: gpio
+#   levels: [1650, 820, 430]
+
+acRelayGpio: 26
+
+# socketLock:
+#   aGpio: gpio
+#   bGpio: gpio
+#   detectionGpio: gpio
+#   detectionDelay: 1000
+#   minBreakTime: 1000
+
+# rcm:
+#   gpio: gpio
+#   testGpio: gpio
+
+# energyMeter:
+#   currentAdcChannels: [l1_adc_ch, l2_adc_ch, l3_adc_ch]
+#   currentScale: 0.090909091
+#   voltageAdcChannels: [l1_adc_ch, l2_adc_ch, l3_adc_ch]
+#   voltageScale: 0.47
+
+# auxIn:
+#   - name: IN1
+#     gpio: gpio
+
+# auxOut:
+#   - name: OUT1
+#     gpio: gpio
+
+# auxAnalogIn:
+#   - name: IN2
+#     adcChannel: adc_ch
+
+serial:
+  - type: uart
+    name: UART via USB
+    rxdGpio: 3
+    txdGpio: 1
+
+
+# onewire:
+#   gpio: gpio
+#   temperatureSensor: true

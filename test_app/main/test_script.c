@@ -27,8 +27,8 @@
 
 static lua_State* L = NULL;
 
-extern const char component1_lua_start[] asm("_binary_component1_lua_start");
-extern const char component1_lua_end[] asm("_binary_component1_lua_end");
+extern const char script_lua_start[] asm("_binary_script_lua_start");
+extern const char script_lua_end[] asm("_binary_script_lua_end");
 
 extern const char params_yaml_start[] asm("_binary_params_yaml_start");
 extern const char params_yaml_end[] asm("_binary_params_yaml_end");
@@ -168,7 +168,9 @@ TEST(script, component)
     // default values
     remove(PARAMS_YAML);
 
-    (void)luaL_dostring(L, component1_lua_start);
+    luaL_loadbuffer(L, script_lua_start, script_lua_end - script_lua_start, script_lua_start);
+    lua_pcall(L, 0, LUA_MULTRET, 0);
+
     TEST_ASSERT_TRUE(check_lua());
     TEST_ASSERT_EQUAL_STRING("start", get_global_var("stage"));
     TEST_ASSERT_EQUAL_STRING("default1", get_global_var("paramstring1"));

@@ -1,4 +1,4 @@
-$schema: ./schema.json
+# yaml-language-server: $schema=../../cfg/board-config-schema-1.json
 
 deviceName: test
 
@@ -12,7 +12,7 @@ buttonGpio: 4
 unknownA: AAA
 unknownB:
   gpio: 25
-  unknownC: [1,2,3]
+  unknownC: [1, 2, 3]
   unknownD:
     - name: BBB
       gpio: 555
@@ -43,9 +43,9 @@ rcm:
   testGpio: 31
 
 energyMeter:
-  currentAdcChannels: [7,8,9]
+  currentAdcChannels: [7, 8, 9]
   currentScale: 0.8
-  voltageAdcChannels: [10,11,12]
+  voltageAdcChannels: [10, 11, 12]
   voltageScale: 0.9
 
 # Max 4 items
@@ -72,7 +72,6 @@ serial:
     name: UART via USB
     rxdGpio: 3
     txdGpio: 1
-    rtsGpio:
   - type: rs485
     name: RS485
     rxdGpio: 32
