@@ -630,7 +630,7 @@ cJSON* http_json_get_board_config(void)
     cJSON_AddNumberToObject(json, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
     cJSON_AddBoolToObject(json, "rcm", board_cfg_is_rcm(board_config));
     cJSON_AddBoolToObject(json, "temperatureSensor", board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
-    
+
     const char* energy_meter = "none";
     bool energy_meter_three_phases = false;
     if (board_cfg_is_energy_meter_cur(board_config)) {
@@ -678,7 +678,7 @@ cJSON* http_json_get_board_config(void)
             cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_analog_in[i].name));
         }
     }
-    cJSON_AddItemToObject(json, "auxAin", aux_json);
+    cJSON_AddItemToObject(json, "auxAnalogIn", aux_json);
 
     return json;
 }

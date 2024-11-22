@@ -9,25 +9,25 @@
 
 #define CASE_SET_VALUE(level, prop, convert_fn) \
     case level:                                 \
-        config->prop = convert_fn(value); \
+        config->prop = convert_fn(value);       \
         break;
 
-#define CASE_SET_VALUE_STR(level, prop, len)     \
-    case level:                                  \
-        strncpy(config->prop, value, len); \
+#define CASE_SET_VALUE_STR(level, prop, len) \
+    case level:                              \
+        strncpy(config->prop, value, len);   \
         break;
 
 #define CASE_SET_SEQ_VALUE(level, prop, convert_fn, condition) \
     case level:                                                \
-        if (condition) config->prop = convert_fn(value); \
+        if (condition) config->prop = convert_fn(value);       \
         break;
 
-#define CASE_SET_SEQ_VALUE_STR(level, prop, len, condition)     \
-    case level:                                                 \
-        if (condition) strncpy(config->prop, value, len); \
+#define CASE_SET_SEQ_VALUE_STR(level, prop, len, condition) \
+    case level:                                             \
+        if (condition) strncpy(config->prop, value, len);   \
         break;
 
-static const char* TAG = "config_parser";
+static const char* TAG = "board_config_parser";
 
 static uint8_t str_to_gpio(const char* value)
 {
@@ -278,7 +278,7 @@ static void empty_config(board_cfg_t* config)
     }
 }
 
-bool board_cfg_parse_file(FILE* src, board_cfg_t* config)
+esp_err_t board_config_parse_file(FILE* src, board_cfg_t* board_cfg)
 {
     yaml_parser_t parser;
     yaml_event_t event;
@@ -286,12 +286,12 @@ bool board_cfg_parse_file(FILE* src, board_cfg_t* config)
 
     if (!yaml_parser_initialize(&parser)) {
         ESP_LOGE(TAG, "Cant initialize yaml parser");
-        return false;
+        return ESP_ERR_INVALID_STATE;
     }
 
     yaml_parser_set_input_file(&parser, src);
 
-    empty_config(config);
+    empty_config(board_cfg);
 
     int level = -1;
     uint8_t seq_level = 0;
@@ -321,7 +321,7 @@ bool board_cfg_parse_file(FILE* src, board_cfg_t* config)
                     }
                 } else {
                     if (key[level] != KEY_INVALID) {
-                        if (!set_key_value(config, key, seq_idx, value)) {
+                        if (!set_key_value(board_cfg, key, seq_idx, value)) {
                             ESP_LOGW(TAG, "Unknow property: %s (line: %zu column: %zu)", keys[key[level]], key_mark.line, key_mark.column);
                         }
                     }
@@ -369,12 +369,12 @@ bool board_cfg_parse_file(FILE* src, board_cfg_t* config)
 
     yaml_parser_delete(&parser);
 
-    return true;
+    return ESP_OK;
 
 error:
-    ESP_LOGE(TAG, "Error read");
+    ESP_LOGE(TAG, "Parsing error");
     yaml_event_delete(&event);
     yaml_parser_delete(&parser);
 
-    return false;
+    return ESP_FAIL;
 }

@@ -57,7 +57,7 @@ int luaopen_board_config(lua_State* L)
             energy_meter = ENERGY_METER_CUR;
             energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config);
         }
-    } 
+    }
 
     lua_pushinteger(L, energy_meter);
     lua_setfield(L, -2, "energymeter");
@@ -100,7 +100,7 @@ int luaopen_board_config(lua_State* L)
             lua_rawseti(L, -2, i + 1);
         }
     }
-    lua_setfield(L, -2, "auxain");
+    lua_setfield(L, -2, "auxanalogin");
 
     return 1;
 }

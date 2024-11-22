@@ -24,10 +24,10 @@ TEST(config, board)
 
     config_file = fopen(BOARD_YAML, "r");
     board_cfg_t config;
-    bool ret = board_cfg_parse_file(config_file, &config);
+    esp_err_t ret = board_config_parse_file(config_file, &config);
     fclose(config_file);
 
-    TEST_ASSERT_TRUE(ret);
+    TEST_ASSERT_EQUAL(ret, ESP_OK);
 
     TEST_ASSERT_EQUAL_STRING("test", config.device_name);
     TEST_ASSERT_EQUAL(1, config.led_charging_gpio);
