@@ -5,23 +5,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BOARD_CFG_DEVICE_NAME_LEN     32
-#define BOARD_CFG_AUX_NAME_LEN        8
-#define BOARD_CFG_AUX_IN_COUNT        4
-#define BOARD_CFG_AUX_OUT_COUNT       4
-#define BOARD_CFG_AUX_ANALOG_IN_COUNT 2
-#define BOARD_CFG_SERIAL_NAME_LEN     16
-#define BOARD_CFG_SERIAL_COUNT        SOC_UART_NUM
+#define BOARD_CFG_DEVICE_NAME_LEN        32
+#define BOARD_CFG_AUX_NAME_LEN           8
+#define BOARD_CFG_AUX_INPUT_COUNT        4
+#define BOARD_CFG_AUX_OUTPUT_COUNT       4
+#define BOARD_CFG_AUX_ANALOG_INPUT_COUNT 2
+#define BOARD_CFG_SERIAL_NAME_LEN        16
+#define BOARD_CFG_SERIAL_COUNT           SOC_UART_NUM
 
-#define board_cfg_is_proximity(config)          (config.proximity_adc_channel != -1)
-#define board_cfg_is_socket_lock(config)        (config.socket_lock_a_gpio != -1 && config.socket_lock_b_gpio != -1 && config.socket_lock_detection_gpio != -1)
-#define board_cfg_is_rcm(config)                (config.rcm_gpio != -1 && config.rcm_test_gpio != -1)
-#define board_cfg_is_aux_in(config, idx)        (config.aux_in[idx].gpio != -1)
-#define board_cfg_is_aux_out(config, idx)       (config.aux_out[idx].gpio != -1)
-#define board_cfg_is_aux_analog_in(config, idx) (config.aux_analog_in[idx].adc_channel != -1)
-#define board_cfg_is_onewire(config)            (config.onewire_gpio != -1)
-#define board_cfg_is_energy_meter_cur(config)   (config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
-#define board_cfg_is_energy_meter_vlt(config)   (config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
+#define board_cfg_is_proximity(config)             (config.proximity_adc_channel != -1)
+#define board_cfg_is_socket_lock(config)           (config.socket_lock_a_gpio != -1 && config.socket_lock_b_gpio != -1 && config.socket_lock_detection_gpio != -1)
+#define board_cfg_is_rcm(config)                   (config.rcm_gpio != -1 && config.rcm_test_gpio != -1)
+#define board_cfg_is_aux_input(config, idx)        (config.aux_inputs[idx].gpio != -1)
+#define board_cfg_is_aux_output(config, idx)       (config.aux_outputs[idx].gpio != -1)
+#define board_cfg_is_aux_analog_input(config, idx) (config.aux_analog_inputs[idx].adc_channel != -1)
+#define board_cfg_is_onewire(config)               (config.onewire_gpio != -1)
+#define board_cfg_is_energy_meter_cur(config)      (config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
+#define board_cfg_is_energy_meter_vlt(config)      (config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
 #define board_cfg_is_energy_meter_cur_3p(config) \
     (config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
 #define board_cfg_is_energy_meter_vlt_3p(config) \
@@ -46,12 +46,12 @@ typedef enum {
 typedef struct {
     char name[BOARD_CFG_AUX_NAME_LEN];
     int8_t gpio;
-} board_cfg_aux_in_out_t;
+} board_cfg_aux_input_output_t;
 
 typedef struct {
     char name[BOARD_CFG_AUX_NAME_LEN];
     int8_t adc_channel;
-} board_cfg_aux_analog_in_t;
+} board_cfg_aux_analog_input_t;
 
 typedef enum {
     BOARD_CFG_SERIAL_TYPE_NONE,
@@ -107,13 +107,13 @@ typedef struct {
     int8_t energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX];
     float energy_meter_vlt_scale;
 
-    board_cfg_aux_in_out_t aux_in[BOARD_CFG_AUX_IN_COUNT];
+    board_cfg_aux_input_output_t aux_inputs[BOARD_CFG_AUX_INPUT_COUNT];
 
-    board_cfg_aux_in_out_t aux_out[BOARD_CFG_AUX_OUT_COUNT];
+    board_cfg_aux_input_output_t aux_outputs[BOARD_CFG_AUX_OUTPUT_COUNT];
 
-    board_cfg_aux_analog_in_t aux_analog_in[BOARD_CFG_AUX_ANALOG_IN_COUNT];
+    board_cfg_aux_analog_input_t aux_analog_inputs[BOARD_CFG_AUX_ANALOG_INPUT_COUNT];
 
-    board_cfg_serial_t serial[BOARD_CFG_SERIAL_COUNT];
+    board_cfg_serial_t serials[BOARD_CFG_SERIAL_COUNT];
 
     int8_t onewire_gpio;
     bool onewire_temp_sensor : 1;

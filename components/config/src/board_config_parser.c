@@ -109,9 +109,9 @@ static const char* keys[] = {
     "proximity",
     "socketLock",
     "rcm",
-    "auxIn",
-    "auxOut",
-    "auxAnalogIn",
+    "auxInputs",
+    "auxOutputs",
+    "auxAnalogInputs",
     "gpio",
     "name",
     "adcChannel",
@@ -127,7 +127,7 @@ static const char* keys[] = {
     "voltageAdcChannels",
     "currentScale",
     "voltageScale",
-    "serial",
+    "serials",
     "type",
     "rxdGpio",
     "txdGpio",
@@ -201,35 +201,35 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         break;
     case KEY_AUX_IN:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_in[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_IN_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_GPIO, aux_in[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_IN_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_GPIO, aux_inputs[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
         default:
             return false;
         }
         break;
     case KEY_AUX_OUT:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_out[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_OUT_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_GPIO, aux_out[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_OUT_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_outputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_GPIO, aux_outputs[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
         default:
             return false;
         }
         break;
     case KEY_AUX_ANALOG_IN:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_analog_in[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_ANALOG_IN_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_ADC_CHANNEL, aux_analog_in[seq_idx[0]].adc_channel, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_ANALOG_IN_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_analog_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_ADC_CHANNEL, aux_analog_inputs[seq_idx[0]].adc_channel, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
         default:
             return false;
         }
         break;
     case KEY_SERIAL:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE(KEY_TYPE, serial[seq_idx[0]].type, str_to_serial_type, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, serial[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_LEN, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_RXD_GPIO, serial[seq_idx[0]].rxd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_TXD_GPIO, serial[seq_idx[0]].txd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_RTS_GPIO, serial[seq_idx[0]].rts_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_TYPE, serials[seq_idx[0]].type, str_to_serial_type, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, serials[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_LEN, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_RXD_GPIO, serials[seq_idx[0]].rxd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_TXD_GPIO, serials[seq_idx[0]].txd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE(KEY_RTS_GPIO, serials[seq_idx[0]].rts_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
         default:
             return false;
         }
@@ -262,19 +262,19 @@ static void empty_config(board_cfg_t* config)
         config->energy_meter_cur_adc_channel[i] = -1;
         config->energy_meter_vlt_adc_channel[i] = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_AUX_IN_COUNT; i++) {
-        config->aux_in[i].gpio = -1;
+    for (uint8_t i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        config->aux_inputs[i].gpio = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_AUX_OUT_COUNT; i++) {
-        config->aux_out[i].gpio = -1;
+    for (uint8_t i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        config->aux_outputs[i].gpio = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_AUX_ANALOG_IN_COUNT; i++) {
-        config->aux_analog_in[i].adc_channel = -1;
+    for (uint8_t i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        config->aux_analog_inputs[i].adc_channel = -1;
     }
     for (uint8_t i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
-        config->serial[i].rxd_gpio = -1;
-        config->serial[i].txd_gpio = -1;
-        config->serial[i].rts_gpio = -1;
+        config->serials[i].rxd_gpio = -1;
+        config->serials[i].txd_gpio = -1;
+        config->serials[i].rts_gpio = -1;
     }
 }
 

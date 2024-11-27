@@ -25,7 +25,7 @@ energyMeter:
   voltageAdcChannels: [6]
   voltageScale: 0.47
 
-serial:
+serials:
   - type: uart
     name: UART via USB
     rxdGpio: 3

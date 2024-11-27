@@ -226,27 +226,17 @@ cJSON* http_json_get_wifi_scan(void)
 
 cJSON* http_json_get_serial_config(void)
 {
-    cJSON* json = cJSON_CreateObject();
+    cJSON* json = cJSON_CreateArray();
 
-    char mode_name[16];
-    char baud_rate_name[16];
-    char data_bits_name[16];
-    char stop_bits_name[16];
-    char parity_name[16];
-
-    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
-        if (serial_is_available(id)) {
-            sprintf(mode_name, "serial%dMode", id + 1);
-            sprintf(baud_rate_name, "serial%dBaudRate", id + 1);
-            sprintf(data_bits_name, "serial%dDataBits", id + 1);
-            sprintf(stop_bits_name, "serial%dStopBits", id + 1);
-            sprintf(parity_name, "serial%dParity", id + 1);
-
-            cJSON_AddStringToObject(json, mode_name, serial_mode_to_str(serial_get_mode(id)));
-            cJSON_AddNumberToObject(json, baud_rate_name, serial_get_baud_rate(id));
-            cJSON_AddStringToObject(json, data_bits_name, serial_data_bits_to_str(serial_get_data_bits(id)));
-            cJSON_AddStringToObject(json, stop_bits_name, serial_stop_bits_to_str(serial_get_stop_bits(id)));
-            cJSON_AddStringToObject(json, parity_name, serial_parity_to_str(serial_get_parity(id)));
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            cJSON* serial_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(serial_json, "mode", serial_mode_to_str(serial_get_mode(i)));
+            cJSON_AddNumberToObject(serial_json, "baudRate", serial_get_baud_rate(i));
+            cJSON_AddStringToObject(serial_json, "dataBits", serial_data_bits_to_str(serial_get_data_bits(i)));
+            cJSON_AddStringToObject(serial_json, "stopBits", serial_stop_bits_to_str(serial_get_stop_bits(i)));
+            cJSON_AddStringToObject(serial_json, "parity", serial_parity_to_str(serial_get_parity(i)));
+            cJSON_AddItemToArray(json, serial_json);
         }
     }
 
@@ -255,32 +245,27 @@ cJSON* http_json_get_serial_config(void)
 
 esp_err_t http_json_set_serial_config(cJSON* json)
 {
-    char mode_name[16];
-    char baud_rate_name[16];
-    char data_bits_name[16];
-    char stop_bits_name[16];
-    char parity_name[16];
     serial_reset_config();
 
-    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
-        if (serial_is_available(id)) {
-            sprintf(mode_name, "serial%dMode", id + 1);
-            sprintf(baud_rate_name, "serial%dBaudRate", id + 1);
-            sprintf(data_bits_name, "serial%dDataBits", id + 1);
-            sprintf(stop_bits_name, "serial%dStopBits", id + 1);
-            sprintf(parity_name, "serial%dParity", id + 1);
+    cJSON* serial_json = json->child;
 
-            if (cJSON_IsString(cJSON_GetObjectItem(json, mode_name))) {
-                serial_mode_t mode = serial_str_to_mode(cJSON_GetObjectItem(json, mode_name)->valuestring);
-                int baud_rate = cJSON_GetNumberValue(cJSON_GetObjectItem(json, baud_rate_name));
-                uart_word_length_t data_bits = serial_str_to_data_bits(cJSON_GetStringValue(cJSON_GetObjectItem(json, data_bits_name)));
-                uart_word_length_t stop_bits = serial_str_to_stop_bits(cJSON_GetStringValue(cJSON_GetObjectItem(json, stop_bits_name)));
-                uart_parity_t parity = serial_str_to_parity(cJSON_GetStringValue(cJSON_GetObjectItem(json, parity_name)));
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            if (!serial_json) return ESP_ERR_INVALID_SIZE;
 
-                RETURN_ON_ERROR(serial_set_config(id, mode, baud_rate, data_bits, stop_bits, parity));
-            }
+            serial_mode_t mode = serial_str_to_mode(cJSON_GetObjectItem(serial_json, "mode")->valuestring);
+            int baud_rate = cJSON_GetNumberValue(cJSON_GetObjectItem(serial_json, "baudRate"));
+            uart_word_length_t data_bits = serial_str_to_data_bits(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "dataBits")));
+            uart_word_length_t stop_bits = serial_str_to_stop_bits(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "stopBits")));
+            uart_parity_t parity = serial_str_to_parity(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "parity")));
+
+            RETURN_ON_ERROR(serial_set_config(i, mode, baud_rate, data_bits, stop_bits, parity));
+
+            serial_json = serial_json->next;
         }
     }
+
+    if (serial_json) return ESP_ERR_INVALID_SIZE;  // should no item left in array
 
     return ESP_OK;
 }
@@ -645,40 +630,40 @@ cJSON* http_json_get_board_config(void)
     cJSON_AddStringToObject(json, "energyMeter", energy_meter);
     cJSON_AddBoolToObject(json, "energyMeterThreePhases", energy_meter_three_phases);
 
-    cJSON* serials_json = cJSON_CreateArray();
+    cJSON* array_json = cJSON_CreateArray();
     for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
-        if (board_config.serial[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+        if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
             cJSON* serial_json = cJSON_CreateObject();
-            cJSON_AddStringToObject(serial_json, "type", serial_type_to_str(board_config.serial[i].type));
-            cJSON_AddStringToObject(serial_json, "name", board_config.serial[i].name);
-            cJSON_AddItemToArray(serials_json, serial_json);
+            cJSON_AddStringToObject(serial_json, "type", serial_type_to_str(board_config.serials[i].type));
+            cJSON_AddStringToObject(serial_json, "name", board_config.serials[i].name);
+            cJSON_AddItemToArray(array_json, serial_json);
         }
     }
-    cJSON_AddItemToObject(json, "serial", serials_json);
+    cJSON_AddItemToObject(json, "serials", array_json);
 
-    cJSON* aux_json = cJSON_CreateArray();
-    for (int i = 0; i < BOARD_CFG_AUX_IN_COUNT; i++) {
-        if (board_cfg_is_aux_in(board_config, i)) {
-            cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in[i].name));
+    array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_input(board_config, i)) {
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_inputs[i].name));
         }
     }
-    cJSON_AddItemToObject(json, "auxIn", aux_json);
+    cJSON_AddItemToObject(json, "auxInputs", array_json);
 
-    aux_json = cJSON_CreateArray();
-    for (int i = 0; i < BOARD_CFG_AUX_OUT_COUNT; i++) {
-        if (board_cfg_is_aux_out(board_config, i)) {
-            cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out[i].name));
+    array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        if (board_cfg_is_aux_output(board_config, i)) {
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_outputs[i].name));
         }
     }
-    cJSON_AddItemToObject(json, "auxOut", aux_json);
+    cJSON_AddItemToObject(json, "auxOutputs", array_json);
 
-    aux_json = cJSON_CreateArray();
-    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_IN_COUNT; i++) {
-        if (board_cfg_is_aux_analog_in(board_config, i)) {
-            cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_analog_in[i].name));
+    array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_analog_input(board_config, i)) {
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_analog_inputs[i].name));
         }
     }
-    cJSON_AddItemToObject(json, "auxAnalogIn", aux_json);
+    cJSON_AddItemToObject(json, "auxAnalogInputs", array_json);
 
     return json;
 }

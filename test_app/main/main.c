@@ -68,13 +68,13 @@ static void fs_init(void)
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
 
-    esp_vfs_spiffs_conf_t data_conf = {
-        .base_path = "/data",
-        .partition_label = "data",
+    esp_vfs_spiffs_conf_t usr_conf = {
+        .base_path = "/usr",
+        .partition_label = "usr",
         .max_files = 5,
         .format_if_mount_failed = true,
     };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&usr_conf));
 }
 
 void app_main(void)

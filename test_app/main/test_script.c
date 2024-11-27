@@ -23,7 +23,7 @@
 #include "lualib.h"
 #include "script_watchdog.h"
 
-#define PARAMS_YAML "/data/params.yaml"
+#define PARAMS_YAML "/usr/params.yaml"
 
 static lua_State* L = NULL;
 

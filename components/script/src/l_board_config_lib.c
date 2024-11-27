@@ -67,40 +67,40 @@ int luaopen_board_config(lua_State* L)
 
     lua_newtable(L);
     for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
-        lua_pushinteger(L, board_config.serial[i].type);
+        lua_pushinteger(L, board_config.serials[i].type);
         lua_rawseti(L, -2, i + 1);
     }
-    lua_setfield(L, -2, "serial");
+    lua_setfield(L, -2, "serials");
 
     lua_pushboolean(L, board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
     lua_setfield(L, -2, "temperaturesensor");
 
     lua_newtable(L);
-    for (int i = 0; i < BOARD_CFG_AUX_IN_COUNT; i++) {
-        if (board_cfg_is_aux_in(board_config, i)) {
-            lua_pushstring(L, board_config.aux_in[i].name);
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_input(board_config, i)) {
+            lua_pushstring(L, board_config.aux_inputs[i].name);
             lua_rawseti(L, -2, i + 1);
         }
     }
-    lua_setfield(L, -2, "auxin");
+    lua_setfield(L, -2, "auxinputs");
 
     lua_newtable(L);
-    for (int i = 0; i < BOARD_CFG_AUX_OUT_COUNT; i++) {
-        if (board_cfg_is_aux_out(board_config, i)) {
-            lua_pushstring(L, board_config.aux_out[i].name);
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        if (board_cfg_is_aux_output(board_config, i)) {
+            lua_pushstring(L, board_config.aux_outputs[i].name);
             lua_rawseti(L, -2, i + 1);
         }
     }
-    lua_setfield(L, -2, "auxout");
+    lua_setfield(L, -2, "auxoutputs");
 
     lua_newtable(L);
-    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_IN_COUNT; i++) {
-        if (board_cfg_is_aux_analog_in(board_config, i)) {
-            lua_pushstring(L, board_config.aux_analog_in[i].name);
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_analog_input(board_config, i)) {
+            lua_pushstring(L, board_config.aux_analog_inputs[i].name);
             lua_rawseti(L, -2, i + 1);
         }
     }
-    lua_setfield(L, -2, "auxanalogin");
+    lua_setfield(L, -2, "auxanaloginputs");
 
     return 1;
 }

@@ -22,9 +22,9 @@ void aux_init(void)
         .pin_bit_mask = 0,
     };
 
-    for (int i = 0; i < BOARD_CFG_AUX_IN_COUNT; i++) {
-        if (board_cfg_is_aux_in(board_config, i)) {
-            io_conf.pin_bit_mask |= BIT64(board_config.aux_in[i].gpio);
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_input(board_config, i)) {
+            io_conf.pin_bit_mask |= BIT64(board_config.aux_inputs[i].gpio);
         }
     }
 
@@ -37,9 +37,9 @@ void aux_init(void)
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = 0;
 
-    for (int i = 0; i < BOARD_CFG_AUX_OUT_COUNT; i++) {
-        if (board_cfg_is_aux_out(board_config, i)) {
-            io_conf.pin_bit_mask |= BIT64(board_config.aux_out[i].gpio);
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        if (board_cfg_is_aux_output(board_config, i)) {
+            io_conf.pin_bit_mask |= BIT64(board_config.aux_outputs[i].gpio);
         }
     }
 
@@ -54,18 +54,18 @@ void aux_init(void)
         .atten = ADC_ATTEN_DB_12,
     };
 
-    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_IN_COUNT; i++) {
-        if (board_cfg_is_aux_analog_in(board_config, i)) {
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.aux_analog_in[i].adc_channel, &config));
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_analog_input(board_config, i)) {
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.aux_analog_inputs[i].adc_channel, &config));
         }
     }
 }
 
 esp_err_t aux_read(const char* name, bool* value)
 {
-    for (int i = 0; i < BOARD_CFG_AUX_IN_COUNT; i++) {
-        if (board_cfg_is_aux_in(board_config, i) && !strcmp(name, board_config.aux_in[i].name)) {
-            *value = gpio_get_level(board_config.aux_in[i].gpio) == 1;
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_input(board_config, i) && !strcmp(name, board_config.aux_inputs[i].name)) {
+            *value = gpio_get_level(board_config.aux_inputs[i].gpio) == 1;
             return ESP_OK;
         }
     }
@@ -74,9 +74,9 @@ esp_err_t aux_read(const char* name, bool* value)
 
 esp_err_t aux_write(const char* name, bool value)
 {
-    for (int i = 0; i < BOARD_CFG_AUX_OUT_COUNT; i++) {
-        if (board_cfg_is_aux_out(board_config, i) && !strcmp(name, board_config.aux_out[i].name)) {
-            return gpio_set_level(board_config.aux_out[i].gpio, value);
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        if (board_cfg_is_aux_output(board_config, i) && !strcmp(name, board_config.aux_outputs[i].name)) {
+            return gpio_set_level(board_config.aux_outputs[i].gpio, value);
         }
     }
     return ESP_ERR_NOT_FOUND;
@@ -84,10 +84,10 @@ esp_err_t aux_write(const char* name, bool value)
 
 esp_err_t aux_analog_read(const char* name, int* value)
 {
-    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_IN_COUNT; i++) {
-        if (board_cfg_is_aux_analog_in(board_config, i) && !strcmp(board_config.aux_analog_in[i].name, name)) {
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_analog_input(board_config, i) && !strcmp(board_config.aux_analog_inputs[i].name, name)) {
             int raw = 0;
-            esp_err_t ret = adc_oneshot_read(adc_handle, board_config.aux_analog_in[i].adc_channel, &raw);
+            esp_err_t ret = adc_oneshot_read(adc_handle, board_config.aux_analog_inputs[i].adc_channel, &raw);
             if (ret == ESP_OK) {
                 return adc_cali_raw_to_voltage(adc_cali_handle, raw, value);
             } else {

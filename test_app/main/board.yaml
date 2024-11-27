@@ -49,25 +49,25 @@ energyMeter:
   voltageScale: 0.9
 
 # Max 4 items
-auxIn:
+auxInputs:
   - name: IN1
     gpio: 21
   - name: IN2
     gpio: 22
 
 # Max 4 items
-auxOut:
+auxOutputs:
   - name: OUT1
     gpio: 23
 
 # Max 2 items
-auxAnalogIn:
+auxAnalogInputs:
   - name: AIN1
     adcChannel: 2
   - name: AIN2
     adcChannel: 3
 
-serial:
+serials:
   - type: uart
     name: UART via USB
     rxdGpio: 3

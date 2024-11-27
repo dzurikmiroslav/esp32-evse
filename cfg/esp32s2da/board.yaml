@@ -36,13 +36,13 @@ energyMeter:
   voltageAdcChannels: [7, 8, 9]
   voltageScale: 0.47
 
-auxIn:
+auxInputs:
   - name: IN1
     gpio: 11
   - name: IN2
     gpio: 2
 
-auxOut:
+auxOutputs:
   - name: OUT1
     gpio: 17
   - name: OUT2
@@ -52,11 +52,11 @@ auxOut:
   - name: OUT4
     gpio: 14
 
-auxAnalogIn:
+auxAnalogInputs:
   - name: IN3
     adcChannel: 0
 
-serial:
+serials:
   - type: uart
     name: UART
     rxdGpio: 12

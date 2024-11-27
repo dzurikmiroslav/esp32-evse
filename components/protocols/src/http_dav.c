@@ -79,8 +79,8 @@ static void propfind_response_directory(httpd_req_t* req, const char* path)
     if (strcmp(path, "/cfg/") == 0) {
         esp_spiffs_info("cfg", &total, &used);
     }
-    if (strcmp(path, "/data/") == 0) {
-        esp_spiffs_info("data", &total, &used);
+    if (strcmp(path, "/usr/") == 0) {
+        esp_spiffs_info("usr", &total, &used);
     }
 
     httpd_resp_send_chunk(req, "<response>\n", HTTPD_RESP_USE_STRLEN);
@@ -132,10 +132,10 @@ static esp_err_t options_handler(httpd_req_t* req)
 {
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
-    if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
+    if (strcmp(path, "/") == 0 || strcmp(path, "/usr/") == 0 || strcmp(path, "/cfg/") == 0) {
         // directories
         set_resp_hdr(req, RESP_HDR_DIR);
-    } else if (strcmp(path, "/data") == 0 || strcmp(path, "/cfg") == 0) {
+    } else if (strcmp(path, "/usr") == 0 || strcmp(path, "/cfg") == 0) {
         // redirects
         char location[8];
         strcpy(location, req->uri);
@@ -163,10 +163,10 @@ static esp_err_t propfind_handler(httpd_req_t* req)
 {
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
-    if (strcmp(path, "/") == 0 || strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
+    if (strcmp(path, "/") == 0 || strcmp(path, "/usr/") == 0 || strcmp(path, "/cfg/") == 0) {
         // directories
         set_resp_hdr(req, RESP_HDR_DIR);
-    } else if (strcmp(path, "") == 0 || strcmp(path, "/data") == 0 || strcmp(path, "/cfg") == 0) {
+    } else if (strcmp(path, "") == 0 || strcmp(path, "/usr") == 0 || strcmp(path, "/cfg") == 0) {
         // redirects
         char location[8];
         strcpy(location, req->uri);
@@ -197,9 +197,9 @@ static esp_err_t propfind_handler(httpd_req_t* req)
         propfind_response_directory(req, "/");
         if (depth != 0) {
             propfind_response_directory(req, "/cfg/");
-            propfind_response_directory(req, "/data/");
+            propfind_response_directory(req, "/usr/");
         }
-    } else if (strcmp(path, "/data/") == 0 || strcmp(path, "/cfg/") == 0) {
+    } else if (strcmp(path, "/usr/") == 0 || strcmp(path, "/cfg/") == 0) {
         propfind_response_directory(req, path);
         if (depth != 0) {
             DIR* dd = opendir(path);

@@ -48,7 +48,7 @@ acRelayGpio: 26
 #   - name: IN2
 #     adcChannel: adc_ch
 
-serial:
+serials:
   - type: uart
     name: UART via USB
     rxdGpio: 3

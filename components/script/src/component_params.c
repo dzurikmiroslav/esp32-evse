@@ -7,8 +7,8 @@
 
 #include "yaml.h"
 
-#define PARAMS_YAML     "/data/params.yaml"
-#define PARAMS_TMP_YAML "/data/params_tmp.yaml"
+#define PARAMS_YAML     "/usr/params.yaml"
+#define PARAMS_TMP_YAML "/usr/params_tmp.yaml"
 #define BUF_SIZE        256
 
 #define LOG_PARSER_PROBLEM(parser) ESP_LOGW(TAG, "Parsing error: %s (line: %zu column: %zu)", parser.problem, parser.problem_mark.line, parser.problem_mark.column)

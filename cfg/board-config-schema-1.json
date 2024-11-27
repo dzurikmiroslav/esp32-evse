@@ -47,33 +47,33 @@
                 "energyMeter": {
                     "$ref": "#/definitions/EnergyMeter"
                 },
-                "auxIn": {
+                "auxInputs": {
                     "type": "array",
-                    "description": "Aux input configuration",
+                    "description": "Aux inputs configuration",
                     "maxLength": 4,
                     "items": {
-                        "$ref": "#/definitions/AuxIn"
+                        "$ref": "#/definitions/AuxInput"
                     }
                 },
-                "auxOut": {
+                "auxOutputs": {
                     "type": "array",
-                    "description": "Aux output configuration",
+                    "description": "Aux outputs configuration",
                     "maxLength": 4,
                     "items": {
-                        "$ref": "#/definitions/AuxOut"
+                        "$ref": "#/definitions/AuxOutput"
                     }
                 },
-                "auxAnalogIn": {
+                "auxAnalogInputs": {
                     "type": "array",
-                    "description": "Aux analog input configuration",
+                    "description": "Aux analog inputs configuration",
                     "maxLength": 2,
                     "items": {
-                        "$ref": "#/definitions/AuxAnalogIn"
+                        "$ref": "#/definitions/AuxAnalogInput"
                     }
                 },
-                "serial": {
+                "serials": {
                     "type": "array",
-                    "description": "Serial port configuration",
+                    "description": "Serial ports configuration",
                     "maxItems": 3,
                     "items": {
                         "$ref": "#/definitions/Serial"
@@ -237,7 +237,7 @@
             ],
             "title": "Rcm"
         },
-        "AuxIn": {
+        "AuxInput": {
             "type": "object",
             "description": "Aux input configuration",
             "additionalProperties": false,
@@ -258,7 +258,7 @@
             ],
             "title": "Aux input"
         },
-        "AuxOut": {
+        "AuxOutput": {
             "type": "object",
             "description": "Aux output configuration",
             "additionalProperties": false,
@@ -279,7 +279,7 @@
             ],
             "title": "Aux output"
         },
-        "AuxAnalogIn": {
+        "AuxAnalogInput": {
             "type": "object",
             "description": "Aux analog input configuration",
             "additionalProperties": false,

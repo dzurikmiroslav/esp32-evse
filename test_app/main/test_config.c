@@ -3,7 +3,7 @@
 
 #include "board_config_parser.h"
 
-#define BOARD_YAML "/data/board.yaml"
+#define BOARD_YAML "/usr/board.yaml"
 
 extern const char board_yaml_start[] asm("_binary_board_yaml_start");
 extern const char board_yaml_end[] asm("_binary_board_yaml_end");
@@ -61,40 +61,40 @@ TEST(config, board)
     TEST_ASSERT_EQUAL(30, config.rcm_gpio);
     TEST_ASSERT_EQUAL(31, config.rcm_test_gpio);
 
-    TEST_ASSERT_EQUAL(21, config.aux_in[0].gpio);
-    TEST_ASSERT_EQUAL_STRING("IN1", config.aux_in[0].name);
-    TEST_ASSERT_EQUAL(22, config.aux_in[1].gpio);
-    TEST_ASSERT_EQUAL_STRING("IN2", config.aux_in[1].name);
-    TEST_ASSERT_EQUAL(-1, config.aux_in[2].gpio);
-    TEST_ASSERT_EQUAL(-1, config.aux_in[3].gpio);
+    TEST_ASSERT_EQUAL(21, config.aux_inputs[0].gpio);
+    TEST_ASSERT_EQUAL_STRING("IN1", config.aux_inputs[0].name);
+    TEST_ASSERT_EQUAL(22, config.aux_inputs[1].gpio);
+    TEST_ASSERT_EQUAL_STRING("IN2", config.aux_inputs[1].name);
+    TEST_ASSERT_EQUAL(-1, config.aux_inputs[2].gpio);
+    TEST_ASSERT_EQUAL(-1, config.aux_inputs[3].gpio);
 
-    TEST_ASSERT_EQUAL(23, config.aux_out[0].gpio);
-    TEST_ASSERT_EQUAL_STRING("OUT1", config.aux_out[0].name);
-    TEST_ASSERT_EQUAL(-1, config.aux_out[1].gpio);
-    TEST_ASSERT_EQUAL(-1, config.aux_out[2].gpio);
-    TEST_ASSERT_EQUAL(-1, config.aux_out[3].gpio);
+    TEST_ASSERT_EQUAL(23, config.aux_outputs[0].gpio);
+    TEST_ASSERT_EQUAL_STRING("OUT1", config.aux_outputs[0].name);
+    TEST_ASSERT_EQUAL(-1, config.aux_outputs[1].gpio);
+    TEST_ASSERT_EQUAL(-1, config.aux_outputs[2].gpio);
+    TEST_ASSERT_EQUAL(-1, config.aux_outputs[3].gpio);
 
-    TEST_ASSERT_EQUAL(2, config.aux_analog_in[0].adc_channel);
-    TEST_ASSERT_EQUAL_STRING("AIN1", config.aux_analog_in[0].name);
-    TEST_ASSERT_EQUAL(3, config.aux_analog_in[1].adc_channel);
-    TEST_ASSERT_EQUAL_STRING("AIN2", config.aux_analog_in[1].name);
+    TEST_ASSERT_EQUAL(2, config.aux_analog_inputs[0].adc_channel);
+    TEST_ASSERT_EQUAL_STRING("AIN1", config.aux_analog_inputs[0].name);
+    TEST_ASSERT_EQUAL(3, config.aux_analog_inputs[1].adc_channel);
+    TEST_ASSERT_EQUAL_STRING("AIN2", config.aux_analog_inputs[1].name);
 
-    TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_UART, config.serial[0].type);
-    TEST_ASSERT_EQUAL_STRING("UART via USB", config.serial[0].name);
-    TEST_ASSERT_EQUAL(3, config.serial[0].rxd_gpio);
-    TEST_ASSERT_EQUAL(1, config.serial[0].txd_gpio);
-    TEST_ASSERT_EQUAL(-1, config.serial[0].rts_gpio);
+    TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_UART, config.serials[0].type);
+    TEST_ASSERT_EQUAL_STRING("UART via USB", config.serials[0].name);
+    TEST_ASSERT_EQUAL(3, config.serials[0].rxd_gpio);
+    TEST_ASSERT_EQUAL(1, config.serials[0].txd_gpio);
+    TEST_ASSERT_EQUAL(-1, config.serials[0].rts_gpio);
 
-    TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_RS485, config.serial[1].type);
-    TEST_ASSERT_EQUAL_STRING("RS485", config.serial[1].name);
-    TEST_ASSERT_EQUAL(32, config.serial[1].rxd_gpio);
-    TEST_ASSERT_EQUAL(25, config.serial[1].txd_gpio);
-    TEST_ASSERT_EQUAL(33, config.serial[1].rts_gpio);
+    TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_RS485, config.serials[1].type);
+    TEST_ASSERT_EQUAL_STRING("RS485", config.serials[1].name);
+    TEST_ASSERT_EQUAL(32, config.serials[1].rxd_gpio);
+    TEST_ASSERT_EQUAL(25, config.serials[1].txd_gpio);
+    TEST_ASSERT_EQUAL(33, config.serials[1].rts_gpio);
 
-    TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, config.serial[2].type);
-    TEST_ASSERT_EQUAL(-1, config.serial[2].rxd_gpio);
-    TEST_ASSERT_EQUAL(-1, config.serial[2].txd_gpio);
-    TEST_ASSERT_EQUAL(-1, config.serial[2].rts_gpio);
+    TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, config.serials[2].type);
+    TEST_ASSERT_EQUAL(-1, config.serials[2].rxd_gpio);
+    TEST_ASSERT_EQUAL(-1, config.serials[2].txd_gpio);
+    TEST_ASSERT_EQUAL(-1, config.serials[2].rts_gpio);
 
     TEST_ASSERT_EQUAL(16, config.onewire_gpio);
     TEST_ASSERT_TRUE(config.onewire_temp_sensor);

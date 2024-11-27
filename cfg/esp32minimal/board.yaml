@@ -11,7 +11,7 @@ pilot:
 
 acRelayGpio: 32
 
-serial:
+serials:
   - type: uart
     name: UART via USB
     rxdGpio: 3

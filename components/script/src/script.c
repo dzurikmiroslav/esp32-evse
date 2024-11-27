@@ -85,11 +85,11 @@ static void script_task_func(void* param)
 
     script_watchdog_init(L);
 
-    const char* loading_msg = "loading file '/data/init.lua'...";
+    const char* loading_msg = "loading file '/usr/init.lua'...";
     lua_writestring(loading_msg, strlen(loading_msg));
     lua_writeline();
 
-    if (luaL_dofile(L, "/data/init.lua") != LUA_OK) {
+    if (luaL_dofile(L, "/usr/init.lua") != LUA_OK) {
         const char* err = lua_tostring(L, -1);
         lua_writestring(err, strlen(err));
         lua_writeline();

@@ -37,15 +37,6 @@ typedef enum {
 void serial_init(void);
 
 /**
- * @brief Check if serial is availabale
- *
- * @param id
- * @return true
- * @return false
- */
-bool serial_is_available(serial_id_t id);
-
-/**
  * @brief Get serial mode
  *
  * @param id serial id
