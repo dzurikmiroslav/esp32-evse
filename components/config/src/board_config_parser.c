@@ -258,6 +258,13 @@ static void empty_config(board_cfg_t* config)
     config->pilot_gpio = -1;
     config->pilot_adc_channel = -1;
     config->proximity_adc_channel = -1;
+    config->socket_lock_a_gpio = -1;
+    config->socket_lock_b_gpio = -1;
+    config->socket_lock_detection_gpio = -1;
+    config->rcm_gpio = -1;
+    config->rcm_test_gpio = -1;
+    config->onewire_gpio = -1;
+
     for (uint8_t i = 0; i < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX; i++) {
         config->energy_meter_cur_adc_channel[i] = -1;
         config->energy_meter_vlt_adc_channel[i] = -1;

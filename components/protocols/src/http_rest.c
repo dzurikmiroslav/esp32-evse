@@ -22,7 +22,7 @@
 
 #define REST_BASE_PATH    "/api/v1"
 #define SCRATCH_BUFSIZE   1024
-#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_LITTLEFS_OBJ_NAME_LEN)
 #define MAX_JSON_SIZE     (50 * 1024)  // 50 KB
 #define MAX_JSON_SIZE_STR "50KB"
 #define OTA_VERSION_URL   "https://dzurikmiroslav.github.io/esp32-evse/firmware/version.txt"

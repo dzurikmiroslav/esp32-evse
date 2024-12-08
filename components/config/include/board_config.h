@@ -1,5 +1,5 @@
-#ifndef CONFIG_H_
-#define CONFIG_H_
+#ifndef BOARD_CONFIG_H_
+#define BOARD_CONFIG_H_
 
 #include <soc/soc_caps.h>
 #include <stdbool.h>
@@ -123,4 +123,4 @@ extern board_cfg_t board_config;
 
 void board_config_load(void);
 
-#endif /* CONFIG_H_ */
+#endif /* BOARD_CONFIG_H_ */

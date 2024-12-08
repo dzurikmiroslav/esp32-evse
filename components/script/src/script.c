@@ -7,6 +7,7 @@
 #include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "component_params.h"
 #include "l_aux_lib.h"
@@ -31,6 +32,8 @@
 #define NVS_ENABLED     "enabled"
 #define NVS_AUTO_RELOAD "auto_reload"
 
+SemaphoreHandle_t script_mutex = NULL;
+
 static const char* TAG = "script";
 
 static nvs_handle nvs;
@@ -46,10 +49,6 @@ static output_buffer_t* output_buffer = NULL;
 static SemaphoreHandle_t output_mutex;
 
 static bool auto_reload = false;
-
-SemaphoreHandle_t script_mutex = NULL;
-
-SemaphoreHandle_t script_file_notify_sem;
 
 static void script_task_func(void* param)
 {
@@ -85,15 +84,27 @@ static void script_task_func(void* param)
 
     script_watchdog_init(L);
 
-    const char* loading_msg = "loading file '/usr/init.lua'...";
-    lua_writestring(loading_msg, strlen(loading_msg));
-    lua_writeline();
+    char* init_file = NULL;
+    if (access("/storage/lua/init.luac", F_OK) == 0) {
+        init_file = "/storage/lua/init.luac";
+    } else if (access("/storage/lua/init.lua", F_OK) == 0) {
+        init_file = "/storage/lua/init.lua";
+    }
 
-    if (luaL_dofile(L, "/usr/init.lua") != LUA_OK) {
-        const char* err = lua_tostring(L, -1);
-        lua_writestring(err, strlen(err));
+    if (init_file) {
+        const char *loading_msg_1 =  "loading file '";
+        const char *loading_msg_2 =  "loading file '";
+        lua_writestring(loading_msg_1, strlen(loading_msg_1));
+        lua_writestring(init_file, strlen(init_file));
+        lua_writestring(loading_msg_2, strlen(loading_msg_2)); 
         lua_writeline();
-        lua_pop(L, 1);
+
+        if (luaL_dofile(L, init_file) != LUA_OK) {
+            const char* err = lua_tostring(L, -1);
+            lua_writestring(err, strlen(err));
+            lua_writeline();
+            lua_pop(L, 1);
+        }
     }
 
     while (true) {

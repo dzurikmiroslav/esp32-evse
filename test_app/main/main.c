@@ -1,11 +1,12 @@
 #include <driver/uart.h>
 #include <driver/uart_vfs.h>
+#include <esp_littlefs.h>
 #include <esp_mac.h>
 #include <esp_netif.h>
-#include <esp_spiffs.h>
 #include <esp_wifi.h>
 #include <nvs_flash.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <unity.h>
 #include <unity_fixture.h>
 
@@ -60,21 +61,17 @@ static void run_all_tests(void)
 
 static void fs_init(void)
 {
-    esp_vfs_spiffs_conf_t cfg_conf = {
-        .base_path = "/cfg",
-        .partition_label = "cfg",
-        .max_files = 1,
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = "/storage",
+        .partition_label = "storage",
         .format_if_mount_failed = true,
+        .grow_on_mount = true,
     };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
+    ESP_ERROR_CHECK(esp_vfs_littlefs_register(&conf));
 
-    esp_vfs_spiffs_conf_t usr_conf = {
-        .base_path = "/usr",
-        .partition_label = "usr",
-        .max_files = 5,
-        .format_if_mount_failed = true,
-    };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&usr_conf));
+    size_t total = 0, used = 0;
+    ESP_ERROR_CHECK(esp_littlefs_info(conf.partition_label, &total, &used));
+    printf("File system partition total size: %d, used: %d\n", total, used);
 }
 
 void app_main(void)

@@ -2,7 +2,7 @@
 
 #include <dirent.h>
 #include <esp_log.h>
-#include <esp_spiffs.h>
+#include <esp_littlefs.h>
 #include <esp_vfs.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -16,7 +16,7 @@
 
 #define DAV_BASE_PATH     "/dav"
 #define DAV_BASE_PATH_LEN 4
-#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_LITTLEFS_OBJ_NAME_LEN)
 #define SCRATCH_BUFSIZE   1024
 
 static const char* TAG = "http_dav";
@@ -77,10 +77,10 @@ static void propfind_response_directory(httpd_req_t* req, const char* path)
     size_t total = 0, used = 0;
     char str[16];
     if (strcmp(path, "/cfg/") == 0) {
-        esp_spiffs_info("cfg", &total, &used);
+        esp_littlefs_info("cfg", &total, &used);
     }
     if (strcmp(path, "/usr/") == 0) {
-        esp_spiffs_info("usr", &total, &used);
+        esp_littlefs_info("usr", &total, &used);
     }
 
     httpd_resp_send_chunk(req, "<response>\n", HTTPD_RESP_USE_STRLEN);

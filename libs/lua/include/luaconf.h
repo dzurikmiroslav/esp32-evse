@@ -223,9 +223,9 @@
 
 #else			/* }{ */
 
-#define LUA_ROOT	"/usr/local/"
-#define LUA_LDIR	LUA_ROOT "share/lua/" LUA_VDIR "/"
-#define LUA_CDIR	LUA_ROOT "lib/lua/" LUA_VDIR "/"
+#define LUA_ROOT	"/storage/lua/"
+#define LUA_LDIR	LUA_ROOT "share" LUA_VDIR "/"
+#define LUA_CDIR	LUA_ROOT "lib" LUA_VDIR "/"
 
 #if !defined(LUA_PATH_DEFAULT)
 #define LUA_PATH_DEFAULT  \
@@ -795,7 +795,7 @@ void script_output_append_buf(const char *str, uint16_t len);
 #endif /* UNIT_TEST */
 
 #undef LUA_PATH_DEFAULT
-#define LUA_PATH_DEFAULT		"/data/?.lua;" "/data/?/init.lua"
+#define LUA_PATH_DEFAULT		"/storage/lua/?.luac;" "/storage/lua/?/init.luac;" "/storage/lua/?.lua;" "/storage/lua/?/init.lua"
 
 #endif
 

@@ -21,9 +21,10 @@
 #include "lauxlib.h"
 #include "lua.h"
 #include "lualib.h"
+#include "script_utils.h"
 #include "script_watchdog.h"
 
-#define PARAMS_YAML "/usr/params.yaml"
+#define PARAMS_YAML "/storage/lua/params.yaml"
 
 static lua_State* L = NULL;
 
