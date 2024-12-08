@@ -92,11 +92,11 @@ static void script_task_func(void* param)
     }
 
     if (init_file) {
-        const char *loading_msg_1 =  "loading file '";
-        const char *loading_msg_2 =  "loading file '";
+        const char* loading_msg_1 = "loading file '";
+        const char* loading_msg_2 = "'...";
         lua_writestring(loading_msg_1, strlen(loading_msg_1));
         lua_writestring(init_file, strlen(init_file));
-        lua_writestring(loading_msg_2, strlen(loading_msg_2)); 
+        lua_writestring(loading_msg_2, strlen(loading_msg_2));
         lua_writeline();
 
         if (luaL_dofile(L, init_file) != LUA_OK) {
