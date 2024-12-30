@@ -3,8 +3,6 @@ paramstring1 = "init"
 paramnumber1 = "init"
 paramboolean1 = "init"
 
-print(package.path, package.cpath)
-
 addcomponent({
     id = "component1",
     name = "Test component 1",
