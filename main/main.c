@@ -36,6 +36,8 @@ static TaskHandle_t user_input_task;
 
 static evse_state_t led_state = -1;
 
+static RTC_NOINIT_ATTR uint8_t init_count = 0;
+
 static void reset_and_reboot(void)
 {
     ESP_LOGW(TAG, "All settings will be erased...");
@@ -197,7 +199,7 @@ static void update_leds(void)
 void app_main(void)
 {
     logger_init();
-    esp_log_set_vprintf(logger_vprintf);
+    // esp_log_set_vprintf(logger_vprintf);
 
     const esp_partition_t* running = esp_ota_get_running_partition();
     ESP_LOGI(TAG, "Running partition: %s", running->label);
@@ -228,10 +230,12 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    board_config_load();
+    if (esp_reset_reason() != ESP_RST_PANIC) init_count = 0;
+    init_count++;
+
+    board_config_load(init_count > 5);
 
     wifi_init();
     peripherals_init();
@@ -241,6 +245,8 @@ void app_main(void)
     evse_init();
     button_init();
     script_init();
+
+    init_count--;
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 5, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 5, &user_input_task);

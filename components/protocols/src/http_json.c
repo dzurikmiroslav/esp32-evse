@@ -315,13 +315,15 @@ cJSON* http_json_get_script_components(void)
     cJSON* json = cJSON_CreateArray();
 
     script_component_list_t* component_list = script_get_components();
-    script_component_entry_t* component;
-    SLIST_FOREACH (component, component_list, entries) {
-        cJSON* component_json = cJSON_CreateObject();
-        cJSON_AddStringToObject(component_json, "id", component->id);
-        cJSON_AddStringToObject(component_json, "name", component->name);
-        cJSON_AddStringToObject(component_json, "description", component->description);
-        cJSON_AddItemToArray(json, component_json);
+    if (component_list) {
+        script_component_entry_t* component;
+        SLIST_FOREACH (component, component_list, entries) {
+            cJSON* component_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(component_json, "id", component->id);
+            cJSON_AddStringToObject(component_json, "name", component->name);
+            cJSON_AddStringToObject(component_json, "description", component->description);
+            cJSON_AddItemToArray(json, component_json);
+        }
     }
 
     return json;

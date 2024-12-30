@@ -117,7 +117,7 @@ static void yaml_file_copy(FILE* dst, FILE* src)
     }
 }
 
-static void yaml_file_copy_ommit(FILE* dst, FILE* src, const char* key)
+static void yaml_file_copy_omit(FILE* dst, FILE* src, const char* key)
 {
     yaml_parser_t parser;
     yaml_emitter_t emitter;
@@ -180,7 +180,7 @@ static void yaml_file_copy_ommit(FILE* dst, FILE* src, const char* key)
     return;
 
 error:
-    ESP_LOGE(TAG, "Error copy with ommit");
+    ESP_LOGE(TAG, "Error copy with omit");
     yaml_event_delete(&event);
     yaml_parser_delete(&parser);
     yaml_emitter_delete(&emitter);
@@ -247,7 +247,7 @@ void component_params_write(const char* component, component_param_list_t* list)
     if (file) {  // some yaml exists
         FILE* src = file;
         FILE* dst = fopen(PARAMS_TMP_YAML, "w");
-        yaml_file_copy_ommit(dst, src, component);
+        yaml_file_copy_omit(dst, src, component);
         fclose(src);
         fclose(dst);
 

@@ -795,7 +795,14 @@ void script_output_append_buf(const char *str, uint16_t len);
 #endif /* UNIT_TEST */
 
 #undef LUA_PATH_DEFAULT
-#define LUA_PATH_DEFAULT		"/storage/lua/?.luac;" "/storage/lua/?/init.luac;" "/storage/lua/?.lua;" "/storage/lua/?/init.lua"
-
+#define LUA_PATH_DEFAULT        \
+    "/storage/lua/?.luac;"      \
+    "/storage/lua/?/init.luac;" \
+	"./?.luac;"                 \
+	"./?/init.luac;"            \
+	"/storage/lua/?.lua;"       \
+    "/storage/lua/?/init.lua;"  \
+	"./?.lua;"                  \
+	"./?/init.lua"				
 #endif
 

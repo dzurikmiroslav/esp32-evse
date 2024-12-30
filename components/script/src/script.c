@@ -7,7 +7,7 @@
 #include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
-#include <unistd.h>
+#include <sys/stat.h>
 
 #include "component_params.h"
 #include "l_aux_lib.h"
@@ -85,9 +85,11 @@ static void script_task_func(void* param)
     script_watchdog_init(L);
 
     char* init_file = NULL;
-    if (access("/storage/lua/init.luac", F_OK) == 0) {
+    struct stat sb;
+    // access() not works
+    if (stat("/storage/lua/init.luac", &sb) == 0) {
         init_file = "/storage/lua/init.luac";
-    } else if (access("/storage/lua/init.lua", F_OK) == 0) {
+    } else if (stat("/storage/lua/init.lua", &sb) == 0) {
         init_file = "/storage/lua/init.lua";
     }
 

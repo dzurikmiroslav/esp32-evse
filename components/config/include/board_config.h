@@ -121,6 +121,6 @@ typedef struct {
 
 extern board_cfg_t board_config;
 
-void board_config_load(void);
+void board_config_load(bool reset);
 
 #endif /* BOARD_CONFIG_H_ */

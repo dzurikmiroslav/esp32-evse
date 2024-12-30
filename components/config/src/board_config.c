@@ -7,6 +7,9 @@
 
 #include "board_config_parser.h"
 
+#define BOARD_CONFIG_YAML         "/storage/board.yaml"
+#define BOARD_CONFIG_INVALID_YAML "/storage/board_invalid.yaml"
+
 static const char* TAG = "board_config";
 
 #ifdef CONFIG_IDF_TARGET_ESP32
@@ -26,16 +29,21 @@ extern const char board_yaml_end[] asm("_binary_board_esp32s3_yaml_end");
 
 board_cfg_t board_config;
 
-void board_config_load(void)
+void board_config_load(bool reset)
 {
-    if (access("/storage/board.yaml", F_OK) != 0) {
-        ESP_LOGI(TAG, "Creating minimal config");
-        FILE* file = fopen("/storage/board.yaml", "w");
-        fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, file);
-        fclose(file);
+    if (reset) {
+        ESP_LOGW(TAG, "Removing config");
+        rename(BOARD_CONFIG_YAML, BOARD_CONFIG_INVALID_YAML);
     }
 
-    FILE* file = fopen("/storage/board.yaml", "r");
+    FILE* file = fopen(BOARD_CONFIG_YAML, "r");
+    if (!file) {
+        ESP_LOGI(TAG, "Creating minimal config");
+        file = fopen(BOARD_CONFIG_YAML, "w");
+        fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, file);
+        file = freopen(BOARD_CONFIG_YAML, "r", file);
+    }
+
     esp_err_t ret = board_config_parse_file(file, &board_config);
     fclose(file);
 
