@@ -44,7 +44,7 @@ jobs:
           pytest \
             --junit-xml=./test_app_results_esp32.xml \
             --embedded-services idf,wokwi \
-            --target=esp32
+            --target=esp32 --timeout=300
             
       - name: Upload test results for publish-results job
         uses: actions/upload-artifact@v4
