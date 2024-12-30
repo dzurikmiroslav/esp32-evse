@@ -22,7 +22,7 @@ TEST(config, minimal)
 {
     remove(BOARD_YAML);
 
-    board_config_load();
+    board_config_load(false);
 
     TEST_ASSERT_EQUAL_STRING("ESP32 minimal EVSE", board_config.device_name);
 
