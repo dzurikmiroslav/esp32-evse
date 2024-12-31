@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <unity.h>
 #include <unity_fixture.h>
@@ -61,6 +62,8 @@ TEST_SETUP(script)
 
     lua_gc(L, LUA_GCSETPAUSE, 110);
     lua_gc(L, LUA_GCSETSTEPMUL, 200);
+
+    mkdir("/storage/lua", 0777);
 }
 
 TEST_TEAR_DOWN(script)
