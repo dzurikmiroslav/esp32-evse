@@ -43,7 +43,8 @@ TEST_SETUP(script)
 
     luaL_openlibs(L);
 
-    l_component_register(L);
+    luaL_requiref(L, "component", luaopen_component, 1);
+    lua_pop(L, 1);
 
     luaL_requiref(L, "evse", luaopen_evse, 1);
     lua_pop(L, 1);

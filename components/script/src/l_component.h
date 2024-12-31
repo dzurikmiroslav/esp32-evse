@@ -6,7 +6,7 @@
 #include "lua.h"
 #include "script.h"
 
-void l_component_register(lua_State* L);
+int luaopen_component(lua_State* L);
 
 void l_component_resume(lua_State* L);
 

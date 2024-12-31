@@ -29,12 +29,30 @@ jobs:
           esp_idf_version: ${{ needs.env.outputs.esp_idf_version }}
           target: ${{ matrix.platform }}
 
-      - name: Rename file 
-        shell: bash
-        run: cp build/esp32-evse.bin ${{ matrix.platform }}-evse.bin
+      - name: Merge factory
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ needs.env.outputs.esp_idf_version }}
+          target: ${{ matrix.platform }}
+          command: esptool.py --chip ${{ matrix.platform }} merge_bin -o build/${{ matrix.platform }}-evse.factory.bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            0x1000 build/bootloader/bootloader.bin \
+            0x10000 build/esp32-evse.bin \
+            0x8000 build/partition_table/partition-table.bin \
+            0xd000 build/ota_data_initial.bin
 
-      - name: Upload artifact
+      - name: Rename file bin
+        shell: bash
+        run: cp build/esp32-evse.bin build/${{ matrix.platform }}-evse.bin
+      
+      - name: Upload artifact bin
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.platform }}
-          path: ${{ matrix.platform }}-evse.bin
+          path: build/${{ matrix.platform }}-evse.bin
+
+      - name: Upload artifact factory
+        uses: actions/upload-artifact@v4
+        with:
+          name: factory-${{ matrix.platform }}
+          path: build/${{ matrix.platform }}-evse.factory.bin
+  

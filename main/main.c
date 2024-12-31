@@ -199,7 +199,7 @@ static void update_leds(void)
 void app_main(void)
 {
     logger_init();
-    // esp_log_set_vprintf(logger_vprintf);
+    esp_log_set_vprintf(logger_vprintf);
 
     const esp_partition_t* running = esp_ota_get_running_partition();
     ESP_LOGI(TAG, "Running partition: %s", running->label);

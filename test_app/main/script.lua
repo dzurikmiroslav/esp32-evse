@@ -3,7 +3,7 @@ paramstring1 = "init"
 paramnumber1 = "init"
 paramboolean1 = "init"
 
-addcomponent({
+component.register({
     id = "component1",
     name = "Test component 1",
     description = "The test component 1",

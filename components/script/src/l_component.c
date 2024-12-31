@@ -176,7 +176,7 @@ static component_list_t* get_component_list(lua_State* L)
     return component_list;
 }
 
-static int l_add_component(lua_State* L)
+static int l_register(lua_State* L)
 {
     luaL_argcheck(L, lua_istable(L, 1), 1, "must be table");
 
@@ -225,7 +225,7 @@ static int l_add_component(lua_State* L)
     return 0;
 }
 
-static int l_component_gc(lua_State* L)
+static int l_gc(lua_State* L)
 {
     component_list_t* component_list = get_component_list(L);
 
@@ -242,21 +242,30 @@ static int l_component_gc(lua_State* L)
     return 0;
 }
 
-void l_component_register(lua_State* L)
+static const luaL_Reg lib[] = {
+    { "register", l_register },
+    { NULL, NULL },
+};
+
+static const luaL_Reg metadata[] = {
+    { "__index", NULL },
+    { "__gc", l_gc },
+    { NULL, NULL },
+};
+
+int luaopen_component(lua_State* L)
 {
-    lua_pushcfunction(L, l_add_component);
-    lua_setglobal(L, "addcomponent");
+    luaL_newlib(L, lib);
 
     component_list_t* components = (component_list_t*)lua_newuserdata(L, sizeof(component_list_t));
     SLIST_INIT(components);
+    components_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     luaL_newmetatable(L, "component");
-    lua_pushcfunction(L, l_component_gc);
-    lua_setfield(L, -2, "__gc");
+    luaL_setfuncs(L, metadata, 0);
+    lua_setmetatable(L, -1);
 
-    lua_setmetatable(L, -2);
-
-    components_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    return 1;
 }
 
 void l_component_resume(lua_State* L)
