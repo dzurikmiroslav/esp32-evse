@@ -42,13 +42,13 @@ jobs:
 
       - name: Rename file bin
         shell: bash
-        run: cp build/esp32-evse.bin build/${{ matrix.platform }}-evse.bin
+        run: cp build/esp32-evse.bin ${{ matrix.platform }}-evse.bin
       
       - name: Upload artifact bin
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.platform }}
-          path: build/${{ matrix.platform }}-evse.bin
+          path: ${{ matrix.platform }}-evse.bin
 
       - name: Upload artifact factory
         uses: actions/upload-artifact@v4
