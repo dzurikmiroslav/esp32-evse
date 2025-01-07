@@ -55,25 +55,3 @@ jobs:
         with:
           name: factory-${{ matrix.platform }}
           path: build/${{ matrix.platform }}-evse.factory.bin
-  
-      - name: Upload release bin asset
-        uses: actions/upload-release-asset@v1.0.1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ matrix.platform }}-evse.bin
-          asset_name: ${{ matrix.platform }}-evse.bin
-          asset_content_type: application/octet-stream
-  
-      - name: Upload release factory asset
-        uses: actions/upload-release-asset@v1.0.1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/${{ matrix.platform }}-evse.factory.bin
-          asset_name: ${{ matrix.platform }}-evse.factory.bin
-          asset_content_type: application/octet-stream
