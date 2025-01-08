@@ -1,0 +1,26 @@
+{
+    "name": "esp32-evse",
+    "version": "1.0.0",
+    "funding_url": "https://github.com/sponsors/dzurikmiroslav",
+    "new_install_prompt_erase": true,
+    "builds": [
+      {
+        "chipFamily": "ESP32",
+        "parts": [
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer-v1/esp32-evse.factory.bin", "offset": 0 }
+        ]
+      },
+      {
+        "chipFamily": "ESP32-S2",
+        "parts": [
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer-v1/esp32s2-evse.factory.bin", "offset": 0 }
+        ]
+      },
+      {
+        "chipFamily": "ESP32-S3",
+        "parts": [
+          { "path": "https://dzurikmiroslav.github.io/esp32-evse/web-installer-v1/esp32s3-evse.factory.bin", "offset": 0 }
+        ]
+      }
+    ]
+  }
