@@ -2,9 +2,20 @@ name: Build
 
 on:
   push:
+    tags-ignore:
+     - '**'
     branches:
       - '**'
   pull_request:
+  release:
+    types:
+      - created
+
+# on:
+#   push:
+#     branches:
+#       - '**'
+#   pull_request:
 
 jobs:
   env:
@@ -55,3 +66,25 @@ jobs:
         with:
           name: factory-${{ matrix.platform }}
           path: build/${{ matrix.platform }}-evse.factory.bin
+
+      - name: Upload release assets bin
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ matrix.platform }}-evse.bin
+          asset_name: ${{ matrix.platform }}.bin
+          asset_content_type: application/octet-stream
+
+      - name: Upload release assets factory
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/${{ matrix.platform }}-evse.factory.bin
+          asset_name: ${{ matrix.platform }}-evse.factory.bin
+          asset_content_type: application/octet-stream
