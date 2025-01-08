@@ -89,14 +89,12 @@
 
     <ol>
       <li>Connect the EVSE board to your computer using USB or serial-to-USB adapter</li>
-      <li>Select suitable firmware for your board</li>
       <li>Press <strong>Connect</strong> button and select connet serial port</li>
       <li>Confirm install in dialog, some boards must be manualy switched to flashing mode by holding WiFi buton while
         reset (ESP32-S2 EVSE DIY ALPHA)</li>
       <li>After install, press WiFi (Boot on devkit) button on board and connect to WiFi evse-XXXXXX, then open url http://192.168.4.1
       </li>
-      <li>Then manualy edit _board.yaml_ and restart device. 
-      </li>
+      <li>Then manualy edit <em>board.yaml</em> and restart device</li>
     </ol>
 
     <esp-web-install-button manifest="./manifest.json"></esp-web-install-button>
