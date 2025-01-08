@@ -11,12 +11,6 @@ on:
     types:
       - created
 
-# on:
-#   push:
-#     branches:
-#       - '**'
-#   pull_request:
-
 jobs:
   env:
     uses: ./.github/workflows/env.yaml
@@ -75,7 +69,7 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ${{ matrix.platform }}-evse.bin
-          asset_name: ${{ matrix.platform }}.bin
+          asset_name: ${{ matrix.platform }}-evse.bin
           asset_content_type: application/octet-stream
 
       - name: Upload release assets factory
