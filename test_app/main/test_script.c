@@ -25,7 +25,7 @@
 #include "script_utils.h"
 #include "script_watchdog.h"
 
-#define PARAMS_YAML "/storage/lua/params.yaml"
+#define PARAMS_YAML "/usr/lua/params.yaml"
 
 static lua_State* L = NULL;
 
@@ -64,7 +64,7 @@ TEST_SETUP(script)
     lua_gc(L, LUA_GCSETPAUSE, 110);
     lua_gc(L, LUA_GCSETSTEPMUL, 200);
 
-    mkdir("/storage/lua", 0777);
+    mkdir("/usr/lua", 0777);
 }
 
 TEST_TEAR_DOWN(script)

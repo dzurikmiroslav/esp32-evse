@@ -5,7 +5,7 @@
 #include "board_config.h"
 #include "board_config_parser.h"
 
-#define BOARD_YAML "/storage/board.yaml"
+#define BOARD_YAML "/usr/board.yaml"
 
 extern const char board_yaml_start[] asm("_binary_board_yaml_start");
 extern const char board_yaml_end[] asm("_binary_board_yaml_end");
@@ -92,7 +92,7 @@ TEST(config, minimal)
 
 TEST(config, custom)
 {
-    const char* file_name = "/storage/board1.yaml";
+    const char* file_name = "/usr/board1.yaml";
 
     FILE* config_file = fopen(file_name, "w");
     fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, config_file);
