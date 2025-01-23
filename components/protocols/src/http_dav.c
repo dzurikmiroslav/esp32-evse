@@ -139,7 +139,7 @@ static void propfind_response_directory_with_quota(httpd_req_t* req, const char*
 {
     size_t total = 0, used = 0;
     char str[16];
-    esp_littlefs_info("storage", &total, &used);
+    esp_littlefs_info("usr", &total, &used);
 
     httpd_resp_send_chunk(req, "<response>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<href>" DAV_BASE_PATH, HTTPD_RESP_USE_STRLEN);
@@ -280,7 +280,7 @@ static esp_err_t propfind_handler(httpd_req_t* req)
             set_resp_hdr(req, RESP_HDR_ROOT);
             propfind_response_start(req);
             propfind_response_directory_with_quota(req, "/");
-            propfind_response_directory(req, "/storage/");
+            propfind_response_directory(req, "/usr/");
             propfind_response_end(req);
         } else {
             set_resp_hdr(req, RESP_HDR_DIR);

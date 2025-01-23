@@ -7,8 +7,8 @@
 
 #include "board_config_parser.h"
 
-#define BOARD_CONFIG_YAML         "/storage/board.yaml"
-#define BOARD_CONFIG_INVALID_YAML "/storage/board_invalid.yaml"
+#define BOARD_CONFIG_YAML         "/usr/board.yaml"
+#define BOARD_CONFIG_INVALID_YAML "/usr/board_invalid.yaml"
 
 static const char* TAG = "board_config";
 

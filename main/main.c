@@ -141,8 +141,8 @@ static void button_init(void)
 static void fs_init(void)
 {
     esp_vfs_littlefs_conf_t conf = {
-        .base_path = "/storage",
-        .partition_label = "storage",
+        .base_path = "/usr",
+        .partition_label = "usr",
         .format_if_mount_failed = true,
         .grow_on_mount = true,
     };

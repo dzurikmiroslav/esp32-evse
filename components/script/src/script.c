@@ -88,10 +88,10 @@ static void script_task_func(void* param)
     char* init_file = NULL;
     struct stat sb;
     // access() not works
-    if (stat("/storage/lua/init.luac", &sb) == 0) {
-        init_file = "/storage/lua/init.luac";
-    } else if (stat("/storage/lua/init.lua", &sb) == 0) {
-        init_file = "/storage/lua/init.lua";
+    if (stat("/usr/lua/init.luac", &sb) == 0) {
+        init_file = "/usr/lua/init.luac";
+    } else if (stat("/usr/lua/init.lua", &sb) == 0) {
+        init_file = "/usr/lua/init.lua";
     }
 
     if (init_file) {
