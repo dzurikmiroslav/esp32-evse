@@ -228,7 +228,6 @@ void app_main(void)
 
     fs_init();
 
-    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 

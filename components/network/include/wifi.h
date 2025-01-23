@@ -2,11 +2,12 @@
 #define WIFI_H_
 
 #include <esp_err.h>
-#include <esp_netif.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <stdbool.h>
 
+#define WIFI_SSID_SIZE           32  // from wifi_config_t.sta.ssid
+#define WIFI_PASSWORD_SIZE       64  // from wifi_config_t.sta.password
 #define WIFI_SCAN_SCAN_LIST_SIZE 10
 
 #define WIFI_AP_CONNECTED_BIT     BIT0
@@ -17,7 +18,7 @@
 #define WIFI_STA_MODE_BIT         BIT5
 
 typedef struct {
-    char ssid[32];
+    char ssid[WIFI_SSID_SIZE];
     int rssi;
     bool auth;
 } wifi_scan_ap_t;
@@ -35,25 +36,11 @@ extern EventGroupHandle_t wifi_event_group;
 void wifi_init(void);
 
 /**
- * @brief Return WiFi STA network interface
- *
- * @return esp_netif_t*
- */
-esp_netif_t* wifi_get_sta_netif(void);
-
-/**
- * @brief Return WiFi AP network interface
- *
- * @return esp_netif_t*
- */
-esp_netif_t* wifi_get_ap_netif(void);
-
-/**
  * @brief Set WiFi config
  *
  * @param enabled
- * @param ssid NULL value will be skiped
- * @param password NULL value will be skiped
+ * @param ssid NULL value will be skiped, max length 32
+ * @param password NULL value will be skiped, max length 64
  * @return esp_err_t
  */
 esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password);
@@ -82,6 +69,14 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps);
 void wifi_get_ssid(char* value);
 
 /**
+ * @brief Test if WiFi STA ssi, stored in NVS
+ *
+ * @return true
+ * @return false
+ */
+bool wifi_has_ssid(void);
+
+/**
  * @brief Get WiFi STA password, string length 32, stored in NVS
  *
  * @param value
@@ -99,5 +94,21 @@ void wifi_ap_start(void);
  *
  */
 void wifi_ap_stop(void);
+
+/**
+ * @brief Get WiFI ip address str
+ *
+ * @param ap true means AP, false means STA
+ * @param str at least char[15]
+ */
+void wifi_get_ip(bool ap, char* str);
+
+/**
+ * @brief Get WiFI map address str
+ *
+ * @param ap true means AP, false means STA
+ * @param str at least char[17]
+ */
+void wifi_get_mac(bool ap, char* str);
 
 #endif /* WIFI_H_ */

@@ -12,9 +12,9 @@
         config->prop = convert_fn(value);       \
         break;
 
-#define CASE_SET_VALUE_STR(level, prop, len) \
-    case level:                              \
-        strncpy(config->prop, value, len);   \
+#define CASE_SET_VALUE_STR(level, prop, size)   \
+    case level:                                 \
+        strncpy(config->prop, value, size - 1); \
         break;
 
 #define CASE_SET_SEQ_VALUE(level, prop, convert_fn, condition) \
@@ -22,9 +22,9 @@
         if (condition) config->prop = convert_fn(value);       \
         break;
 
-#define CASE_SET_SEQ_VALUE_STR(level, prop, len, condition) \
-    case level:                                             \
-        if (condition) strncpy(config->prop, value, len);   \
+#define CASE_SET_SEQ_VALUE_STR(level, prop, size, condition)   \
+    case level:                                                \
+        if (condition) strncpy(config->prop, value, size - 1); \
         break;
 
 static const char* TAG = "board_config_parser";
@@ -147,7 +147,7 @@ static key_t get_key(const char* key)
 static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_idx, const char* value)
 {
     switch (key[0]) {
-        CASE_SET_VALUE_STR(KEY_DEVICE_NAME, device_name, BOARD_CFG_DEVICE_NAME_LEN);
+        CASE_SET_VALUE_STR(KEY_DEVICE_NAME, device_name, BOARD_CFG_DEVICE_NAME_SIZE);
         CASE_SET_VALUE(KEY_LED_CHARGING_GPIO, led_charging_gpio, str_to_gpio);
         CASE_SET_VALUE(KEY_LED_ERROR_GPIO, led_error_gpio, str_to_gpio);
         CASE_SET_VALUE(KEY_LED_WIFI_GPIO, led_wifi_gpio, str_to_gpio);
@@ -201,7 +201,7 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         break;
     case KEY_AUX_IN:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
             CASE_SET_SEQ_VALUE(KEY_GPIO, aux_inputs[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
         default:
             return false;
@@ -209,7 +209,7 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         break;
     case KEY_AUX_OUT:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_outputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_outputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
             CASE_SET_SEQ_VALUE(KEY_GPIO, aux_outputs[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
         default:
             return false;
@@ -217,7 +217,7 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         break;
     case KEY_AUX_ANALOG_IN:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_analog_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_LEN, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_analog_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
             CASE_SET_SEQ_VALUE(KEY_ADC_CHANNEL, aux_analog_inputs[seq_idx[0]].adc_channel, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
         default:
             return false;
@@ -226,7 +226,7 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
     case KEY_SERIAL:
         switch (key[1]) {
             CASE_SET_SEQ_VALUE(KEY_TYPE, serials[seq_idx[0]].type, str_to_serial_type, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, serials[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_LEN, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, serials[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE(KEY_RXD_GPIO, serials[seq_idx[0]].rxd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE(KEY_TXD_GPIO, serials[seq_idx[0]].txd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE(KEY_RTS_GPIO, serials[seq_idx[0]].rts_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);

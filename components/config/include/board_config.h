@@ -5,12 +5,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BOARD_CFG_DEVICE_NAME_LEN        32
-#define BOARD_CFG_AUX_NAME_LEN           8
+#define BOARD_CFG_DEVICE_NAME_SIZE       32
+#define BOARD_CFG_AUX_NAME_SIZE          8
 #define BOARD_CFG_AUX_INPUT_COUNT        4
 #define BOARD_CFG_AUX_OUTPUT_COUNT       4
 #define BOARD_CFG_AUX_ANALOG_INPUT_COUNT 2
-#define BOARD_CFG_SERIAL_NAME_LEN        16
+#define BOARD_CFG_SERIAL_NAME_SIZE       16
 #define BOARD_CFG_SERIAL_COUNT           SOC_UART_NUM
 
 #define board_cfg_is_proximity(config)             (config.proximity_adc_channel != -1)
@@ -44,12 +44,12 @@ typedef enum {
 } board_cfg_proximity_level_t;
 
 typedef struct {
-    char name[BOARD_CFG_AUX_NAME_LEN];
+    char name[BOARD_CFG_AUX_NAME_SIZE];
     int8_t gpio;
 } board_cfg_aux_input_output_t;
 
 typedef struct {
-    char name[BOARD_CFG_AUX_NAME_LEN];
+    char name[BOARD_CFG_AUX_NAME_SIZE];
     int8_t adc_channel;
 } board_cfg_aux_analog_input_t;
 
@@ -61,7 +61,7 @@ typedef enum {
 
 typedef struct {
     board_cfg_serial_type_t type;
-    char name[BOARD_CFG_SERIAL_NAME_LEN];
+    char name[BOARD_CFG_SERIAL_NAME_SIZE];
     int8_t rxd_gpio;
     int8_t txd_gpio;
     int8_t rts_gpio;
@@ -75,7 +75,7 @@ typedef enum {
 } board_cfg_energy_meter_adc_channel_t;
 
 typedef struct {
-    char device_name[BOARD_CFG_DEVICE_NAME_LEN];
+    char device_name[BOARD_CFG_DEVICE_NAME_SIZE];
 
     int8_t led_charging_gpio;
     int8_t led_error_gpio;
