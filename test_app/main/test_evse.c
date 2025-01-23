@@ -8,6 +8,9 @@
 #include "evse.h"
 #include "peripherals_mock.h"
 
+extern const char component1_lua_start[] asm("_binary_component1_lua_start");
+extern const char component1_lua_end[] asm("_binary_component1_lua_end");
+
 TEST_GROUP(evse);
 
 TEST_SETUP(evse)

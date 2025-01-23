@@ -1,8 +1,6 @@
 #include "l_evse_lib.h"
 
 #include <esp_log.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <math.h>
 #include <string.h>
 
@@ -11,15 +9,6 @@
 #include "lauxlib.h"
 #include "lua.h"
 #include "temp_sensor.h"
-
-typedef struct {
-    TickType_t tick_100ms;
-    TickType_t tick_250ms;
-    TickType_t tick_1s;
-    int drivers_ref;
-} evse_userdata_t;
-
-static int userdata_ref = LUA_NOREF;
 
 static int l_get_state(lua_State* L)
 {
@@ -127,112 +116,6 @@ static int l_get_high_temperature(lua_State* L)
     return 1;
 }
 
-static int l_add_driver(lua_State* L)
-{
-    luaL_argcheck(L, lua_istable(L, 1), 1, "Must be table");
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
-    evse_userdata_t* userdata = lua_touserdata(L, -1);
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
-
-    lua_pushvalue(L, 1);
-    lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
-
-    return 0;
-}
-
-static void call_field_event(lua_State* L, const char* event)
-{
-    lua_getfield(L, -1, event);
-    if (lua_isfunction(L, -1)) {
-        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-            const char* err = lua_tostring(L, -1);
-            lua_writestring(err, strlen(err));
-            lua_writeline();
-            lua_pop(L, 1);
-        }
-    } else {
-        lua_pop(L, 1);
-    }
-}
-
-void l_evse_process(lua_State* L)
-{
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
-    evse_userdata_t* userdata = lua_touserdata(L, -1);
-
-    TickType_t now = xTaskGetTickCount();
-
-    bool every_100ms = false;
-    if (now - userdata->tick_100ms >= pdMS_TO_TICKS(100)) {
-        userdata->tick_100ms = now;
-        every_100ms = true;
-    }
-
-    bool every_250ms = false;
-    if (now - userdata->tick_250ms >= pdMS_TO_TICKS(250)) {
-        userdata->tick_250ms = now;
-        every_250ms = true;
-    }
-
-    bool every_1s = false;
-    if (now - userdata->tick_1s >= pdMS_TO_TICKS(1000)) {
-        userdata->tick_1s = now;
-        every_1s = true;
-    }
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
-
-    int len = lua_rawlen(L, -1);
-    for (int i = 1; i <= len; i++) {
-        lua_rawgeti(L, -1, i);
-
-        call_field_event(L, "loop");
-        if (every_100ms) {
-            call_field_event(L, "every100ms");
-        }
-        if (every_250ms) {
-            call_field_event(L, "every250ms");
-        }
-        if (every_1s) {
-            call_field_event(L, "every1s");
-        }
-
-        lua_pop(L, 1);
-    }
-
-    lua_pop(L, 2);
-}
-
-uint8_t l_evse_get_driver_count(lua_State* L)
-{
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
-    evse_userdata_t* userdata = lua_touserdata(L, -1);
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
-
-    int len = lua_rawlen(L, -1);
-
-    lua_pop(L, 2);
-
-    return len;
-}
-
-void l_evse_get_driver(lua_State* L, uint8_t index)
-{
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata_ref);
-    evse_userdata_t* userdata = lua_touserdata(L, -1);
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->drivers_ref);
-
-    lua_rawgeti(L, -1, index + 1);
-
-    lua_remove(L, -2);
-
-    lua_remove(L, -2);
-}
-
 static const luaL_Reg lib[] = {
     // states
     { "STATEA", NULL },
@@ -270,7 +153,6 @@ static const luaL_Reg lib[] = {
     { "getcurrent", l_get_current },
     { "getlowtemperature", l_get_low_temperature },
     { "gethightemperature", l_get_high_temperature },
-    { "adddriver", l_add_driver },
     { NULL, NULL },
 };
 
@@ -328,17 +210,6 @@ int luaopen_evse(lua_State* L)
 
     lua_pushinteger(L, EVSE_ERR_TEMPERATURE_FAULT_BIT);
     lua_setfield(L, -2, "ERRTEMPERATUREFAULTBIT");
-
-    evse_userdata_t* userdata = (evse_userdata_t*)lua_newuserdatauv(L, sizeof(evse_userdata_t), 0);
-    userdata_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    TickType_t now = xTaskGetTickCount();
-    userdata->tick_100ms = now;
-    userdata->tick_250ms = now;
-    userdata->tick_1s = now;
-
-    lua_newtable(L);
-    userdata->drivers_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 1;
 }

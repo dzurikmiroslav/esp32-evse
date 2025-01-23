@@ -9,116 +9,98 @@
 #include "lauxlib.h"
 #include "lua.h"
 
+#define ENERGY_METER_NONE    0
+#define ENERGY_METER_CUR     1
+#define ENERGY_METER_CUR_VLT 2
+
 int luaopen_board_config(lua_State* L)
 {
     lua_createtable(L, 0, 20);
 
-    lua_pushinteger(L, BOARD_CONFIG_ENERGY_METER_NONE);
+    lua_pushinteger(L, ENERGY_METER_NONE);
     lua_setfield(L, -2, "ENERGYMETERNONE");
 
-    lua_pushinteger(L, BOARD_CONFIG_ENERGY_METER_CUR);
+    lua_pushinteger(L, ENERGY_METER_CUR);
     lua_setfield(L, -2, "ENERGYMETERCUR");
 
-    lua_pushinteger(L, BOARD_CONFIG_ENERGY_METER_CUR_VLT);
+    lua_pushinteger(L, ENERGY_METER_CUR_VLT);
     lua_setfield(L, -2, "ENERGYMETERCURVLT");
 
-    lua_pushinteger(L, BOARD_CONFIG_SERIAL_NONE);
-    lua_setfield(L, -2, "SERIALNONE");
+    lua_pushinteger(L, BOARD_CFG_SERIAL_TYPE_NONE);
+    lua_setfield(L, -2, "SERIALTYPENONE");
 
-    lua_pushinteger(L, BOARD_CONFIG_SERIAL_UART);
-    lua_setfield(L, -2, "SERIALUART");
+    lua_pushinteger(L, BOARD_CFG_SERIAL_TYPE_UART);
+    lua_setfield(L, -2, "SERIALTYPEUART");
 
-    lua_pushinteger(L, BOARD_CONFIG_SERIAL_RS485);
-    lua_setfield(L, -2, "SERIALRS485");
+    lua_pushinteger(L, BOARD_CFG_SERIAL_TYPE_RS485);
+    lua_setfield(L, -2, "SERIALTYPERS485");
 
     lua_pushstring(L, board_config.device_name);
     lua_setfield(L, -2, "devicename");
 
-    lua_pushboolean(L, board_config.proximity);
+    lua_pushboolean(L, board_cfg_is_proximity(board_config));
     lua_setfield(L, -2, "proximity");
 
-    lua_pushboolean(L, board_config.socket_lock);
+    lua_pushboolean(L, board_cfg_is_socket_lock(board_config));
     lua_setfield(L, -2, "socketlock");
 
-    lua_pushboolean(L, board_config.rcm);
+    lua_pushboolean(L, board_cfg_is_rcm(board_config));
     lua_setfield(L, -2, "rcm");
 
-    lua_pushinteger(L, board_config.energy_meter);
+    int energy_meter = ENERGY_METER_NONE;
+    bool energy_meter_three_phases = false;
+    if (board_cfg_is_energy_meter_cur(board_config)) {
+        if (board_cfg_is_energy_meter_vlt(board_config)) {
+            energy_meter = ENERGY_METER_CUR_VLT;
+            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
+        } else {
+            energy_meter = ENERGY_METER_CUR;
+            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config);
+        }
+    }
+
+    lua_pushinteger(L, energy_meter);
     lua_setfield(L, -2, "energymeter");
 
-    lua_pushboolean(L, board_config.energy_meter_three_phases);
+    lua_pushboolean(L, energy_meter_three_phases);
     lua_setfield(L, -2, "energymeterthreephases");
 
-    lua_pushinteger(L, board_config.serial_1);
-    lua_setfield(L, -2, "serial1");
+    lua_newtable(L);
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        lua_pushinteger(L, board_config.serials[i].type);
+        lua_rawseti(L, -2, i + 1);
+    }
+    lua_setfield(L, -2, "serials");
 
-    lua_pushinteger(L, board_config.serial_2);
-    lua_setfield(L, -2, "serial2");
-
-#if SOC_UART_NUM > 2
-    lua_pushinteger(L, board_config.serial_3);
-#else
-    lua_pushinteger(L, BOARD_CONFIG_SERIAL_NONE);
-#endif
-    lua_setfield(L, -2, "serial3");
-
-    lua_pushboolean(L, board_config.onewire);
-    lua_setfield(L, -2, "onewire");
-
-    lua_pushboolean(L, board_config.onewire_temp_sensor);
-    lua_setfield(L, -2, "onewiretempsensor");
+    lua_pushboolean(L, board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
+    lua_setfield(L, -2, "temperaturesensor");
 
     lua_newtable(L);
-    int idx = 1;
-    if (board_config.aux_in_1) {
-        lua_pushstring(L, board_config.aux_in_1_name);
-        lua_rawseti(L, -2, idx++);
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_input(board_config, i)) {
+            lua_pushstring(L, board_config.aux_inputs[i].name);
+            lua_rawseti(L, -2, i + 1);
+        }
     }
-    if (board_config.aux_in_2) {
-        lua_pushstring(L, board_config.aux_in_2_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    if (board_config.aux_in_3) {
-        lua_pushstring(L, board_config.aux_in_3_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    if (board_config.aux_in_4) {
-        lua_pushstring(L, board_config.aux_in_4_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    lua_setfield(L, -2, "auxin");
+    lua_setfield(L, -2, "auxinputs");
 
     lua_newtable(L);
-    idx = 1;
-    if (board_config.aux_out_1) {
-        lua_pushstring(L, board_config.aux_out_1_name);
-        lua_rawseti(L, -2, idx++);
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        if (board_cfg_is_aux_output(board_config, i)) {
+            lua_pushstring(L, board_config.aux_outputs[i].name);
+            lua_rawseti(L, -2, i + 1);
+        }
     }
-    if (board_config.aux_out_2) {
-        lua_pushstring(L, board_config.aux_out_2_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    if (board_config.aux_out_3) {
-        lua_pushstring(L, board_config.aux_out_3_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    if (board_config.aux_out_4) {
-        lua_pushstring(L, board_config.aux_out_4_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    lua_setfield(L, -2, "auxout");
+    lua_setfield(L, -2, "auxoutputs");
 
     lua_newtable(L);
-    idx = 1;
-    if (board_config.aux_ain_1) {
-        lua_pushstring(L, board_config.aux_ain_1_name);
-        lua_rawseti(L, -2, idx++);
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_analog_input(board_config, i)) {
+            lua_pushstring(L, board_config.aux_analog_inputs[i].name);
+            lua_rawseti(L, -2, i + 1);
+        }
     }
-    if (board_config.aux_ain_2) {
-        lua_pushstring(L, board_config.aux_ain_2_name);
-        lua_rawseti(L, -2, idx++);
-    }
-    lua_setfield(L, -2, "auxain");
+    lua_setfield(L, -2, "auxanaloginputs");
 
     return 1;
 }

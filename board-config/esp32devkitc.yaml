@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=board-config-schema-1.json
+
+deviceName: ESP32-DevKitC EVSE
+
+ledChargingGpio: 19
+ledErrorGpio: 18
+ledWifiGpio: 17
+
+buttonGpio: 0
+
+pilot:
+  gpio: 27
+  adcChannel: 0
+  levels: [2405, 2099, 1792, 1484, 728]
+
+proximity:
+  adcChannel: 3
+  levels: [1650, 820, 430]
+
+acRelayGpio: 26
+
+energyMeter:
+  currentAdcChannels: [7]
+  currentScale: 0.090909091
+  voltageAdcChannels: [6]
+  voltageScale: 0.47
+
+serials:
+  - type: uart
+    name: UART via USB
+    rxdGpio: 3
+    txdGpio: 1
+  - type: rs485
+    name: RS485
+    rxdGpio: 32
+    txdGpio: 25
+    rtsGpio: 33
+  - type: uart
+    name: UART
+    rxdGpio: 2
+    txdGpio: 15
+
+onewire:
+  gpio: 16
+  temperatureSensor: true

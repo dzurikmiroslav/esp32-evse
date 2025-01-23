@@ -33,7 +33,7 @@ void pilot_init(void)
         .channel = PILOT_PWM_CHANNEL,
         .timer_sel = PILOT_PWM_TIMER,
         .intr_type = LEDC_INTR_DISABLE,
-        .gpio_num = board_config.pilot_pwm_gpio,
+        .gpio_num = board_config.pilot_gpio,
         .duty = 0,
         .hpoint = 0,
     };
@@ -99,19 +99,19 @@ void pilot_measure(pilot_voltage_t* up_voltage, bool* down_voltage_n12)
 
     ESP_LOGV(TAG, "Measure: %dmV - %dmV", low, high);
 
-    if (high >= board_config.pilot_down_threshold_12) {
+    if (high >= board_config.pilot_levels[BOARD_CFG_PILOT_LEVEL_12]) {
         *up_voltage = PILOT_VOLTAGE_12;
-    } else if (high >= board_config.pilot_down_threshold_9) {
+    } else if (high >= board_config.pilot_levels[BOARD_CFG_PILOT_LEVEL_9]) {
         *up_voltage = PILOT_VOLTAGE_9;
-    } else if (high >= board_config.pilot_down_threshold_6) {
+    } else if (high >= board_config.pilot_levels[BOARD_CFG_PILOT_LEVEL_6]) {
         *up_voltage = PILOT_VOLTAGE_6;
-    } else if (high >= board_config.pilot_down_threshold_3) {
+    } else if (high >= board_config.pilot_levels[BOARD_CFG_PILOT_LEVEL_3]) {
         *up_voltage = PILOT_VOLTAGE_3;
     } else {
         *up_voltage = PILOT_VOLTAGE_1;
     }
 
-    *down_voltage_n12 = low <= board_config.pilot_down_threshold_n12;
+    *down_voltage_n12 = low <= board_config.pilot_levels[BOARD_CFG_PILOT_LEVEL_N12];
 
     ESP_LOGV(TAG, "Up voltage %d", *up_voltage);
     ESP_LOGV(TAG, "Down voltage below 12V %d", *down_voltage_n12);

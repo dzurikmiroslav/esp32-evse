@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=board-config-schema-1.json
+
+deviceName: ESP32-S2-DA EVSE
+
+ledChargingGpio: 36
+ledErrorGpio: 37
+ledWifiGpio: 35
+
+buttonGpio: 0
+
+pilot:
+  gpio: 33
+  adcChannel: 3
+  levels: [2405, 2099, 1792, 1484, 728]
+
+proximity:
+  adcChannel: 2
+  levels: [1650, 820, 430]
+
+acRelayGpio: 21
+
+socketLock:
+  aGpio: 20
+  bGpio: 19
+  detectionGpio: 34
+  detectionDelay: 1000
+  minBreakTime: 1000
+
+rcm:
+  gpio: 41
+  testGpio: 26
+
+energyMeter:
+  currentAdcChannels: [4, 5, 6]
+  currentScale: 0.090909091
+  voltageAdcChannels: [7, 8, 9]
+  voltageScale: 0.47
+
+auxInputs:
+  - name: IN1
+    gpio: 11
+  - name: IN2
+    gpio: 2
+
+auxOutputs:
+  - name: OUT1
+    gpio: 17
+  - name: OUT2
+    gpio: 16
+  - name: OUT3
+    gpio: 15
+  - name: OUT4
+    gpio: 14
+
+auxAnalogInputs:
+  - name: IN3
+    adcChannel: 0
+
+serials:
+  - type: uart
+    name: UART
+    rxdGpio: 12
+    txdGpio: 13
+  - type: rs485
+    name: RS-485
+    rxdGpio: 40
+    txdGpio: 38
+    rtsGpio: 39
+
+onewire:
+  gpio: 42
+  temperatureSensor: true

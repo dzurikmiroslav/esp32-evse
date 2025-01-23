@@ -35,17 +35,17 @@ void led_init(void)
         .pin_bit_mask = 0,
     };
 
-    if (board_config.led_wifi) {
+    if (board_config.led_wifi_gpio != -1) {
         leds[LED_ID_WIFI].gpio = board_config.led_wifi_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.led_wifi_gpio);
     }
 
-    if (board_config.led_charging) {
+    if (board_config.led_charging_gpio != -1) {
         leds[LED_ID_CHARGING].gpio = board_config.led_charging_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.led_charging_gpio);
     }
 
-    if (board_config.led_error) {
+    if (board_config.led_error_gpio != -1) {
         leds[LED_ID_ERROR].gpio = board_config.led_error_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.led_error_gpio);
     }

@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=../../cfg/board-config-schema-1.json
+
+deviceName: test
+
+ledChargingGpio: 1
+ledErrorGpio: 2
+ledWifiGpio: 3
+
+buttonGpio: 4
+
+# Some unknowns fields
+unknownA: AAA
+unknownB:
+  gpio: 25
+  unknownC: [1, 2, 3]
+  unknownD:
+    - name: BBB
+      gpio: 555
+unknownD:
+  - nameD: BBB
+    gpioD: 555
+
+pilot:
+  gpio: 28
+  adcChannel: 1
+  levels: [110, 120, 130, 140, 150]
+
+proximity:
+  adcChannel: 3
+  levels: [1650, 820, 430]
+
+acRelayGpio: 26
+
+socketLock:
+  aGpio: 27
+  bGpio: 28
+  detectionGpio: 29
+  detectionDelay: 1500
+  minBreakTime: 3000
+
+rcm:
+  gpio: 30
+  testGpio: 31
+
+energyMeter:
+  currentAdcChannels: [7, 8, 9]
+  currentScale: 0.8
+  voltageAdcChannels: [10, 11, 12]
+  voltageScale: 0.9
+
+# Max 4 items
+auxInputs:
+  - name: IN1
+    gpio: 21
+  - name: IN2
+    gpio: 22
+
+# Max 4 items
+auxOutputs:
+  - name: OUT1
+    gpio: 23
+
+# Max 2 items
+auxAnalogInputs:
+  - name: AIN1
+    adcChannel: 2
+  - name: AIN2
+    adcChannel: 3
+
+serials:
+  - type: uart
+    name: UART via USB
+    rxdGpio: 3
+    txdGpio: 1
+  - type: rs485
+    name: RS485
+    rxdGpio: 32
+    txdGpio: 25
+    rtsGpio: 33
+
+onewire:
+  gpio: 16
+  temperatureSensor: true

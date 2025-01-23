@@ -226,27 +226,17 @@ cJSON* http_json_get_wifi_scan(void)
 
 cJSON* http_json_get_serial_config(void)
 {
-    cJSON* json = cJSON_CreateObject();
+    cJSON* json = cJSON_CreateArray();
 
-    char mode_name[16];
-    char baud_rate_name[16];
-    char data_bits_name[16];
-    char stop_bits_name[16];
-    char parity_name[16];
-
-    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
-        if (serial_is_available(id)) {
-            sprintf(mode_name, "serial%dMode", id + 1);
-            sprintf(baud_rate_name, "serial%dBaudRate", id + 1);
-            sprintf(data_bits_name, "serial%dDataBits", id + 1);
-            sprintf(stop_bits_name, "serial%dStopBits", id + 1);
-            sprintf(parity_name, "serial%dParity", id + 1);
-
-            cJSON_AddStringToObject(json, mode_name, serial_mode_to_str(serial_get_mode(id)));
-            cJSON_AddNumberToObject(json, baud_rate_name, serial_get_baud_rate(id));
-            cJSON_AddStringToObject(json, data_bits_name, serial_data_bits_to_str(serial_get_data_bits(id)));
-            cJSON_AddStringToObject(json, stop_bits_name, serial_stop_bits_to_str(serial_get_stop_bits(id)));
-            cJSON_AddStringToObject(json, parity_name, serial_parity_to_str(serial_get_parity(id)));
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            cJSON* serial_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(serial_json, "mode", serial_mode_to_str(serial_get_mode(i)));
+            cJSON_AddNumberToObject(serial_json, "baudRate", serial_get_baud_rate(i));
+            cJSON_AddStringToObject(serial_json, "dataBits", serial_data_bits_to_str(serial_get_data_bits(i)));
+            cJSON_AddStringToObject(serial_json, "stopBits", serial_stop_bits_to_str(serial_get_stop_bits(i)));
+            cJSON_AddStringToObject(serial_json, "parity", serial_parity_to_str(serial_get_parity(i)));
+            cJSON_AddItemToArray(json, serial_json);
         }
     }
 
@@ -255,32 +245,27 @@ cJSON* http_json_get_serial_config(void)
 
 esp_err_t http_json_set_serial_config(cJSON* json)
 {
-    char mode_name[16];
-    char baud_rate_name[16];
-    char data_bits_name[16];
-    char stop_bits_name[16];
-    char parity_name[16];
     serial_reset_config();
 
-    for (serial_id_t id = 0; id < SERIAL_ID_MAX; id++) {
-        if (serial_is_available(id)) {
-            sprintf(mode_name, "serial%dMode", id + 1);
-            sprintf(baud_rate_name, "serial%dBaudRate", id + 1);
-            sprintf(data_bits_name, "serial%dDataBits", id + 1);
-            sprintf(stop_bits_name, "serial%dStopBits", id + 1);
-            sprintf(parity_name, "serial%dParity", id + 1);
+    cJSON* serial_json = json->child;
 
-            if (cJSON_IsString(cJSON_GetObjectItem(json, mode_name))) {
-                serial_mode_t mode = serial_str_to_mode(cJSON_GetObjectItem(json, mode_name)->valuestring);
-                int baud_rate = cJSON_GetNumberValue(cJSON_GetObjectItem(json, baud_rate_name));
-                uart_word_length_t data_bits = serial_str_to_data_bits(cJSON_GetStringValue(cJSON_GetObjectItem(json, data_bits_name)));
-                uart_word_length_t stop_bits = serial_str_to_stop_bits(cJSON_GetStringValue(cJSON_GetObjectItem(json, stop_bits_name)));
-                uart_parity_t parity = serial_str_to_parity(cJSON_GetStringValue(cJSON_GetObjectItem(json, parity_name)));
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            if (!serial_json) return ESP_ERR_INVALID_SIZE;
 
-                RETURN_ON_ERROR(serial_set_config(id, mode, baud_rate, data_bits, stop_bits, parity));
-            }
+            serial_mode_t mode = serial_str_to_mode(cJSON_GetObjectItem(serial_json, "mode")->valuestring);
+            int baud_rate = cJSON_GetNumberValue(cJSON_GetObjectItem(serial_json, "baudRate"));
+            uart_word_length_t data_bits = serial_str_to_data_bits(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "dataBits")));
+            uart_word_length_t stop_bits = serial_str_to_stop_bits(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "stopBits")));
+            uart_parity_t parity = serial_str_to_parity(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "parity")));
+
+            RETURN_ON_ERROR(serial_set_config(i, mode, baud_rate, data_bits, stop_bits, parity));
+
+            serial_json = serial_json->next;
         }
     }
+
+    if (serial_json) return ESP_ERR_INVALID_SIZE;  // should no item left in array
 
     return ESP_OK;
 }
@@ -309,6 +294,7 @@ cJSON* http_json_get_script_config(void)
     cJSON* json = cJSON_CreateObject();
 
     cJSON_AddBoolToObject(json, "enabled", script_is_enabled());
+    cJSON_AddBoolToObject(json, "autoReload", script_is_auto_reload());
 
     return json;
 }
@@ -316,96 +302,103 @@ cJSON* http_json_get_script_config(void)
 esp_err_t http_json_set_script_config(cJSON* json)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
+    bool auto_reload = cJSON_IsTrue(cJSON_GetObjectItem(json, "autoReload"));
 
     script_set_enabled(enabled);
+    script_set_auto_reload(auto_reload);
 
     return ESP_OK;
 }
 
-cJSON* http_json_get_script_driver_config(uint8_t index)
-{
-    cJSON* json = cJSON_CreateObject();
-
-    script_driver_t* driver = script_driver_get(index);
-    if (driver != NULL) {
-        cJSON_AddStringToObject(json, "name", driver->name);
-        cJSON_AddStringToObject(json, "description", driver->description);
-
-        cJSON* cfg_entries_json = cJSON_CreateArray();
-        for (uint8_t i = 0; i < driver->cfg_entries_count; i++) {
-            script_driver_cfg_meta_entry_t* cfg_entry = &driver->cfg_entries[i];
-            if (cfg_entry->type != SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE) {
-                cJSON* cfg_entry_json = cJSON_CreateObject();
-                cJSON_AddStringToObject(cfg_entry_json, "key", cfg_entry->key);
-                cJSON_AddStringToObject(cfg_entry_json, "name", cfg_entry->name);
-                cJSON_AddStringToObject(cfg_entry_json, "type", script_driver_cfg_entry_type_to_str(cfg_entry->type));
-                switch (cfg_entry->type) {
-                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING:
-                    cJSON_AddStringToObject(cfg_entry_json, "value", cfg_entry->value.string);
-                    break;
-                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER:
-                    cJSON_AddNumberToObject(cfg_entry_json, "value", cfg_entry->value.number);
-                    break;
-                case SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN:
-                    cJSON_AddBoolToObject(cfg_entry_json, "value", cfg_entry->value.boolean);
-                    break;
-                default:
-                    break;
-                }
-                cJSON_AddItemToArray(cfg_entries_json, cfg_entry_json);
-            }
-        }
-        cJSON_AddItemToObject(json, "config", cfg_entries_json);
-
-        script_driver_free(driver);
-    }
-
-    return json;
-}
-
-cJSON* http_json_get_script_drivers_config(void)
+cJSON* http_json_get_script_components(void)
 {
     cJSON* json = cJSON_CreateArray();
 
-    uint8_t count = script_driver_get_count();
-    for (uint8_t i = 0; i < count; i++) {
-        cJSON_AddItemToArray(json, http_json_get_script_driver_config(i));
+    script_component_list_t* component_list = script_get_components();
+    if (component_list) {
+        script_component_entry_t* component;
+        SLIST_FOREACH (component, component_list, entries) {
+            cJSON* component_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(component_json, "id", component->id);
+            cJSON_AddStringToObject(component_json, "name", component->name);
+            cJSON_AddStringToObject(component_json, "description", component->description);
+            cJSON_AddItemToArray(json, component_json);
+        }
     }
 
     return json;
 }
 
-esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json)
+cJSON* http_json_get_script_component_config(const char* id)
 {
-    cJSON* config_json = cJSON_GetObjectItem(json, "config");
-    if (cJSON_IsArray(config_json)) {
-        uint8_t cfg_entries_count = cJSON_GetArraySize(config_json);
-        script_driver_cfg_entry_t* cfg_entries = (script_driver_cfg_entry_t*)malloc(sizeof(script_driver_cfg_entry_t) * cfg_entries_count);
+    cJSON* json;
 
-        uint8_t i = 0;
-        cJSON* entry_json = NULL;
-        cJSON_ArrayForEach (entry_json, config_json) {
-            script_driver_cfg_entry_t* cfg_entry = &cfg_entries[i];
-            cfg_entry->key = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(entry_json, "key")));
-            cJSON* value_json = cJSON_GetObjectItem(entry_json, "value");
+    script_component_param_list_t* param_list = script_get_component_params(id);
+    if (param_list) {
+        json = cJSON_CreateObject();
+        cJSON* params_json = cJSON_CreateArray();
+        script_component_param_entry_t* param;
+        SLIST_FOREACH (param, param_list, entries) {
+            cJSON* param_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(param_json, "key", param->key);
+            cJSON_AddStringToObject(param_json, "name", param->name);
+            cJSON_AddStringToObject(param_json, "type", script_component_param_type_to_str(param->type));
+            switch (param->type) {
+            case SCRIPT_COMPONENT_PARAM_TYPE_STRING:
+                cJSON_AddStringToObject(param_json, "value", param->value.string);
+                break;
+            case SCRIPT_COMPONENT_PARAM_TYPE_NUMBER:
+                cJSON_AddNumberToObject(param_json, "value", param->value.number);
+                break;
+            case SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN:
+                cJSON_AddBoolToObject(param_json, "value", param->value.boolean);
+                break;
+            default:
+                break;
+            }
+            cJSON_AddItemToArray(params_json, param_json);
+        }
+        cJSON_AddItemToObject(json, "params", params_json);
+
+        script_component_params_free(param_list);
+    } else {
+        json = cJSON_CreateNull();
+    }
+
+    return json;
+}
+
+esp_err_t http_json_set_script_component_config(const char* id, cJSON* json)
+{
+    cJSON* params_json = cJSON_GetObjectItem(json, "params");
+    if (cJSON_IsArray(params_json)) {
+        script_component_param_list_t* param_list = (script_component_param_list_t*)malloc(sizeof(script_component_param_list_t));
+        SLIST_INIT(param_list);
+
+        cJSON* param_json = NULL;
+        cJSON_ArrayForEach (param_json, params_json) {
+            script_component_param_entry_t* param = (script_component_param_entry_t*)malloc(sizeof(script_component_param_entry_t));
+            param->key = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(param_json, "key")));
+            param->name = NULL;
+            cJSON* value_json = cJSON_GetObjectItem(param_json, "value");
             if (cJSON_IsString(value_json)) {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_STRING;
-                cfg_entry->value.string = strdup(value_json->valuestring);
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_STRING;
+                param->value.string = strdup(value_json->valuestring);
             } else if (cJSON_IsNumber(value_json)) {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_NUMBER;
-                cfg_entry->value.number = value_json->valuedouble;
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_NUMBER;
+                param->value.number = value_json->valuedouble;
             } else if (cJSON_IsBool(value_json)) {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_BOOLEAN;
-                cfg_entry->value.boolean = cJSON_IsTrue(value_json);
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN;
+                param->value.boolean = cJSON_IsTrue(value_json);
             } else {
-                cfg_entry->type = SCRIPT_DRIVER_CFG_ENTRY_TYPE_NONE;
+                param->type = SCRIPT_COMPONENT_PARAM_TYPE_NONE;
             }
 
-            i++;
-        };
+            SLIST_INSERT_HEAD(param_list, param, entries);
+        }
 
-        script_driver_set_config(index, cfg_entries, cfg_entries_count);
-        script_driver_cfg_entries_free(cfg_entries, cfg_entries_count);
+        script_set_component_params(id, param_list);
+        script_component_params_free(param_list);
     }
 
     return ESP_OK;
@@ -581,20 +574,14 @@ cJSON* http_json_get_info(void)
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
     cJSON_AddNumberToObject(json, "heapSize", heap_info.total_allocated_bytes);
     cJSON_AddNumberToObject(json, "maxHeapSize", heap_info.total_free_bytes + heap_info.total_allocated_bytes);
-    uint8_t mac[6];
-    char str[32];
-    esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
-    sprintf(str, MACSTR, MAC2STR(mac));
+    char str[24];
+    wifi_get_mac(false, str);
     cJSON_AddStringToObject(json, "mac", str);
-    esp_netif_ip_info_t ip_info;
-    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
-    esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
+    wifi_get_ip(false, str);
     cJSON_AddStringToObject(json, "ip", str);
-    esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
-    sprintf(str, MACSTR, MAC2STR(mac));
+    wifi_get_mac(true, str);
     cJSON_AddStringToObject(json, "macAp", str);
-    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
-    esp_ip4addr_ntoa(&ip_info.ip, str, sizeof(str));
+    wifi_get_ip(true, str);
     cJSON_AddStringToObject(json, "ipAp", str);
     cJSON_AddNumberToObject(json, "temperatureSensorCount", temp_sensor_get_count());
     cJSON_AddNumberToObject(json, "temperatureLow", temp_sensor_get_low() / 100.0);
@@ -602,12 +589,12 @@ cJSON* http_json_get_info(void)
     return json;
 }
 
-static const char* serial_to_str(board_config_serial_t serial)
+static const char* serial_type_to_str(board_cfg_serial_type_t type)
 {
-    switch (serial) {
-    case BOARD_CONFIG_SERIAL_UART:
+    switch (type) {
+    case BOARD_CFG_SERIAL_TYPE_UART:
         return "uart";
-    case BOARD_CONFIG_SERIAL_RS485:
+    case BOARD_CFG_SERIAL_TYPE_RS485:
         return "rs485";
     default:
         return "none";
@@ -619,73 +606,60 @@ cJSON* http_json_get_board_config(void)
     cJSON* json = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json, "deviceName", board_config.device_name);
-    cJSON_AddBoolToObject(json, "socketLock", board_config.socket_lock);
-    cJSON_AddBoolToObject(json, "proximity", board_config.proximity);
+    cJSON_AddBoolToObject(json, "socketLock", board_cfg_is_socket_lock(board_config));
+    cJSON_AddBoolToObject(json, "proximity", board_cfg_is_proximity(board_config));
     cJSON_AddNumberToObject(json, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
-    cJSON_AddBoolToObject(json, "rcm", board_config.rcm);
-    cJSON_AddBoolToObject(json, "temperatureSensor", board_config.onewire && board_config.onewire_temp_sensor);
-    switch (board_config.energy_meter) {
-    case BOARD_CONFIG_ENERGY_METER_CUR:
-        cJSON_AddStringToObject(json, "energyMeter", "cur");
-        break;
-    case BOARD_CONFIG_ENERGY_METER_CUR_VLT:
-        cJSON_AddStringToObject(json, "energyMeter", "cur_vlt");
-        break;
-    default:
-        cJSON_AddStringToObject(json, "energyMeter", "none");
-    }
-    cJSON_AddBoolToObject(json, "energyMeterThreePhases", board_config.energy_meter_three_phases);
+    cJSON_AddBoolToObject(json, "rcm", board_cfg_is_rcm(board_config));
+    cJSON_AddBoolToObject(json, "temperatureSensor", board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
 
-    cJSON_AddStringToObject(json, "serial1", serial_to_str(board_config.serial_1));
-    cJSON_AddStringToObject(json, "serial1Name", board_config.serial_1_name);
-    cJSON_AddStringToObject(json, "serial2", serial_to_str(board_config.serial_2));
-    cJSON_AddStringToObject(json, "serial2Name", board_config.serial_2_name);
-#if SOC_UART_NUM > 2
-    cJSON_AddStringToObject(json, "serial3", serial_to_str(board_config.serial_3));
-    cJSON_AddStringToObject(json, "serial3Name", board_config.serial_3_name);
-#else
-    cJSON_AddStringToObject(json, "serial3", serial_to_str(BOARD_CONFIG_SERIAL_NONE));
-    cJSON_AddStringToObject(json, "serial3Name", "");
-#endif
+    const char* energy_meter = "none";
+    bool energy_meter_three_phases = false;
+    if (board_cfg_is_energy_meter_cur(board_config)) {
+        if (board_cfg_is_energy_meter_vlt(board_config)) {
+            energy_meter = "cur_vlt";
+            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
+        } else {
+            energy_meter = "cur";
+            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config);
+        }
+    }
+    cJSON_AddStringToObject(json, "energyMeter", energy_meter);
+    cJSON_AddBoolToObject(json, "energyMeterThreePhases", energy_meter_three_phases);
 
-    cJSON* aux_json = cJSON_CreateArray();
-    if (board_config.aux_in_1) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_1_name));
+    cJSON* array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+        if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
+            cJSON* serial_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(serial_json, "type", serial_type_to_str(board_config.serials[i].type));
+            cJSON_AddStringToObject(serial_json, "name", board_config.serials[i].name);
+            cJSON_AddItemToArray(array_json, serial_json);
+        }
     }
-    if (board_config.aux_in_2) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_2_name));
-    }
-    if (board_config.aux_in_3) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_3_name));
-    }
-    if (board_config.aux_in_4) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_in_4_name));
-    }
-    cJSON_AddItemToObject(json, "auxIn", aux_json);
+    cJSON_AddItemToObject(json, "serials", array_json);
 
-    aux_json = cJSON_CreateArray();
-    if (board_config.aux_out_1) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_1_name));
+    array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_input(board_config, i)) {
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_inputs[i].name));
+        }
     }
-    if (board_config.aux_out_2) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_2_name));
-    }
-    if (board_config.aux_out_3) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_3_name));
-    }
-    if (board_config.aux_out_4) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_out_4_name));
-    }
-    cJSON_AddItemToObject(json, "auxOut", aux_json);
+    cJSON_AddItemToObject(json, "auxInputs", array_json);
 
-    aux_json = cJSON_CreateArray();
-    if (board_config.aux_ain_1) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_ain_1_name));
+    array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+        if (board_cfg_is_aux_output(board_config, i)) {
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_outputs[i].name));
+        }
     }
-    if (board_config.aux_ain_2) {
-        cJSON_AddItemToArray(aux_json, cJSON_CreateString(board_config.aux_ain_2_name));
+    cJSON_AddItemToObject(json, "auxOutputs", array_json);
+
+    array_json = cJSON_CreateArray();
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+        if (board_cfg_is_aux_analog_input(board_config, i)) {
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_analog_inputs[i].name));
+        }
     }
-    cJSON_AddItemToObject(json, "auxAin", aux_json);
+    cJSON_AddItemToObject(json, "auxAnalogInputs", array_json);
 
     return json;
 }

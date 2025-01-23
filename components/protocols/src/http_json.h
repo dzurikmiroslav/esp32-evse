@@ -27,11 +27,11 @@ cJSON* http_json_get_script_config(void);
 
 esp_err_t http_json_set_script_config(cJSON* json);
 
-cJSON* http_json_get_script_driver_config(uint8_t index);
+cJSON* http_json_get_script_components(void);
 
-cJSON* http_json_get_script_drivers_config(void);
+cJSON* http_json_get_script_component_config(const char* id);
 
-esp_err_t http_json_set_script_driver_config(uint8_t index, cJSON* json);
+esp_err_t http_json_set_script_component_config(const char* id, cJSON* json);
 
 cJSON* http_json_get_scheduler_config(void);
 

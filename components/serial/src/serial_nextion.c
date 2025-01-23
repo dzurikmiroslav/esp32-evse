@@ -1,7 +1,6 @@
 #include "serial_nextion.h"
 
 #include <esp_log.h>
-#include <esp_netif.h>
 #include <esp_ota_ops.h>
 #include <esp_timer.h>
 #include <string.h>
@@ -10,6 +9,7 @@
 #include "energy_meter.h"
 #include "evse.h"
 #include "temp_sensor.h"
+#include "wifi.h"
 
 #define BUF_SIZE             256
 #define NEX_RET_AUTO_SLEEP   0x86
@@ -66,7 +66,7 @@ static const char* VAR_FMT_UNDER_POWER_LIMIT = "uPowerLim.val=%" PRIu16;
 static const char* VAR_FMT_DEVICE_NAME = "devName.txt=\"%s\"";
 static const char* VAR_FMT_UPTIME = "uptime.val=%" PRIu32;
 static const char* VAR_FMT_TEMPERATURE = "temp.val=%" PRIi16;
-static const char* VAR_FMT_IP = "ip.txt=\"%d.%d.%d.%d\"";
+static const char* VAR_FMT_IP = "ip.txt=\"%s\"";
 static const char* VAR_FMT_APP_VERSION = "appVer.txt=\"%s\"";
 static const char* VAR_FMT_HEAP_SIZE = "heap.val=%" PRIu32;
 static const char* VAR_FMT_MAX_HEAP_SIZE = "maxHeap.val=%" PRIu32;
@@ -367,9 +367,9 @@ static void tx_vars(context_t* ctx)
         tx_str(tx_cmd);
     }
     if (ctx->var_sub.ip) {
-        esp_netif_ip_info_t ip_info;
-        esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
-        sprintf(tx_cmd, VAR_FMT_IP, ip_info.ip.addr & 0xFF, (ip_info.ip.addr >> 8) & 0xFF, (ip_info.ip.addr >> 16) & 0xFF, (ip_info.ip.addr >> 24) & 0xFF);
+        char str[16];
+        wifi_get_ip(false, str);
+        sprintf(tx_cmd, VAR_FMT_IP, str);
         tx_str(tx_cmd);
     }
     if (ctx->var_sub.heap_size || ctx->var_sub.max_heap_size) {

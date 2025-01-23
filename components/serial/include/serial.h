@@ -26,6 +26,7 @@ typedef enum {
     SERIAL_MODE_LOG,
     SERIAL_MODE_MODBUS,
     SERIAL_MODE_NEXTION,
+    SERIAL_MODE_SCRIPT,
     SERIAL_MODE_MAX
 } serial_mode_t;
 
@@ -34,15 +35,6 @@ typedef enum {
  *
  */
 void serial_init(void);
-
-/**
- * @brief Check if serial is availabale
- *
- * @param id
- * @return true
- * @return false
- */
-bool serial_is_available(serial_id_t id);
 
 /**
  * @brief Get serial mode

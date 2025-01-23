@@ -1,0 +1,386 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$ref": "#/definitions/BoardConfig",
+    "title": "Board config schema",
+    "definitions": {
+        "BoardConfig": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "deviceName": {
+                    "type": "string",
+                    "description": "Name of the device",
+                    "maxLength": 32
+                },
+                "ledChargingGpio": {
+                    "type": "integer",
+                    "description": "Charging led gpio number"
+                },
+                "ledErrorGpio": {
+                    "type": "integer",
+                    "description": "Error led gpio number"
+                },
+                "ledWifiGpio": {
+                    "type": "integer",
+                    "description": "WiFi led gpio number"
+                },
+                "buttonGpio": {
+                    "type": "integer",
+                    "description": "Button gpio number"
+                },
+                "pilot": {
+                    "$ref": "#/definitions/Pilot"
+                },
+                "proximity": {
+                    "$ref": "#/definitions/Proximity"
+                },
+                "acRelayGpio": {
+                    "type": "integer",
+                    "description": "AC relay gpio number for controlling mains contactor"
+                },
+                "socketLock": {
+                    "$ref": "#/definitions/SocketLock"
+                },
+                "rcm": {
+                    "$ref": "#/definitions/Rcm"
+                },
+                "energyMeter": {
+                    "$ref": "#/definitions/EnergyMeter"
+                },
+                "auxInputs": {
+                    "type": "array",
+                    "description": "Aux inputs configuration",
+                    "maxLength": 4,
+                    "items": {
+                        "$ref": "#/definitions/AuxInput"
+                    }
+                },
+                "auxOutputs": {
+                    "type": "array",
+                    "description": "Aux outputs configuration",
+                    "maxLength": 4,
+                    "items": {
+                        "$ref": "#/definitions/AuxOutput"
+                    }
+                },
+                "auxAnalogInputs": {
+                    "type": "array",
+                    "description": "Aux analog inputs configuration",
+                    "maxLength": 2,
+                    "items": {
+                        "$ref": "#/definitions/AuxAnalogInput"
+                    }
+                },
+                "serials": {
+                    "type": "array",
+                    "description": "Serial ports configuration",
+                    "maxItems": 3,
+                    "items": {
+                        "$ref": "#/definitions/Serial"
+                    }
+                },
+                "onewire": {
+                    "$ref": "#/definitions/Onewire"
+                }
+            },
+            "required": [
+                "deviceName",
+                "buttonWifiGpio",
+                "pilot",
+                "acRelayGpio"
+            ],
+            "title": "Board config"
+        },
+        "EnergyMeter": {
+            "type": "object",
+            "description": "Energy meter configuration",
+            "additionalProperties": false,
+            "properties": {
+                "currentAdcChannels": {
+                    "type": "array",
+                    "description": "Current sensing of L1, L2, L3 adc1 channels, for single phase set array with one item",
+                    "maxItems": 3,
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "currentScale": {
+                    "type": "number",
+                    "description": "Multiplier of measured current values"
+                },
+                "voltageAdcChannels": {
+                    "type": "array",
+                    "description": "Voltage sensing of L1, L2, L3 adc1 channels, for single phase set array with one item",
+                    "maxItems": 3,
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "voltageScale": {
+                    "type": "number",
+                    "description": "Multiplier of measured voltage values"
+                }
+            },
+            "required": [
+                "currentAdcChannels",
+                "currentScale"
+            ],
+            "title": "EnergyMeter"
+        },
+        "Pilot": {
+            "type": "object",
+            "description": "Control pilot configuration",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer",
+                    "description": "Generating pwm gpio number"
+                },
+                "adcChannel": {
+                    "type": "integer",
+                    "description": "Measuring adc1 channel"
+                },
+                "levels": {
+                    "type": "array",
+                    "description": "Measured threshold values for voltages 12, 9, 6, 3 -12 in mV",
+                    "minItems": 5,
+                    "maxItems": 5,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "adcChannel",
+                "gpio",
+                "levels"
+            ],
+            "title": "Pilot"
+        },
+        "Proximity": {
+            "type": "object",
+            "description": "Proximity pilot configuration",
+            "additionalProperties": false,
+            "properties": {
+                "adcChannel": {
+                    "type": "integer",
+                    "description": "Measuring adc1 channel"
+                },
+                "levels": {
+                    "type": "array",
+                    "description": "Measured threshold values for cable 13A, 20A, 32A in mV",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "adcChannel",
+                "levels"
+            ],
+            "title": "Proximity"
+        },
+        "SocketLock": {
+            "type": "object",
+            "description": "Socket lock configuration",
+            "additionalProperties": false,
+            "properties": {
+                "aGpio": {
+                    "type": "integer",
+                    "description": "Lock A gpio number"
+                },
+                "bGpio": {
+                    "type": "integer",
+                    "description": "Lock B gpio number"
+                },
+                "detectionGpio": {
+                    "type": "integer",
+                    "description": "Detection gpio number"
+                },
+                "detectionDelay": {
+                    "type": "integer",
+                    "description": "Delay after locking/unlocking for check state in ms"
+                },
+                "minBreakTime": {
+                    "type": "integer",
+                    "description": "Min break time for repeated locking/unlocking in ms"
+                }
+            },
+            "required": [
+                "aGpio",
+                "bGpio",
+                "detectionDelay",
+                "detectionGpio",
+                "minBreakTime"
+            ],
+            "title": "SocketLock"
+        },
+        "Rcm": {
+            "type": "object",
+            "description": "Residual current monitor configuration",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer",
+                    "description": "Sensing gpio number"
+                },
+                "testGpio": {
+                    "type": "integer",
+                    "description": "Test gpio number"
+                }
+            },
+            "required": [
+                "gpio",
+                "testGpio"
+            ],
+            "title": "Rcm"
+        },
+        "AuxInput": {
+            "type": "object",
+            "description": "Aux input configuration",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name",
+                    "maxLength": 8
+                },
+                "gpio": {
+                    "type": "integer",
+                    "description": "The gpio number"
+                }
+            },
+            "required": [
+                "gpio",
+                "name"
+            ],
+            "title": "Aux input"
+        },
+        "AuxOutput": {
+            "type": "object",
+            "description": "Aux output configuration",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name",
+                    "maxLength": 8
+                },
+                "gpio": {
+                    "type": "integer",
+                    "description": "The gpio number"
+                }
+            },
+            "required": [
+                "gpio",
+                "name"
+            ],
+            "title": "Aux output"
+        },
+        "AuxAnalogInput": {
+            "type": "object",
+            "description": "Aux analog input configuration",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name",
+                    "maxLength": 8
+                },
+                "adcChannel": {
+                    "type": "integer",
+                    "description": "The adc1 channel"
+                }
+            },
+            "required": [
+                "adcChannel",
+                "name"
+            ],
+            "title": "Aux analog input"
+        },
+        "Serial": {
+            "type": "object",
+            "description": "Serial port configuration",
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "Type",
+                    "enum": [
+                        "uart",
+                        "rs485"
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name",
+                    "maxLength": 16
+                },
+                "rxdGpio": {
+                    "type": "integer",
+                    "description": "RX data gpio number"
+                },
+                "txdGpio": {
+                    "type": "integer",
+                    "description": "TX data gpio number"
+                },
+                "rtsGpio": {
+                    "type": "integer",
+                    "description": "Flow control signal gpio number, required for rs485"
+                }
+            },
+            "anyOf": [
+                {
+                    "properties": {
+                        "type": {
+                            "const": "uart"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "rxdGpio",
+                        "txdGpio",
+                        "type"
+                    ]
+                },
+                {
+                    "properties": {
+                        "type": {
+                            "const": "rs485"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "rxdGpio",
+                        "txdGpio",
+                        "rtsGpio",
+                        "type"
+                    ]
+                }
+            ],
+            "title": "Serial"
+        },
+        "Onewire": {
+            "type": "object",
+            "description": "Onewire bus configuration",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer",
+                    "description": "Onewire bus gpio number"
+                },
+                "temperatureSensor": {
+                    "type": "boolean",
+                    "description": "Has temperature sensor on onewire bus"
+                }
+            },
+            "required": [
+                "gpio",
+                "temperatureSensor"
+            ],
+            "title": "Onewire"
+        }
+    }
+}

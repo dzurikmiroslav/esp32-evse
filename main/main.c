@@ -1,9 +1,9 @@
 #include <driver/gpio.h>
 #include <esp_err.h>
 #include <esp_event.h>
+#include <esp_littlefs.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
-#include <esp_spiffs.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <nvs_flash.h>
@@ -35,6 +35,8 @@ static const char* TAG = "app_main";
 static TaskHandle_t user_input_task;
 
 static evse_state_t led_state = -1;
+
+static RTC_NOINIT_ATTR uint8_t init_count = 0;
 
 static void reset_and_reboot(void)
 {
@@ -112,7 +114,7 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 {
     BaseType_t higher_task_woken = pdFALSE;
 
-    if (gpio_get_level(board_config.button_wifi_gpio)) {
+    if (gpio_get_level(board_config.button_gpio)) {
         xTaskNotifyFromISR(user_input_task, RELEASED_BIT, eSetBits, &higher_task_woken);
     } else {
         xTaskNotifyFromISR(user_input_task, PRESS_BIT, eSetBits, &higher_task_woken);
@@ -126,47 +128,29 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 static void button_init(void)
 {
     gpio_config_t conf = {
-        .pin_bit_mask = BIT64(board_config.button_wifi_gpio),
+        .pin_bit_mask = BIT64(board_config.button_gpio),
         .mode = GPIO_MODE_INPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .intr_type = GPIO_INTR_ANYEDGE,
     };
     ESP_ERROR_CHECK(gpio_config(&conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_wifi_gpio, button_isr_handler, NULL));
-}
-
-static void fs_info(esp_vfs_spiffs_conf_t* conf)
-{
-    size_t total = 0, used = 0;
-    esp_err_t ret = esp_spiffs_info(conf->partition_label, &total, &used);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get partition %s information %s", conf->partition_label, esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "Partition %s size: total: %d, used: %d", conf->partition_label, total, used);
-    }
+    ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.button_gpio, button_isr_handler, NULL));
 }
 
 static void fs_init(void)
 {
-    esp_vfs_spiffs_conf_t cfg_conf = {
-        .base_path = "/cfg",
-        .partition_label = "cfg",
-        .max_files = 1,
-        .format_if_mount_failed = false,
-    };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&cfg_conf));
-
-    esp_vfs_spiffs_conf_t data_conf = {
-        .base_path = "/data",
-        .partition_label = "data",
-        .max_files = 5,
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = "/storage",
+        .partition_label = "storage",
         .format_if_mount_failed = true,
+        .grow_on_mount = true,
     };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&data_conf));
+    ESP_ERROR_CHECK(esp_vfs_littlefs_register(&conf));
 
-    fs_info(&cfg_conf);
-    fs_info(&data_conf);
+    size_t total = 0, used = 0;
+    ESP_ERROR_CHECK(esp_littlefs_info(conf.partition_label, &total, &used));
+    ESP_LOGI(TAG, "File system partition total size: %d, used: %d", total, used);
 }
 
 static bool ota_diagnostic(void)
@@ -244,12 +228,13 @@ void app_main(void)
 
     fs_init();
 
-    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    board_config_load();
+    if (esp_reset_reason() != ESP_RST_PANIC) init_count = 0;
+    init_count++;
+
+    board_config_load(init_count > 5);
 
     wifi_init();
     peripherals_init();
@@ -259,6 +244,8 @@ void app_main(void)
     evse_init();
     button_init();
     script_init();
+
+    init_count--;
 
     xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 5, NULL);
     xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 5, &user_input_task);

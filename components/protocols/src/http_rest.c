@@ -22,7 +22,7 @@
 
 #define REST_BASE_PATH    "/api/v1"
 #define SCRATCH_BUFSIZE   1024
-#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define FILE_PATH_MAX     (ESP_VFS_PATH_MAX + CONFIG_LITTLEFS_OBJ_NAME_LEN)
 #define MAX_JSON_SIZE     (50 * 1024)  // 50 KB
 #define MAX_JSON_SIZE_STR "50KB"
 #define OTA_VERSION_URL   "https://dzurikmiroslav.github.io/esp32-evse/firmware/version.txt"
@@ -233,11 +233,11 @@ esp_err_t get_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH "/config/script") == 0) {
             root = http_json_get_script_config();
         }
-        if (strcmp(req->uri, REST_BASE_PATH "/config/script/driver") == 0) {
-            root = http_json_get_script_drivers_config();
+        if (strcmp(req->uri, REST_BASE_PATH "/config/script/components") == 0) {
+            root = http_json_get_script_components();
         }
-        if (strncmp(req->uri, REST_BASE_PATH "/config/script/driver/", strlen(REST_BASE_PATH "/config/script/driver/")) == 0) {
-            root = http_json_get_script_driver_config(atoi(req->uri + strlen(REST_BASE_PATH "/config/script/driver/")));
+        if (strncmp(req->uri, REST_BASE_PATH "/config/script/components/", strlen(REST_BASE_PATH "/config/script/components/")) == 0) {
+            root = http_json_get_script_component_config(req->uri + strlen(REST_BASE_PATH "/config/script/components/"));
         }
         if (strcmp(req->uri, REST_BASE_PATH "/config/scheduler") == 0) {
             root = http_json_get_scheduler_config();
@@ -296,8 +296,8 @@ esp_err_t post_handler(httpd_req_t* req)
         if (strcmp(req->uri, REST_BASE_PATH "/config/script") == 0) {
             ret = http_json_set_script_config(root);
         }
-        if (strncmp(req->uri, REST_BASE_PATH "/config/script/driver/", strlen(REST_BASE_PATH "/config/script/driver/")) == 0) {
-            ret = http_json_set_script_driver_config(atoi(req->uri + strlen(REST_BASE_PATH "/config/script/driver/")), root);
+        if (strncmp(req->uri, REST_BASE_PATH "/config/script/components/", strlen(REST_BASE_PATH "/config/script/components/")) == 0) {
+            ret = http_json_set_script_component_config(req->uri + strlen(REST_BASE_PATH "/config/script/components/"), root);
         }
         if (strcmp(req->uri, REST_BASE_PATH "/config/scheduler") == 0) {
             ret = http_json_set_scheduler_config(root);
@@ -318,12 +318,7 @@ esp_err_t post_handler(httpd_req_t* req)
 
             return ESP_OK;
         } else {
-            if (ret == ESP_ERR_INVALID_STATE) {
-                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, NULL);
-            } else {
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
-            }
-            // httpd_resp_send_err(req, ret == ESP_ERR_INVALID_STATE ? HTTPD_500_INTERNAL_SERVER_ERROR : HTTPD_400_BAD_REQUEST, NULL);
+            httpd_resp_send_err(req, (ret == ESP_ERR_INVALID_STATE || ret == ESP_ERR_INVALID_ARG) ? HTTPD_400_BAD_REQUEST : HTTPD_500_INTERNAL_SERVER_ERROR, NULL);
 
             return ESP_FAIL;
         }

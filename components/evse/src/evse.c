@@ -155,7 +155,7 @@ static void set_pilot(enum pilot_state_e state)
 // set socket lock, if there is one
 static void set_socket_lock(bool locked)
 {
-    if (board_config.socket_lock && socket_outlet) {
+    if (board_cfg_is_socket_lock(board_config) && socket_outlet) {
         if (error & (EVSE_ERR_LOCK_FAULT_BIT | EVSE_ERR_UNLOCK_FAULT_BIT)) {
             return;
         }
@@ -231,7 +231,7 @@ static bool charging_allowed(void)
         return false;
     }
 
-    if (socket_outlet && board_config.socket_lock && socket_lock_get_status() != SOCKET_LOCK_STATUS_IDLE) {
+    if (socket_outlet && board_cfg_is_socket_lock(board_config) && socket_lock_get_status() != SOCKET_LOCK_STATUS_IDLE) {
         return false;
     }
 
@@ -276,7 +276,7 @@ static void check_charging_limits()
 // set and clear error condition bits, depending on the configuration
 static void check_other_error_conditions()
 {
-    if (board_config.socket_lock && socket_outlet) {
+    if (board_cfg_is_socket_lock(board_config) && socket_outlet) {
         switch (socket_lock_get_status()) {
         case SOCKET_LOCK_STATUS_LOCKING_FAIL:
             set_error_bits(EVSE_ERR_LOCK_FAULT_BIT);
@@ -293,7 +293,7 @@ static void check_other_error_conditions()
         set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
     }
 
-    if (board_config.onewire && board_config.onewire_temp_sensor) {
+    if (board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor) {
         if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
         } else {
@@ -496,11 +496,11 @@ void evse_init()
     }
 
     if (nvs_get_u8(nvs, NVS_SOCKET_OUTLET, &u8) == ESP_OK) {
-        socket_outlet = u8 && board_config.proximity;
+        socket_outlet = u8 && board_cfg_is_proximity(board_config);
     }
 
     if (nvs_get_u8(nvs, NVS_RCM, &u8) == ESP_OK) {
-        rcm = u8 && board_config.rcm;
+        rcm = u8 && board_cfg_is_rcm(board_config);
     }
 
     nvs_get_u8(nvs, NVS_TEMP_THRESHOLD, &temp_threshold);
@@ -652,7 +652,7 @@ esp_err_t evse_set_socket_outlet(bool _socket_outlet)
 {
     ESP_LOGI(TAG, "Set socket outlet %d", _socket_outlet);
 
-    if (_socket_outlet && !(board_config.proximity)) {
+    if (_socket_outlet && !board_cfg_is_proximity(board_config)) {
         ESP_LOGE(TAG, "Cant work in socket outlet mode, proximity pilot not available");
         return ESP_ERR_INVALID_ARG;
     }
@@ -669,7 +669,7 @@ esp_err_t evse_set_rcm(bool _rcm)
 {
     ESP_LOGI(TAG, "Set rcm %d", _rcm);
 
-    if (_rcm && !board_config.rcm) {
+    if (_rcm && !board_cfg_is_rcm(board_config)) {
         ESP_LOGE(TAG, "Residual current monitor not available");
         return ESP_ERR_INVALID_ARG;
     }

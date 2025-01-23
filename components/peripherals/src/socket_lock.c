@@ -123,7 +123,7 @@ static void socket_lock_task_func(void* param)
 
 void socket_lock_init(void)
 {
-    if (board_config.socket_lock) {
+    if (board_cfg_is_socket_lock(board_config)) {
         ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
         nvs_get_u16(nvs, NVS_OPERATING_TIME, &operating_time);

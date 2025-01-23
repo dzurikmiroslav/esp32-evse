@@ -104,7 +104,7 @@ static void measure_single_phase_cur(uint32_t delta_ms, uint16_t charging_curren
     uint32_t sample_cur;
     float filtered_cur;
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
-        sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
+        sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
 
         cur_sens_zero[0] += (sample_cur - cur_sens_zero[0]) / ZERO_FIX;
         filtered_cur = sample_cur - cur_sens_zero[0];
@@ -137,8 +137,8 @@ static void measure_single_phase_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
     uint16_t samples = 0;
 
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
-        sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
-        sample_vlt = read_adc(board_config.energy_meter_l1_vlt_adc_channel);
+        sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
+        sample_vlt = read_adc(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
 
         cur_sens_zero[0] += (sample_cur - cur_sens_zero[0]) / ZERO_FIX;
         filtered_cur = sample_cur - cur_sens_zero[0];
@@ -173,7 +173,7 @@ static void measure_three_phases_cur(uint32_t delta_ms, uint16_t charging_curren
     uint16_t samples = 0;
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
         // L1
-        sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
+        sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
 
         cur_sens_zero[0] += (sample_cur - cur_sens_zero[0]) / ZERO_FIX;
         filtered_cur = sample_cur - cur_sens_zero[0];
@@ -181,14 +181,14 @@ static void measure_three_phases_cur(uint32_t delta_ms, uint16_t charging_curren
 
         if (three_phases) {
             // L2
-            sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
+            sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2]);
 
             cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
             filtered_cur = sample_cur - cur_sens_zero[1];
             cur_sum[1] += filtered_cur * filtered_cur;
 
             // L3
-            sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
+            sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3]);
 
             cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
             filtered_cur = sample_cur - cur_sens_zero[2];
@@ -223,8 +223,8 @@ static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
     uint16_t samples = 0;
     for (int64_t start_time = esp_timer_get_time(); esp_timer_get_time() - start_time < MEASURE_US; samples++) {
         // L1
-        sample_cur = read_adc(board_config.energy_meter_l1_cur_adc_channel);
-        sample_vlt = read_adc(board_config.energy_meter_l1_vlt_adc_channel);
+        sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
+        sample_vlt = read_adc(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
 
         cur_sens_zero[0] += (sample_cur - cur_sens_zero[0]) / ZERO_FIX;
         filtered_cur = sample_cur - cur_sens_zero[0];
@@ -236,8 +236,8 @@ static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
 
         if (three_phases) {
             // L2
-            sample_cur = read_adc(board_config.energy_meter_l2_cur_adc_channel);
-            sample_vlt = read_adc(board_config.energy_meter_l2_vlt_adc_channel);
+            sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2]);
+            sample_vlt = read_adc(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2]);
 
             cur_sens_zero[1] += (sample_cur - cur_sens_zero[1]) / ZERO_FIX;
             filtered_cur = sample_cur - cur_sens_zero[1];
@@ -248,8 +248,8 @@ static void measure_three_phases_cur_vlt(uint32_t delta_ms, uint16_t charging_cu
             vlt_sum[1] += filtered_vlt * filtered_vlt;
 
             // L3
-            sample_cur = read_adc(board_config.energy_meter_l3_cur_adc_channel);
-            sample_vlt = read_adc(board_config.energy_meter_l3_vlt_adc_channel);
+            sample_cur = read_adc(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3]);
+            sample_vlt = read_adc(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3]);
 
             cur_sens_zero[2] += (sample_cur - cur_sens_zero[2]) / ZERO_FIX;
             filtered_cur = sample_cur - cur_sens_zero[2];
@@ -283,9 +283,9 @@ static void* get_measure_fn(energy_meter_mode_t mode)
 {
     switch (mode) {
     case ENERGY_METER_MODE_CUR:
-        return board_config.energy_meter_three_phases ? measure_three_phases_cur : measure_single_phase_cur;
+        return board_cfg_is_energy_meter_vlt_3p(board_config) ? measure_three_phases_cur : measure_single_phase_cur;
     case ENERGY_METER_MODE_CUR_VLT:
-        return board_config.energy_meter_three_phases ? measure_three_phases_cur_vlt : measure_single_phase_cur_vlt;
+        return board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config) ? measure_three_phases_cur_vlt : measure_single_phase_cur_vlt;
     default:
         return measure_dummy;
     }
@@ -310,44 +310,34 @@ void energy_meter_init(void)
         three_phases = u8;
     }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
-        vlt[0] = ac_voltage;
+    if (board_cfg_is_energy_meter_cur(board_config)) {
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1], &config));
+        cur_sens_zero[0] = get_zero(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
 
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l1_cur_adc_channel, &config));
-        if (board_config.energy_meter_three_phases) {
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l2_cur_adc_channel, &config));
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l3_cur_adc_channel, &config));
+        if (board_cfg_is_energy_meter_vlt_3p(board_config)) {
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2], &config));
+            cur_sens_zero[1] = get_zero(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2]);
+
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3], &config));
+            cur_sens_zero[2] = get_zero(board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3]);
         }
-    }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l1_cur_adc_channel, &config));
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l1_vlt_adc_channel, &config));
-
-        if (board_config.energy_meter_three_phases) {
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l2_cur_adc_channel, &config));
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l3_cur_adc_channel, &config));
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l2_vlt_adc_channel, &config));
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_l3_vlt_adc_channel, &config));
-        }
-    }
-
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR || board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
-        cur_sens_zero[0] = get_zero(board_config.energy_meter_l1_cur_adc_channel);
-        if (board_config.energy_meter_three_phases) {
-            cur_sens_zero[1] = get_zero(board_config.energy_meter_l2_cur_adc_channel);
-            cur_sens_zero[2] = get_zero(board_config.energy_meter_l3_cur_adc_channel);
-        }
         ESP_LOGI(TAG, "Current zero %f %f %f", cur_sens_zero[0], cur_sens_zero[1], cur_sens_zero[2]);
+    }
 
-        if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR_VLT) {
-            vlt_sens_zero[0] = get_zero(board_config.energy_meter_l1_vlt_adc_channel);
-            if (board_config.energy_meter_three_phases) {
-                vlt_sens_zero[1] = get_zero(board_config.energy_meter_l2_vlt_adc_channel);
-                vlt_sens_zero[2] = get_zero(board_config.energy_meter_l3_vlt_adc_channel);
-            }
-            ESP_LOGI(TAG, "Voltage zero %f %f %f", vlt_sens_zero[0], vlt_sens_zero[1], vlt_sens_zero[2]);
+    if (board_cfg_is_energy_meter_vlt(board_config)) {
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1], &config));
+        vlt_sens_zero[0] = get_zero(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1]);
+
+        if (board_cfg_is_energy_meter_vlt_3p(board_config)) {
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2], &config));
+            vlt_sens_zero[1] = get_zero(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2]);
+
+            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3], &config));
+            vlt_sens_zero[2] = get_zero(board_config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3]);
         }
+
+        ESP_LOGI(TAG, "Voltage zero %f %f %f", vlt_sens_zero[0], vlt_sens_zero[1], vlt_sens_zero[2]);
     }
 }
 
@@ -363,18 +353,14 @@ esp_err_t energy_meter_set_mode(energy_meter_mode_t _mode)
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_NONE) {
-        if (_mode == ENERGY_METER_MODE_CUR || _mode == ENERGY_METER_MODE_CUR_VLT) {
-            ESP_LOGE(TAG, "Unsupported mode");
-            return ESP_ERR_NOT_SUPPORTED;
-        }
+    if (!board_cfg_is_energy_meter_cur(board_config) && _mode != ENERGY_METER_MODE_DUMMY) {
+        ESP_LOGE(TAG, "Unsupported mode");
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
-    if (board_config.energy_meter == BOARD_CONFIG_ENERGY_METER_CUR) {
-        if (_mode == ENERGY_METER_MODE_CUR_VLT) {
-            ESP_LOGE(TAG, "Unsupported mode");
-            return ESP_ERR_NOT_SUPPORTED;
-        }
+    if (!board_cfg_is_energy_meter_vlt(board_config) && mode == ENERGY_METER_MODE_CUR_VLT) {
+        ESP_LOGE(TAG, "Unsupported mode");
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
     mode = _mode;

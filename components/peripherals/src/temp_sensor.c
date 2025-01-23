@@ -53,7 +53,7 @@ static void temp_sensor_task_func(void* param)
 
 void temp_sensor_init(void)
 {
-    if (board_config.onewire && board_config.onewire_temp_sensor) {
+    if (board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor) {
         gpio_reset_pin(board_config.onewire_gpio);
         gpio_set_pull_mode(board_config.onewire_gpio, GPIO_PULLUP_ONLY);
 

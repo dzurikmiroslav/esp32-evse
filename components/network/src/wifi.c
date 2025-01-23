@@ -125,6 +125,8 @@ static void sta_try_start(void)
 
 void wifi_init(void)
 {
+    ESP_ERROR_CHECK(esp_netif_init());
+
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
     wifi_event_group = xEventGroupCreate();
@@ -146,16 +148,6 @@ void wifi_init(void)
     sta_try_start();
 }
 
-esp_netif_t* wifi_get_sta_netif(void)
-{
-    return sta_netif;
-}
-
-esp_netif_t* wifi_get_ap_netif(void)
-{
-    return ap_netif;
-}
-
 esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
 {
     if (enabled) {
@@ -169,12 +161,12 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
         }
     }
 
-    if (ssid != NULL && strlen(ssid) > 32) {
+    if (ssid != NULL && strlen(ssid) > WIFI_SSID_SIZE - 1) {
         ESP_LOGE(TAG, "SSID out of range");
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (password != NULL && strlen(password) > 32) {
+    if (password != NULL && strlen(password) > WIFI_PASSWORD_SIZE - 1) {
         ESP_LOGE(TAG, "Password out of range");
         return ESP_ERR_INVALID_ARG;
     }
@@ -189,7 +181,7 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
     nvs_commit(nvs);
 
     ESP_LOGI(TAG, "Stopping AP/STA");
-    xEventGroupClearBits(wifi_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT);
+    xEventGroupClearBits(wifi_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT | WIFI_AP_CONNECTED_BIT | WIFI_STA_CONNECTED_BIT);
     esp_wifi_stop();
 
     sta_try_start();
@@ -207,6 +199,7 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
     esp_wifi_scan_start(NULL, true);
     esp_wifi_scan_get_ap_num(&ap_count);
     esp_wifi_scan_get_ap_records(&number, ap_info);
+    ESP_LOGI(TAG, "Found %d APs", ap_count);
 
     for (int i = 0; (i < WIFI_SCAN_SCAN_LIST_SIZE) && (i < ap_count); i++) {
         strcpy(scan_aps[i].ssid, (const char*)ap_info[i].ssid);
@@ -226,14 +219,21 @@ bool wifi_get_enabled(void)
 
 void wifi_get_ssid(char* value)
 {
-    size_t len = 32;
+    size_t len = WIFI_SSID_SIZE - 1;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_SSID, value, &len);
 }
 
+bool wifi_has_ssid(void)
+{
+    size_t len = 0;
+    nvs_get_str(nvs, NVS_SSID, NULL, &len);
+    return len > 0;
+}
+
 void wifi_get_password(char* value)
 {
-    size_t len = 64;
+    size_t len = WIFI_PASSWORD_SIZE - 1;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_PASSWORD, value, &len);
 }
@@ -265,4 +265,18 @@ bool wifi_is_ap(void)
     wifi_mode_t mode;
     esp_wifi_get_mode(&mode);
     return mode == WIFI_MODE_APSTA;
+}
+
+void wifi_get_ip(bool ap, char* str)
+{
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(ap ? ap_netif : sta_netif, &ip_info);
+    esp_ip4addr_ntoa(&ip_info.ip, str, 15);
+}
+
+void wifi_get_mac(bool ap, char* str)
+{
+    uint8_t mac[6];
+    esp_wifi_get_mac(ap ? ESP_IF_WIFI_AP : ESP_IF_WIFI_STA, mac);
+    sprintf(str, MACSTR, MAC2STR(mac));
 }

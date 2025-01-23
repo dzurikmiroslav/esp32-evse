@@ -2,7 +2,7 @@ bitarray==2.9.2
 bitstring==4.1.4
 cffi==1.16.0
 colorama==0.4.6
-cryptography==43.0.1
+cryptography==41.0.7
 ecdsa==0.18.0
 esp-idf-panic-decoder==1.0.1
 esptool==4.7.0
