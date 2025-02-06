@@ -62,7 +62,7 @@ static void wifi_event_task_func(void* param)
             if (xEventGroupWaitBits(wifi_event_group, WIFI_AP_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_AP_CONNECTED_BIT) {
                 led_set_state(LED_ID_WIFI, 1900, 100);
                 do {
-                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT , pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_AP_DISCONNECTED_BIT));
+                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_AP_DISCONNECTED_BIT));
             } else {
                 if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
                     wifi_ap_stop();
