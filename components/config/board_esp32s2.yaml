@@ -1,6 +1,6 @@
-# yaml-language-server: $schema=../board-config-schema-1.json
+# yaml-language-server: $schema=https://github.com/dzurikmiroslav/esp32-evse/raw/refs/heads/master/board-config/board-config-schema-1.json
 
-deviceName: ESP32S2 minimal EVSE
+deviceName: ESP32-S2 minimal EVSE
 
 buttonGpio: 0
 
@@ -14,5 +14,5 @@ acRelayGpio: 5
 serials:
   - type: uart
     name: UART via USB
-    rxdGpio: 18
-    txdGpio: 17
+    rxdGpio: 44
+    txdGpio: 43

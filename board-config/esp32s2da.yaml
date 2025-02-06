@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=board-config-schema-1.json
+# yaml-language-server: $schema=https://github.com/dzurikmiroslav/esp32-evse/raw/refs/heads/master/board-config/board-config-schema-1.json
 
 deviceName: ESP32-S2-DA EVSE
 

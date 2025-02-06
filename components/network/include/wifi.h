@@ -16,6 +16,7 @@
 #define WIFI_STA_DISCONNECTED_BIT BIT3
 #define WIFI_AP_MODE_BIT          BIT4
 #define WIFI_STA_MODE_BIT         BIT5
+#define WIFI_STA_SCAN_BIT         BIT6
 
 typedef struct {
     char ssid[WIFI_SSID_SIZE];
@@ -24,7 +25,8 @@ typedef struct {
 } wifi_scan_ap_t;
 
 /**
- * @brief WiFi event group WIFI_AP_CONNECTED_BIT | WIFI_AP_DISCONNECTED_BIT | WIFI_STA_CONNECTED_BIT | WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT
+ * @brief WiFi event group WIFI_AP_CONNECTED_BIT | WIFI_AP_DISCONNECTED_BIT | WIFI_STA_CONNECTED_BIT | WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT |
+ * WIFI_STA_SCAN_BIT
  *
  */
 extern EventGroupHandle_t wifi_event_group;
@@ -51,7 +53,7 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password);
  * @return true
  * @return false
  */
-bool wifi_get_enabled(void);
+bool wifi_is_enabled(void);
 
 /**
  * @brief Scan for AP

@@ -106,7 +106,7 @@ static void improv_send_device_url(uint8_t cmd)
 
     char url[64];
     strcpy(url, "http://");
-    wifi_get_ip(false, &url[6]);
+    wifi_get_ip(false, &url[7]);
 
     improv_append_str(&data[11], &pos, url);
 
@@ -192,7 +192,7 @@ static void improv_handle_rpc_wifi_networks(void)
 static void improv_handle_rpc_wifi_settings(uint8_t* data, uint8_t data_len)
 {
     improv_send_state(IMPROV_STATE_PROVISIONED);
-
+    vTaskDelay(pdMS_TO_TICKS(1));
     uint8_t ssid_len = data[2];
     uint8_t password_len = data[3 + ssid_len];
 
@@ -208,9 +208,11 @@ static void improv_handle_rpc_wifi_settings(uint8_t* data, uint8_t data_len)
         if (wifi_set_config(true, ssid, password) == ESP_OK) {
             if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(10000)) & WIFI_STA_CONNECTED_BIT) {
                 improv_send_state(IMPROV_STATE_PROVISIONED);
+                vTaskDelay(pdMS_TO_TICKS(1));
                 improv_send_device_url(IMPROV_CMD_WIFI_SETTINGS);
             } else {
                 improv_send_state(IMPROV_STATE_STOPPED);
+                vTaskDelay(pdMS_TO_TICKS(1));
                 improv_send_error(IMPROV_ERROR_UNABLE_TO_CONNECT);
             }
         } else {
@@ -250,6 +252,8 @@ static void serial_logger_task_func(void* param)
         int len = uart_read_bytes(port, buf, IMPROV_PACKET_SIZE, pdMS_TO_TICKS(250));
         if (len > 10) {  // check to minimal improv packet size
             if (memcmp(buf, IMPROV_HEADER, sizeof(IMPROV_HEADER)) == 0) {
+                ESP_LOGW(TAG, "uart_read_bytes %d", len);
+                ESP_LOG_BUFFER_HEX(TAG, buf, len);
                 uint8_t type = buf[7];
                 uint8_t data_len = buf[8];
 

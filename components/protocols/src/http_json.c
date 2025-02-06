@@ -144,7 +144,7 @@ cJSON* http_json_get_wifi_config(void)
 
     char str[32];
 
-    cJSON_AddBoolToObject(json, "enabled", wifi_get_enabled());
+    cJSON_AddBoolToObject(json, "enabled", wifi_is_enabled());
     wifi_get_ssid(str);
     cJSON_AddStringToObject(json, "ssid", str);
 

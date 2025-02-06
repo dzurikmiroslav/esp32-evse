@@ -44,7 +44,7 @@ int logger_vprintf(const char* str, va_list l)
 {
 #ifdef CONFIG_ESP_CONSOLE_UART
     vprintf(str, l);
-#endif
+#endif /* CONFIG_ESP_CONSOLE_UART */
 
     xSemaphoreTake(mutex, portMAX_DELAY);
 

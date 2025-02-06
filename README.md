@@ -39,24 +39,19 @@ For example, on following scheme is minimal EVSE circuit with ESP32 devkit.
 
 ![Minimal circuit](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/minimal-circuit.png)
 
-For this circuit there is _board.cfg_, for more information's see [Wiki](https://github.com/dzurikmiroslav/esp32-evse/wiki/Board-config).
+For this circuit there is config file _board.yaml_, for more information's see [YAML schema](board-config/board-config-schema-1.json).
 
+```yaml
+deviceName: ESP32 minimal EVSE
 
-```bash
-#Device name
-DEVICE_NAME=ESP32 minimal EVSE
-#Button
-BUTTON_WIFI_GPIO=0
-#Pilot  
-PILOT_PWM_GPIO=33
-PILOT_ADC_CHANNEL=7
-PILOT_DOWN_THRESHOLD_12=2410
-PILOT_DOWN_THRESHOLD_9=2104
-PILOT_DOWN_THRESHOLD_6=1797
-PILOT_DOWN_THRESHOLD_3=1491
-PILOT_DOWN_THRESHOLD_N12=265
-#AC relay
-AC_RELAY_GPIO=32
+buttonGpio: 0
+
+pilot:
+  gpio: 33
+  adcChannel: 7
+  levels: [2410, 2104, 1797, 1491, 265]
+
+acRelayGpio: 32
 ```
 
 ### Web interface
