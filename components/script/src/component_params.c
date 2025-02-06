@@ -17,9 +17,6 @@ static const char* TAG = "component_params";
 
 static component_param_list_t* yaml_file_read(FILE* src, const char* key)
 {
-    component_param_list_t* list = (component_param_list_t*)malloc(sizeof(component_param_list_t));
-    SLIST_INIT(list);
-
     yaml_parser_t parser;
     yaml_event_t event;
 
@@ -27,6 +24,9 @@ static component_param_list_t* yaml_file_read(FILE* src, const char* key)
         ESP_LOGE(TAG, "Cant initialize yaml parser");
         return NULL;
     }
+
+    component_param_list_t* list = (component_param_list_t*)malloc(sizeof(component_param_list_t));
+    SLIST_INIT(list);
 
     yaml_parser_set_input_file(&parser, src);
 
