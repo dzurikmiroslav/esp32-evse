@@ -30,11 +30,22 @@ static esp_netif_t* ap_netif;
 
 EventGroupHandle_t wifi_event_group;
 
+static void sta_try_connect(void)
+{
+    EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
+    if (!(mode_bits & WIFI_STA_SCAN_BIT) && mode_bits & WIFI_STA_MODE_BIT) {
+        esp_err_t err = esp_wifi_connect();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_wifi_connect returned 0x%x", err);
+        }
+    }
+}
+
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT) {
         if (event_id == WIFI_EVENT_AP_STACONNECTED) {
-            ESP_LOGI(TAG, "STA connected");
+            ESP_LOGI(TAG, "AP STA connected");
             wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*)event_data;
             ESP_LOGI(TAG, "WiFi AP " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
             xEventGroupClearBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT);
@@ -51,15 +62,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             ESP_LOGI(TAG, "STA disconnected");
             xEventGroupClearBits(wifi_event_group, WIFI_STA_CONNECTED_BIT);
             xEventGroupSetBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT);
-            if (!(xEventGroupGetBits(wifi_event_group) & WIFI_STA_SCAN_BIT)) {
-                esp_wifi_connect();
-            }
+            sta_try_connect();
         }
         if (event_id == WIFI_EVENT_STA_START) {
             ESP_LOGI(TAG, "STA start");
-            if (!(xEventGroupGetBits(wifi_event_group) & WIFI_STA_SCAN_BIT)) {
-                esp_wifi_connect();
-            }
+            sta_try_connect();
         }
     } else if (event_base == IP_EVENT) {
         if (event_id == IP_EVENT_STA_GOT_IP || event_id == IP_EVENT_GOT_IP6) {
@@ -88,39 +95,6 @@ static esp_err_t wifi_restart(void)
 
     EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
 
-    // sta
-    wifi_config_t sta_config = {
-            .sta =
-                {
-                    .pmf_cfg =
-                        {
-                            .capable = true,
-                            .required = false,
-                        },
-                },
-        };
-    if (mode_bits & WIFI_STA_MODE_BIT) {
-        wifi_get_ssid((char*)sta_config.sta.ssid);
-        wifi_get_password((char*)sta_config.sta.password);
-    }
-    esp_wifi_set_config(ESP_IF_WIFI_STA, &sta_config);
-
-    // ap
-    if (mode_bits & WIFI_AP_MODE_BIT) {
-        wifi_config_t ap_config = {
-            .ap =
-                {
-                    .max_connection = 1,
-                    .authmode = WIFI_AUTH_OPEN,
-                },
-        };
-        uint8_t mac[6];
-        esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
-        sprintf((char*)ap_config.ap.ssid, AP_SSID, mac[3], mac[4], mac[5]);
-
-        esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config);
-    }
-
     wifi_mode_t mode;
     if (mode_bits & WIFI_AP_MODE_BIT) {
         mode = WIFI_MODE_APSTA;  // STA is need for scan
@@ -134,6 +108,51 @@ static esp_err_t wifi_restart(void)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_wifi_set_mode returned 0x%x", err);
         return err;
+    }
+
+    // STA config
+    if (mode_bits & (WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT)) {
+        // STA config is needed also in AP mode for scanning
+        wifi_config_t sta_config = {
+            .sta =
+                {
+                    .pmf_cfg =
+                        {
+                            .capable = true,
+                            .required = false,
+                        },
+                },
+        };
+        if (mode_bits & WIFI_STA_MODE_BIT) {
+            wifi_get_ssid((char*)sta_config.sta.ssid);
+            wifi_get_password((char*)sta_config.sta.password);
+        }
+
+        err = esp_wifi_set_config(ESP_IF_WIFI_STA, &sta_config);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_wifi_set_config returned 0x%x", err);
+            return err;
+        }
+    }
+
+    // AP config
+    if (mode_bits & WIFI_AP_MODE_BIT) {
+        wifi_config_t ap_config = {
+            .ap =
+                {
+                    .max_connection = 1,
+                    .authmode = WIFI_AUTH_OPEN,
+                },
+        };
+        uint8_t mac[6];
+        esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
+        sprintf((char*)ap_config.ap.ssid, AP_SSID, mac[3], mac[4], mac[5]);
+
+        err = esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_wifi_set_config returned 0x%x", err);
+            return err;
+        }
     }
 
     if (mode != WIFI_MODE_NULL) {
