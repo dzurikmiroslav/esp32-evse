@@ -79,7 +79,7 @@ static void handle_event_data(client_userdata_t* userdata, esp_mqtt_event_handle
         }
     }
 
-    lua_pop(L, 2);
+    lua_pop(L, 1);
 }
 
 static void event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data)
