@@ -211,15 +211,18 @@ cJSON* http_json_get_wifi_scan(void)
 {
     cJSON* json = cJSON_CreateArray();
 
-    wifi_scan_ap_t scan_aps[WIFI_SCAN_SCAN_LIST_SIZE];
-    uint16_t number = wifi_scan(scan_aps);
-    for (int i = 0; i < number; i++) {
+    wifi_scan_ap_list_t* list = wifi_scan_aps();
+
+    wifi_scan_ap_entry_t* entry;
+    SLIST_FOREACH (entry, list, entries) {
         cJSON* item = cJSON_CreateObject();
-        cJSON_AddStringToObject(item, "ssid", scan_aps[i].ssid);
-        cJSON_AddNumberToObject(item, "rssi", scan_aps[i].rssi);
-        cJSON_AddBoolToObject(item, "auth", scan_aps[i].auth);
+        cJSON_AddStringToObject(item, "ssid", entry->ssid);
+        cJSON_AddNumberToObject(item, "rssi", entry->rssi);
+        cJSON_AddBoolToObject(item, "auth", entry->auth);
         cJSON_AddItemToArray(json, item);
     }
+
+    wifi_scan_aps_free(list);
 
     return json;
 }

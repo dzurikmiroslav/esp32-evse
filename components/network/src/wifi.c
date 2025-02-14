@@ -11,6 +11,7 @@
 #include <nvs.h>
 #include <string.h>
 #include <sys/param.h>
+
 // #include <mdns.h>
 
 #define AP_SSID "evse-%02x%02x%02x"
@@ -236,16 +237,11 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
     return wifi_restart();
 }
 
-uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
+wifi_scan_ap_list_t* wifi_scan_aps(void)
 {
     EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
     bool stopped = !(mode_bits & WIFI_STA_MODE_BIT || mode_bits & WIFI_STA_MODE_BIT);
     bool sta_connecting = mode_bits & WIFI_STA_MODE_BIT && mode_bits & WIFI_STA_DISCONNECTED_BIT;
-
-    uint16_t number = WIFI_SCAN_SCAN_LIST_SIZE;
-    wifi_ap_record_t ap_info[WIFI_SCAN_SCAN_LIST_SIZE];
-    uint16_t ap_count = 0;
-    memset(ap_info, 0, sizeof(ap_info));
 
     xEventGroupSetBits(wifi_event_group, WIFI_STA_SCAN_BIT);
 
@@ -272,8 +268,9 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
     }
 
     esp_wifi_scan_start(NULL, true);
+
+    uint16_t ap_count = 0;
     esp_wifi_scan_get_ap_num(&ap_count);
-    esp_wifi_scan_get_ap_records(&number, ap_info);
     ESP_LOGI(TAG, "Found %d APs", ap_count);
 
     xEventGroupClearBits(wifi_event_group, WIFI_STA_SCAN_BIT);
@@ -286,13 +283,40 @@ uint16_t wifi_scan(wifi_scan_ap_t* scan_aps)
         esp_wifi_connect();
     }
 
-    for (int i = 0; (i < WIFI_SCAN_SCAN_LIST_SIZE) && (i < ap_count); i++) {
-        strcpy(scan_aps[i].ssid, (const char*)ap_info[i].ssid);
-        scan_aps[i].rssi = ap_info[i].rssi;
-        scan_aps[i].auth = ap_info[i].authmode != WIFI_AUTH_OPEN;
+    wifi_scan_ap_list_t* list = (wifi_scan_ap_list_t*)malloc(sizeof(wifi_scan_ap_list_t));
+    SLIST_INIT(list);
+
+    wifi_ap_record_t ap;
+    wifi_scan_ap_entry_t* last_entry = NULL;
+    while (esp_wifi_scan_get_ap_record(&ap) == ESP_OK) {
+        wifi_scan_ap_entry_t* entry = (wifi_scan_ap_entry_t*)malloc(sizeof(wifi_scan_ap_entry_t));
+        entry->ssid = strdup((const char*)ap.ssid);
+        entry->rssi = ap.rssi;
+        entry->auth = ap.authmode != WIFI_AUTH_OPEN;
+
+        if (last_entry) {
+            SLIST_INSERT_AFTER(last_entry, entry, entries);
+        } else {
+            SLIST_INSERT_HEAD(list, entry, entries);
+        }
+        last_entry = entry;
     }
 
-    return MIN(ap_count, WIFI_SCAN_SCAN_LIST_SIZE);
+    return list;
+}
+
+void wifi_scan_aps_free(wifi_scan_ap_list_t* list)
+{
+    while (!SLIST_EMPTY(list)) {
+        wifi_scan_ap_entry_t* item = SLIST_FIRST(list);
+
+        SLIST_REMOVE_HEAD(list, entries);
+
+        if (item->ssid) free((void*)item->ssid);
+        free((void*)item);
+    }
+
+    free((void*)list);
 }
 
 bool wifi_is_enabled(void)

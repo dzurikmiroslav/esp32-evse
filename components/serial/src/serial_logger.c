@@ -80,7 +80,9 @@ static void improv_send_state(uint8_t state)
     data[9] = state;
 
     improv_append_checksum(data, 10);
+
     uart_write_bytes(port, data, 11);
+    uart_wait_tx_done(port, portMAX_DELAY);
 }
 
 static void improv_send_error(uint8_t error)
@@ -92,7 +94,9 @@ static void improv_send_error(uint8_t error)
     data[9] = error;
 
     improv_append_checksum(data, 10);
+
     uart_write_bytes(port, data, 11);
+    uart_wait_tx_done(port, portMAX_DELAY);
 }
 
 static void improv_send_device_url(uint8_t cmd)
@@ -114,7 +118,9 @@ static void improv_send_device_url(uint8_t cmd)
     data[10] = pos;     // data length
 
     improv_append_checksum(data, pos + 11);
+
     uart_write_bytes(port, data, pos + 12);
+    uart_wait_tx_done(port, portMAX_DELAY);
 }
 
 static void improv_handle_rpc_current_state(void)
@@ -145,10 +151,12 @@ static void improv_handle_rpc_device_info(void)
     data[10] = pos;     // data length
 
     improv_append_checksum(data, pos + 11);
+
     uart_write_bytes(port, data, pos + 12);
+    uart_wait_tx_done(port, portMAX_DELAY);
 }
 
-static void improv_send_response_wifi_network(wifi_scan_ap_t* scan_ap)
+static void improv_send_response_wifi_network(wifi_scan_ap_entry_t* scan_ap)
 {
     uint8_t data[IMPROV_PACKET_SIZE];
     memcpy(data, IMPROV_HEADER, sizeof(IMPROV_HEADER));
@@ -173,26 +181,27 @@ static void improv_send_response_wifi_network(wifi_scan_ap_t* scan_ap)
     data[10] = pos;     // data length
 
     improv_append_checksum(data, pos + 11);
+
     uart_write_bytes(port, data, pos + 12);
+    uart_wait_tx_done(port, portMAX_DELAY);
 }
 
 static void improv_handle_rpc_wifi_networks(void)
 {
-    wifi_scan_ap_t scan_aps[WIFI_SCAN_SCAN_LIST_SIZE];
-    uint16_t scan_aps_count = wifi_scan(scan_aps);
+    wifi_scan_ap_list_t* list = wifi_scan_aps();
 
-    for (uint16_t i = 0; i < scan_aps_count; i++) {
-        improv_send_response_wifi_network(&scan_aps[i]);
-        vTaskDelay(pdMS_TO_TICKS(1));
+    wifi_scan_ap_entry_t* entry;
+    SLIST_FOREACH (entry, list, entries) {
+        improv_send_response_wifi_network(entry);
     }
-
     improv_send_response_wifi_network(NULL);
+
+    wifi_scan_aps_free(list);
 }
 
 static void improv_handle_rpc_wifi_settings(uint8_t* data, uint8_t data_len)
 {
     improv_send_state(IMPROV_STATE_PROVISIONED);
-    vTaskDelay(pdMS_TO_TICKS(1));
     uint8_t ssid_len = data[2];
     uint8_t password_len = data[3 + ssid_len];
 
@@ -208,11 +217,9 @@ static void improv_handle_rpc_wifi_settings(uint8_t* data, uint8_t data_len)
         if (wifi_set_config(true, ssid, password) == ESP_OK) {
             if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(10000)) & WIFI_STA_CONNECTED_BIT) {
                 improv_send_state(IMPROV_STATE_PROVISIONED);
-                vTaskDelay(pdMS_TO_TICKS(1));
                 improv_send_device_url(IMPROV_CMD_WIFI_SETTINGS);
             } else {
                 improv_send_state(IMPROV_STATE_STOPPED);
-                vTaskDelay(pdMS_TO_TICKS(1));
                 improv_send_error(IMPROV_ERROR_UNABLE_TO_CONNECT);
             }
         } else {
@@ -252,8 +259,6 @@ static void serial_logger_task_func(void* param)
         int len = uart_read_bytes(port, buf, IMPROV_PACKET_SIZE, pdMS_TO_TICKS(250));
         if (len > 10) {  // check to minimal improv packet size
             if (memcmp(buf, IMPROV_HEADER, sizeof(IMPROV_HEADER)) == 0) {
-                ESP_LOGW(TAG, "uart_read_bytes %d", len);
-                ESP_LOG_BUFFER_HEX(TAG, buf, len);
                 uint8_t type = buf[7];
                 uint8_t data_len = buf[8];
 
@@ -277,6 +282,7 @@ static void serial_logger_task_func(void* param)
         if (xEventGroupWaitBits(logger_event_group, LOGGER_SERIAL_BIT, pdTRUE, pdFALSE, 0)) {
             while (logger_read(&index, &str, &str_len)) {
                 uart_write_bytes(port, str, str_len);
+                uart_wait_tx_done(port, portMAX_DELAY);
             }
         }
     }

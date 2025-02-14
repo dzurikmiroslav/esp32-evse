@@ -5,10 +5,10 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <stdbool.h>
+#include <sys/queue.h>
 
-#define WIFI_SSID_SIZE           32  // from wifi_config_t.sta.ssid
-#define WIFI_PASSWORD_SIZE       64  // from wifi_config_t.sta.password
-#define WIFI_SCAN_SCAN_LIST_SIZE 10
+#define WIFI_SSID_SIZE     32  // from wifi_config_t.sta.ssid
+#define WIFI_PASSWORD_SIZE 64  // from wifi_config_t.sta.password
 
 #define WIFI_AP_CONNECTED_BIT     BIT0
 #define WIFI_AP_DISCONNECTED_BIT  BIT1
@@ -17,12 +17,6 @@
 #define WIFI_AP_MODE_BIT          BIT4
 #define WIFI_STA_MODE_BIT         BIT5
 #define WIFI_STA_SCAN_BIT         BIT6
-
-typedef struct {
-    char ssid[WIFI_SSID_SIZE];
-    int rssi;
-    bool auth;
-} wifi_scan_ap_t;
 
 /**
  * @brief WiFi event group WIFI_AP_CONNECTED_BIT | WIFI_AP_DISCONNECTED_BIT | WIFI_STA_CONNECTED_BIT | WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT |
@@ -61,7 +55,39 @@ bool wifi_is_enabled(void);
  * @param scan_aps array with length WIFI_SCAN_SCAN_LIST_SIZE
  * @return uint16_t number of available AP
  */
-uint16_t wifi_scan(wifi_scan_ap_t* scan_aps);
+
+/**
+ * @brief Scan AP entry
+ *
+ */
+typedef struct wifi_scan_ap_entry_s {
+    char* ssid;
+    int rssi;
+    bool auth;
+
+    SLIST_ENTRY(wifi_scan_ap_entry_s) entries;
+} wifi_scan_ap_entry_t;
+
+/**
+ * @brief Scan AP list
+ *
+ * @return typedef
+ */
+typedef SLIST_HEAD(wifi_scan_ap_list_s, wifi_scan_ap_entry_s) wifi_scan_ap_list_t;
+
+/**
+ * @brief Scan AP, return AP list
+ *
+ * @return wifi_scan_ap_list_t*
+ */
+wifi_scan_ap_list_t* wifi_scan_aps(void);
+
+/**
+ * @brief  Free AP list with all entries
+ *
+ * @param list
+ */
+void wifi_scan_aps_free(wifi_scan_ap_list_t* list);
 
 /**
  * @brief Get WiFi STA ssid, string length 32, stored in NVS

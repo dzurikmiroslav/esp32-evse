@@ -3,14 +3,14 @@
 
 #include <sys/queue.h>
 
-typedef struct component_param_s {
+typedef struct component_param_entry_s {
     char* key;
     char* value;
 
-    SLIST_ENTRY(component_param_s) entries;
+    SLIST_ENTRY(component_param_entry_s) entries;
 } component_param_entry_t;
 
-typedef SLIST_HEAD(component_param_list_s, component_param_s) component_param_list_t;
+typedef SLIST_HEAD(component_param_list_s, component_param_entry_s) component_param_list_t;
 
 component_param_list_t* component_params_read(const char* component);
 
