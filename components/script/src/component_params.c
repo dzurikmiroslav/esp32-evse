@@ -156,6 +156,9 @@ static void yaml_file_copy_omit(FILE* dst, FILE* src, const char* key)
             level++;
             break;
         case YAML_MAPPING_END_EVENT:
+            if (level == 1) {
+                skip = false;
+            }
             level--;
             break;
         case YAML_STREAM_END_EVENT:
@@ -169,7 +172,7 @@ static void yaml_file_copy_omit(FILE* dst, FILE* src, const char* key)
             yaml_event_delete(&event);
         } else {
             if (!yaml_emitter_emit(&emitter, &event)) {
-                ESP_LOGW(TAG, "Emmiting error");
+                ESP_LOGW(TAG, "Emitting error");
                 goto error;
             }
         }
@@ -244,26 +247,23 @@ error:
 void component_params_write(const char* component, component_param_list_t* list)
 {
     FILE* file = fopen(PARAMS_YAML, "r");
-    if (file) {  // some yaml exists
-        FILE* src = file;
-        FILE* dst = fopen(PARAMS_TMP_YAML, "w");
-        yaml_file_copy_omit(dst, src, component);
-        fclose(src);
-        fclose(dst);
+    if (file) {  // some params.yaml exists
+        FILE* tmp_file = fopen(PARAMS_TMP_YAML, "w");
+        yaml_file_copy_omit(tmp_file, file, component);
 
-        src = fopen(PARAMS_TMP_YAML, "r");
-        dst = fopen(PARAMS_YAML, "w");
-        yaml_file_copy(dst, src);
-        yaml_file_append(dst, component, list);
-        fclose(src);
-        fclose(dst);
+        tmp_file = freopen(PARAMS_TMP_YAML, "r", tmp_file);
+        file = freopen(PARAMS_YAML, "w", file);
 
+        yaml_file_copy(file, tmp_file);
+        yaml_file_append(file, component, list);
+
+        fclose(tmp_file);
         remove(PARAMS_TMP_YAML);
-    } else {  // no yaml exists yet
-        FILE* dst = fopen(PARAMS_YAML, "w");
-        yaml_file_append(dst, component, list);
-        fclose(dst);
+    } else {  // no params.yaml exists
+        file = fopen(PARAMS_YAML, "w");
+        yaml_file_append(file, component, list);
     }
+    fclose(file);
 }
 
 void component_params_free(component_param_list_t* list)

@@ -343,7 +343,7 @@ TEST(script, component_params)
 
     component_params_free(list);
 
-    // update existing params.yaml
+    // update existing params.yaml, add second component
     list = (component_param_list_t*)malloc(sizeof(component_param_list_t));
     SLIST_INIT(list);
     params_insert(list, "component2_key1", "value1");
@@ -354,6 +354,60 @@ TEST(script, component_params)
     list = component_params_read("component1");
     TEST_ASSERT_NOT_NULL(list);
     TEST_ASSERT_EQUAL(3, params_get_length(list));
+    component_params_free(list);
+
+    list = component_params_read("component2");
+    TEST_ASSERT_NOT_NULL(list);
+    TEST_ASSERT_EQUAL(1, params_get_length(list));
+    component_params_free(list);
+
+    // update existing params.yaml, update first component
+    list = (component_param_list_t*)malloc(sizeof(component_param_list_t));
+    SLIST_INIT(list);
+    params_insert(list, "component1_key1", "value1");
+
+    component_params_write("component1", list);
+    component_params_free(list);
+
+    list = component_params_read("component1");
+    TEST_ASSERT_NOT_NULL(list);
+    TEST_ASSERT_EQUAL(1, params_get_length(list));
+    component_params_free(list);
+
+    list = component_params_read("component2");
+    TEST_ASSERT_NOT_NULL(list);
+    TEST_ASSERT_EQUAL(1, params_get_length(list));
+    component_params_free(list);
+
+    // update existing params.yaml, update second component
+    list = (component_param_list_t*)malloc(sizeof(component_param_list_t));
+    SLIST_INIT(list);
+    params_insert(list, "component2_key1", "value1");
+
+    component_params_write("component2", list);
+    component_params_free(list);
+
+    list = component_params_read("component1");
+    TEST_ASSERT_NOT_NULL(list);
+    TEST_ASSERT_EQUAL(1, params_get_length(list));
+    component_params_free(list);
+
+    list = component_params_read("component2");
+    TEST_ASSERT_NOT_NULL(list);
+    TEST_ASSERT_EQUAL(1, params_get_length(list));
+    component_params_free(list);
+
+    // update existing params.yaml, again update second component
+    list = (component_param_list_t*)malloc(sizeof(component_param_list_t));
+    SLIST_INIT(list);
+    params_insert(list, "component2_key1", "value1");
+
+    component_params_write("component2", list);
+    component_params_free(list);
+
+    list = component_params_read("component1");
+    TEST_ASSERT_NOT_NULL(list);
+    TEST_ASSERT_EQUAL(1, params_get_length(list));
     component_params_free(list);
 
     list = component_params_read("component2");
