@@ -273,16 +273,6 @@ wifi_scan_ap_list_t* wifi_scan_aps(void)
     esp_wifi_scan_get_ap_num(&ap_count);
     ESP_LOGI(TAG, "Found %d APs", ap_count);
 
-    xEventGroupClearBits(wifi_event_group, WIFI_STA_SCAN_BIT);
-
-    if (stopped) {
-        esp_wifi_stop();
-    }
-
-    if (sta_connecting) {
-        esp_wifi_connect();
-    }
-
     wifi_scan_ap_list_t* list = (wifi_scan_ap_list_t*)malloc(sizeof(wifi_scan_ap_list_t));
     SLIST_INIT(list);
 
@@ -300,6 +290,16 @@ wifi_scan_ap_list_t* wifi_scan_aps(void)
             SLIST_INSERT_HEAD(list, entry, entries);
         }
         last_entry = entry;
+    }
+
+    xEventGroupClearBits(wifi_event_group, WIFI_STA_SCAN_BIT);
+
+    if (stopped) {
+        esp_wifi_stop();
+    }
+
+    if (sta_connecting) {
+        esp_wifi_connect();
     }
 
     return list;
