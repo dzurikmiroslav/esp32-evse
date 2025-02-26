@@ -13,10 +13,11 @@
 #include "adc.h"
 #include "board_config.h"
 
-#define NVS_NAMESPACE    "evse_emeter"
-#define NVS_MODE         "mode"
-#define NVS_AC_VOLTAGE   "ac_voltage"
-#define NVS_three_phases "three_phases"
+#define NVS_NAMESPACE         "evse_emeter"
+#define NVS_MODE              "mode"
+#define NVS_AC_VOLTAGE        "ac_voltage"
+#define NVS_THREE_PHASES      "three_phases"
+#define NVS_TOTAL_CONSUMPTION "t_consumption"
 
 #define ZERO_FIX   5000
 #define MEASURE_US 40000  // 2 periods at 50Hz
@@ -40,6 +41,8 @@ static int64_t start_time = 0;
 static uint32_t charging_time = 0;  // ms
 
 static uint32_t consumption = 0;  // Ws
+
+static uint64_t total_consumption = 0;  // Wh
 
 static float cur[3] = { 0, 0, 0 };
 
@@ -306,9 +309,11 @@ void energy_meter_init(void)
         .atten = ADC_ATTEN_DB_12,
     };
 
-    if (nvs_get_u8(nvs, NVS_three_phases, &u8) == ESP_OK) {
+    if (nvs_get_u8(nvs, NVS_THREE_PHASES, &u8) == ESP_OK) {
         three_phases = u8;
     }
+
+    nvs_get_u64(nvs, NVS_TOTAL_CONSUMPTION, &total_consumption);
 
     if (board_cfg_is_energy_meter_cur(board_config)) {
         ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1], &config));
@@ -398,7 +403,7 @@ bool energy_meter_is_three_phases(void)
 void energy_meter_set_three_phases(bool _three_phases)
 {
     three_phases = _three_phases;
-    nvs_set_u8(nvs, NVS_three_phases, three_phases);
+    nvs_set_u8(nvs, NVS_THREE_PHASES, three_phases);
     nvs_commit(nvs);
 }
 
@@ -415,6 +420,10 @@ void energy_meter_stop_session(void)
 {
     if (has_session) {
         ESP_LOGI(TAG, "Stop session");
+
+        total_consumption += consumption / 3600;
+        nvs_set_u64(nvs, NVS_TOTAL_CONSUMPTION, total_consumption);
+
         start_time = 0;
         consumption = 0;
         charging_time = 0;
@@ -501,6 +510,17 @@ float energy_meter_get_l2_current(void)
 float energy_meter_get_l3_current(void)
 {
     return cur[2];
+}
+
+uint64_t energy_meter_get_total_consumption(void)
+{
+    return total_consumption + consumption / 3600;
+}
+
+void energy_meter_reset_total_consumption(void)
+{
+    total_consumption = 0;
+    nvs_set_u64(nvs, NVS_TOTAL_CONSUMPTION, total_consumption);
 }
 
 const char* energy_meter_mode_to_str(energy_meter_mode_t mode)

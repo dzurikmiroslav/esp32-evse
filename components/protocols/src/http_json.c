@@ -547,6 +547,7 @@ cJSON* http_json_get_state(void)
     cJSON_AddNumberToObject(json, "sessionTime", energy_meter_get_session_time());
     cJSON_AddNumberToObject(json, "chargingTime", energy_meter_get_charging_time());
     cJSON_AddNumberToObject(json, "consumption", energy_meter_get_consumption());
+    cJSON_AddNumberToObject(json, "totalConsumption", energy_meter_get_total_consumption());
     cJSON_AddNumberToObject(json, "power", energy_meter_get_power());
     float values[3];
     energy_meter_get_voltage(values);

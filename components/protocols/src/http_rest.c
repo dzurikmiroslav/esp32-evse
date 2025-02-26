@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "energy_meter.h"
 #include "evse.h"
 #include "http.h"
 #include "http_json.h"
@@ -360,6 +361,9 @@ esp_err_t state_post_handler(httpd_req_t* req)
         }
         if (strcmp(req->uri, REST_BASE_PATH "/state/unavailable") == 0) {
             evse_set_available(false);
+        }
+        if (strcmp(req->uri, REST_BASE_PATH "/state/total/reset") == 0) {
+            energy_meter_reset_total_consumption();
         }
 
         httpd_resp_set_type(req, "text/plain");
