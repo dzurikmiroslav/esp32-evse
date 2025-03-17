@@ -34,7 +34,7 @@ There is no need to compile the firmware for your EVSE design.
 Source code ist not hardcoded to GPIOs or other hardware design features.
 All code is written in ESP-IDF without additional mapping layer like Arduino.
 
-All configuration is written outside firmware in configuration file named _board.cfg_ on dedicated partition.
+All configuration is written outside firmware in configuration file named _board.yaml_ on dedicated partition.
 For example, on following scheme is minimal EVSE circuit with ESP32 devkit.
 
 ![Minimal circuit](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/minimal-circuit.png)
