@@ -240,7 +240,7 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
 wifi_scan_ap_list_t* wifi_scan_aps(void)
 {
     EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
-    bool stopped = !(mode_bits & WIFI_STA_MODE_BIT || mode_bits & WIFI_STA_MODE_BIT);
+    bool stopped = !(mode_bits & WIFI_AP_MODE_BIT || mode_bits & WIFI_STA_MODE_BIT);
     bool sta_connecting = mode_bits & WIFI_STA_MODE_BIT && mode_bits & WIFI_STA_DISCONNECTED_BIT;
 
     xEventGroupSetBits(wifi_event_group, WIFI_STA_SCAN_BIT);

@@ -1,7 +1,2 @@
-set(srcs
-    "src/logger.c"
-    "src/output_buffer.c"
-    )
-
-idf_component_register(SRCS "${srcs}"
+idf_component_register(SRC_DIRS "src"
                     INCLUDE_DIRS "include")

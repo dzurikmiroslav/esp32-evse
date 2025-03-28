@@ -1,17 +1,7 @@
-set(srcs
-    "src/protocols.c"
-    "src/http.c"
-    "src/http_rest.c"
-    "src/http_json.c"
-    "src/http_web.c"
-    "src/http_dav.c"
-    "src/modbus_tcp.c"
-    "src/scheduler.c")
-
 set(embed_files
     "web.cpio")
 
-idf_component_register(SRCS "${srcs}"
+idf_component_register(SRC_DIRS "src"
                     INCLUDE_DIRS "include"
                     PRIV_INCLUDE_DIRS "src"
                     EMBED_FILES "${embed_files}"

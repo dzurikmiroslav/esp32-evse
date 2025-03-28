@@ -9,8 +9,6 @@
 #include "http_rest.h"
 #include "http_web.h"
 
-#define MAX_OPEN_SOCKETS 5
-
 #define NVS_NAMESPACE "rest"
 #define NVS_USER      "user"
 #define NVS_PASSWORD  "password"

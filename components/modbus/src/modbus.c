@@ -90,7 +90,7 @@ static void restart_func(void* arg)
     vTaskDelete(NULL);
 }
 
-static void timeout_restart()
+static void timeout_restart(void)
 {
     xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
 }

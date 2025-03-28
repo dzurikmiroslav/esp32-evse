@@ -2,7 +2,6 @@
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <nvs.h>
@@ -32,13 +31,13 @@
 #define NVS_ENABLED     "enabled"
 #define NVS_AUTO_RELOAD "auto_reload"
 
-SemaphoreHandle_t script_mutex = NULL;
-
 static const char* TAG = "script";
 
 static nvs_handle nvs;
 
 static TaskHandle_t script_task = NULL;
+
+SemaphoreHandle_t script_mutex = NULL;
 
 static SemaphoreHandle_t shutdown_sem = NULL;
 

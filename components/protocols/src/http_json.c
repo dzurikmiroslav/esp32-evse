@@ -14,12 +14,15 @@
 #include "board_config.h"
 #include "energy_meter.h"
 #include "evse.h"
+#include "http.h"
 #include "modbus.h"
 #include "modbus_tcp.h"
+#include "ota.h"
 #include "proximity.h"
 #include "scheduler.h"
 #include "script.h"
 #include "serial.h"
+#include "serial_nextion.h"
 #include "socket_lock.h"
 #include "temp_sensor.h"
 #include "wifi.h"
@@ -40,22 +43,33 @@ typedef struct {
     char password[64];
 } wifi_set_config_arg_t;
 
-cJSON* http_json_get_evse_config(void)
+cJSON* http_json_get_config(void)
+{
+    cJSON* json = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(json, "evse", http_json_get_config_evse());
+    cJSON_AddItemToObject(json, "wifi", http_json_get_config_wifi());
+    cJSON_AddItemToObject(json, "serial", http_json_get_config_serial());
+    cJSON_AddItemToObject(json, "modbus", http_json_get_config_modbus());
+    cJSON_AddItemToObject(json, "script", http_json_get_config_script());
+    cJSON_AddItemToObject(json, "scheduler", http_json_get_config_scheduler());
+
+    return json;
+}
+
+cJSON* http_json_get_config_evse(void)
 {
     cJSON* json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(json, "maxChargingCurrent", evse_get_max_charging_current());
-    cJSON_AddNumberToObject(json, "chargingCurrent", evse_get_charging_current() / 10.0);
     cJSON_AddNumberToObject(json, "defaultChargingCurrent", evse_get_default_charging_current() / 10.0);
     cJSON_AddBoolToObject(json, "requireAuth", evse_is_require_auth());
     cJSON_AddBoolToObject(json, "socketOutlet", evse_get_socket_outlet());
     cJSON_AddBoolToObject(json, "rcm", evse_is_rcm());
     cJSON_AddNumberToObject(json, "temperatureThreshold", evse_get_temp_threshold());
-    cJSON_AddNumberToObject(json, "consumptionLimit", evse_get_consumption_limit());
+
     cJSON_AddNumberToObject(json, "defaultConsumptionLimit", evse_get_default_consumption_limit());
-    cJSON_AddNumberToObject(json, "chargingTimeLimit", evse_get_charging_time_limit());
     cJSON_AddNumberToObject(json, "defaultChargingTimeLimit", evse_get_default_charging_time_limit());
-    cJSON_AddNumberToObject(json, "underPowerLimit", evse_get_under_power_limit());
     cJSON_AddNumberToObject(json, "defaultUnderPowerLimit", evse_get_default_under_power_limit());
 
     cJSON_AddNumberToObject(json, "socketLockOperatingTime", socket_lock_get_operating_time());
@@ -70,75 +84,81 @@ cJSON* http_json_get_evse_config(void)
     return json;
 }
 
-esp_err_t http_json_set_evse_config(cJSON* json)
+esp_err_t http_json_set_config_evse(cJSON* json)
 {
+    int written = 0;
+
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "maxChargingCurrent"))) {
         RETURN_ON_ERROR(evse_set_max_charging_current(cJSON_GetObjectItem(json, "maxChargingCurrent")->valuedouble));
-    }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "chargingCurrent"))) {
-        RETURN_ON_ERROR(evse_set_charging_current(cJSON_GetObjectItem(json, "chargingCurrent")->valuedouble * 10));
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "defaultChargingCurrent"))) {
         RETURN_ON_ERROR(evse_set_default_charging_current(cJSON_GetObjectItem(json, "defaultChargingCurrent")->valuedouble * 10));
+        written++;
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(json, "requireAuth"))) {
         evse_set_require_auth(cJSON_IsTrue(cJSON_GetObjectItem(json, "requireAuth")));
+        written++;
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(json, "socketOutlet"))) {
         RETURN_ON_ERROR(evse_set_socket_outlet(cJSON_IsTrue(cJSON_GetObjectItem(json, "socketOutlet"))));
+        written++;
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(json, "rcm"))) {
         RETURN_ON_ERROR(evse_set_rcm(cJSON_IsTrue(cJSON_GetObjectItem(json, "rcm"))));
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "temperatureThreshold"))) {
         RETURN_ON_ERROR(evse_set_temp_threshold(cJSON_GetObjectItem(json, "temperatureThreshold")->valuedouble));
-    }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "consumptionLimit"))) {
-        evse_set_consumption_limit(cJSON_GetObjectItem(json, "consumptionLimit")->valuedouble);
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "defaultConsumptionLimit"))) {
         evse_set_default_consumption_limit(cJSON_GetObjectItem(json, "defaultConsumptionLimit")->valuedouble);
-    }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "chargingTimeLimit"))) {
-        evse_set_charging_time_limit(cJSON_GetObjectItem(json, "chargingTimeLimit")->valuedouble);
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "defaultChargingTimeLimit"))) {
         evse_set_default_charging_time_limit(cJSON_GetObjectItem(json, "defaultChargingTimeLimit")->valuedouble);
-    }
-    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "underPowerLimit"))) {
-        evse_set_under_power_limit(cJSON_GetObjectItem(json, "underPowerLimit")->valuedouble);
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "defaultUnderPowerLimit"))) {
         evse_set_default_under_power_limit(cJSON_GetObjectItem(json, "defaultUnderPowerLimit")->valuedouble);
+        written++;
     }
 
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "socketLockOperatingTime"))) {
         RETURN_ON_ERROR(socket_lock_set_operating_time(cJSON_GetObjectItem(json, "socketLockOperatingTime")->valuedouble));
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "socketLockBreakTime"))) {
         RETURN_ON_ERROR(socket_lock_set_break_time(cJSON_GetObjectItem(json, "socketLockBreakTime")->valuedouble));
+        written++;
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(json, "socketLockDetectionHigh"))) {
         socket_lock_set_detection_high(cJSON_IsTrue(cJSON_GetObjectItem(json, "socketLockDetectionHigh")));
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "socketLockRetryCount"))) {
         socket_lock_set_retry_count(cJSON_GetObjectItem(json, "socketLockRetryCount")->valuedouble);
+        written++;
     }
 
     if (cJSON_IsString(cJSON_GetObjectItem(json, "energyMeterMode"))) {
         RETURN_ON_ERROR(energy_meter_set_mode(energy_meter_str_to_mode(cJSON_GetObjectItem(json, "energyMeterMode")->valuestring)));
+        written++;
     }
     if (cJSON_IsNumber(cJSON_GetObjectItem(json, "energyMeterAcVoltage"))) {
         RETURN_ON_ERROR(energy_meter_set_ac_voltage(cJSON_GetObjectItem(json, "energyMeterAcVoltage")->valuedouble));
+        written++;
     }
     if (cJSON_IsBool(cJSON_GetObjectItem(json, "energyMeterThreePhases"))) {
         energy_meter_set_three_phases(cJSON_IsTrue(cJSON_GetObjectItem(json, "energyMeterThreePhases")));
+        written++;
     }
 
-    return ESP_OK;
+    return written > 0 ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 
-cJSON* http_json_get_wifi_config(void)
+cJSON* http_json_get_config_wifi(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -194,17 +214,13 @@ static esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const c
     return ESP_OK;
 }
 
-esp_err_t http_json_set_wifi_config(cJSON* json, bool timeout)
+esp_err_t http_json_set_config_wifi(cJSON* json)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
     char* ssid = cJSON_GetStringValue(cJSON_GetObjectItem(json, "ssid"));
     char* password = cJSON_GetStringValue(cJSON_GetObjectItem(json, "password"));
 
-    if (timeout) {
-        return timeout_wifi_set_config(enabled, ssid, password);
-    } else {
-        return wifi_set_config(enabled, ssid, password);
-    }
+    return timeout_wifi_set_config(enabled, ssid, password);
 }
 
 cJSON* http_json_get_wifi_scan(void)
@@ -227,7 +243,7 @@ cJSON* http_json_get_wifi_scan(void)
     return json;
 }
 
-cJSON* http_json_get_serial_config(void)
+cJSON* http_json_get_config_serial(void)
 {
     cJSON* json = cJSON_CreateArray();
 
@@ -246,7 +262,7 @@ cJSON* http_json_get_serial_config(void)
     return json;
 }
 
-esp_err_t http_json_set_serial_config(cJSON* json)
+esp_err_t http_json_set_config_serial(cJSON* json)
 {
     serial_reset_config();
 
@@ -273,7 +289,7 @@ esp_err_t http_json_set_serial_config(cJSON* json)
     return ESP_OK;
 }
 
-cJSON* http_json_get_modbus_config(void)
+cJSON* http_json_get_config_modbus(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -283,7 +299,7 @@ cJSON* http_json_get_modbus_config(void)
     return json;
 }
 
-esp_err_t http_json_set_modbus_config(cJSON* json)
+esp_err_t http_json_set_config_modbus(cJSON* json)
 {
     bool tcp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "tcpEnabled"));
     uint8_t unit_id = cJSON_GetObjectItem(json, "unitId")->valuedouble;
@@ -292,7 +308,7 @@ esp_err_t http_json_set_modbus_config(cJSON* json)
     return modbus_set_unit_id(unit_id);
 }
 
-cJSON* http_json_get_script_config(void)
+cJSON* http_json_get_config_script(void)
 {
     cJSON* json = cJSON_CreateObject();
 
@@ -302,7 +318,7 @@ cJSON* http_json_get_script_config(void)
     return json;
 }
 
-esp_err_t http_json_set_script_config(cJSON* json)
+esp_err_t http_json_set_config_script(cJSON* json)
 {
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
     bool auto_reload = cJSON_IsTrue(cJSON_GetObjectItem(json, "autoReload"));
@@ -407,7 +423,7 @@ esp_err_t http_json_set_script_component_config(const char* id, cJSON* json)
     return ESP_OK;
 }
 
-cJSON* http_json_get_scheduler_config(void)
+cJSON* http_json_get_config_scheduler(void)
 {
     cJSON* json = cJSON_CreateObject();
     char str[64];
@@ -441,7 +457,7 @@ cJSON* http_json_get_scheduler_config(void)
     return json;
 }
 
-esp_err_t http_json_set_scheduler_config(cJSON* json)
+esp_err_t http_json_set_config_scheduler(cJSON* json)
 {
     char* ntp_server = cJSON_GetStringValue(cJSON_GetObjectItem(json, "ntpServer"));
     bool ntp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "ntpEnabled"));
@@ -511,6 +527,10 @@ cJSON* http_json_get_state(void)
     cJSON_AddBoolToObject(json, "enabled", evse_is_enabled());
     cJSON_AddBoolToObject(json, "pendingAuth", evse_is_pending_auth());
     cJSON_AddBoolToObject(json, "limitReached", evse_is_limit_reached());
+    cJSON_AddNumberToObject(json, "chargingCurrent", evse_get_charging_current() / 10.0);
+    cJSON_AddNumberToObject(json, "consumptionLimit", evse_get_consumption_limit());
+    cJSON_AddNumberToObject(json, "chargingTimeLimit", evse_get_charging_time_limit());
+    cJSON_AddNumberToObject(json, "underPowerLimit", evse_get_under_power_limit());
 
     uint32_t error = evse_get_error();
     if (error == 0) {
@@ -556,6 +576,96 @@ cJSON* http_json_get_state(void)
     cJSON_AddItemToObject(json, "current", cJSON_CreateFloatArray(values, 3));
 
     return json;
+}
+
+esp_err_t http_json_set_state(cJSON* json)
+{
+    int written = 0;
+
+    if (cJSON_IsBool(cJSON_GetObjectItem(json, "available"))) {
+        evse_set_available(cJSON_IsTrue(cJSON_GetObjectItem(json, "available")));
+        written++;
+    }
+
+    if (cJSON_IsBool(cJSON_GetObjectItem(json, "enabled"))) {
+        evse_set_enabled(cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled")));
+        written++;
+    }
+
+    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "chargingCurrent"))) {
+        RETURN_ON_ERROR(evse_set_charging_current(cJSON_GetObjectItem(json, "chargingCurrent")->valuedouble * 10));
+        written++;
+    }
+
+    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "consumptionLimit"))) {
+        evse_set_consumption_limit(cJSON_GetObjectItem(json, "consumptionLimit")->valuedouble);
+        written++;
+    }
+
+    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "chargingTimeLimit"))) {
+        evse_set_charging_time_limit(cJSON_GetObjectItem(json, "chargingTimeLimit")->valuedouble);
+        written++;
+    }
+
+    if (cJSON_IsNumber(cJSON_GetObjectItem(json, "underPowerLimit"))) {
+        evse_set_under_power_limit(cJSON_GetObjectItem(json, "underPowerLimit")->valuedouble);
+        written++;
+    }
+
+    return written > 0 ? ESP_OK : ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t http_json_set_state_available(cJSON* json)
+{
+    if (cJSON_IsBool(json)) {
+        evse_set_available(cJSON_IsTrue(json));
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t http_json_set_state_enabled(cJSON* json)
+{
+    if (cJSON_IsBool(json)) {
+        evse_set_enabled(cJSON_IsTrue(json));
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t http_json_set_state_charging_current(cJSON* json)
+{
+    if (cJSON_IsNumber(json)) {
+        return evse_set_charging_current(json->valuedouble * 10);
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t http_json_set_state_consumption_limit(cJSON* json)
+{
+    if (cJSON_IsNumber(json)) {
+        evse_set_consumption_limit(json->valuedouble);
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t http_json_set_state_charging_time_limit(cJSON* json)
+{
+    if (cJSON_IsNumber(json)) {
+        evse_set_charging_time_limit(json->valuedouble);
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t http_json_set_state_under_power_limit(cJSON* json)
+{
+    if (cJSON_IsNumber(json)) {
+        evse_set_under_power_limit(json->valuedouble);
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
 }
 
 cJSON* http_json_get_info(void)
@@ -666,4 +776,51 @@ cJSON* http_json_get_board_config(void)
     cJSON_AddItemToObject(json, "auxAnalogInputs", array_json);
 
     return json;
+}
+
+cJSON* http_json_get_nextion_info(void)
+{
+    cJSON* json = cJSON_CreateNull();
+    // TODO
+
+    return json;
+}
+
+cJSON* http_json_firmware_check_update(void)
+{
+    cJSON* root = NULL;
+
+    char avl_version[32];
+    if (ota_get_available_version(avl_version) == ESP_OK) {
+        const esp_app_desc_t* app_desc = esp_app_get_description();
+
+        root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "available", avl_version);
+        cJSON_AddStringToObject(root, "current", app_desc->version);
+        cJSON_AddBoolToObject(root, "newer", ota_is_newer_version(app_desc->version, avl_version));
+    }
+
+    return root;
+}
+
+esp_err_t http_json_set_credentials(cJSON* root)
+{
+    char* user;
+    char* password;
+
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "user"))) {
+        user = cJSON_GetObjectItem(root, "user")->valuestring;
+    } else {
+        user = "";
+    }
+
+    if (cJSON_IsString(cJSON_GetObjectItem(root, "password"))) {
+        password = cJSON_GetObjectItem(root, "password")->valuestring;
+    } else {
+        password = "";
+    }
+
+    http_set_credentials(user, password);
+
+    return ESP_OK;
 }
