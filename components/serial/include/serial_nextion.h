@@ -37,7 +37,7 @@ typedef struct {
 
 esp_err_t serial_nextion_get_info(serial_nextion_info_t *info);
 
-#define SERIAL_NEXTION_UPLOAD_BATCH_SIZE    4096
+#define SERIAL_NEXTION_UPLOAD_BATCH_SIZE 4096
 
 esp_err_t serial_nextion_upload_begin(size_t file_size, uint32_t baud_rate);
 
