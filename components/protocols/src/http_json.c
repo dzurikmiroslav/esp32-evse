@@ -731,7 +731,7 @@ cJSON* http_json_get_board_config(void)
     if (board_cfg_is_energy_meter_cur(board_config)) {
         if (board_cfg_is_energy_meter_vlt(board_config)) {
             energy_meter = "cur_vlt";
-            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
+            energy_meter_three_phases = board_cfg_is_energy_meter_cur_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
         } else {
             energy_meter = "cur";
             energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config);
