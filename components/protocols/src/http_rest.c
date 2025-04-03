@@ -54,8 +54,6 @@ typedef enum {
     URI_FIRMWARE_CHECK_UPDATE,
     URI_FIRMWARE_UPDATE,
     URI_FIRMWARE_UPLOAD,
-    URI_NEXTION_INFO,
-    URI_NEXTION_UPLOAD,
     URI_LOG,
     URI_INFO,
     URI_BOARD_CONFIG,
@@ -92,8 +90,6 @@ static const char* uris[] = {
     "/firmware/check-update",
     "/firmware/update",
     "/firmware/upload",
-    "/nextion/info",
-    "/nextion/upload",
     "/log",
     "/info",
     "/board-config",
@@ -436,13 +432,6 @@ static esp_err_t handle_firmware_upload(httpd_req_t* req)
     return ESP_OK;
 }
 
-static esp_err_t handle_nextion_upload(httpd_req_t* req)
-{
-    // TODO
-
-    return ESP_OK;
-}
-
 static esp_err_t get_handler(httpd_req_t* req)
 {
     if (http_authorize_req(req)) {
@@ -473,8 +462,6 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_get_script_component_config(req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID)));
         case URI_FIRMWARE_CHECK_UPDATE:
             return handle_json_response(req, http_json_firmware_check_update());
-        case URI_NEXTION_INFO:
-            return handle_json_response(req, http_json_get_nextion_info());
         case URI_LOG:
             return handle_log(req);
         case URI_INFO:
@@ -533,8 +520,6 @@ static esp_err_t post_handler(httpd_req_t* req)
             return handle_firmware_update(req);
         case URI_FIRMWARE_UPLOAD:
             return handle_firmware_upload(req);
-        case URI_NEXTION_UPLOAD:
-            return handle_nextion_upload(req);
         case URI_RESTART:
             return handle_void_request(req, schedule_restart);
         case URI_TIME:
