@@ -183,7 +183,7 @@ float energy_meter_get_l3_current(void);
 uint64_t energy_meter_get_total_consumption(void);
 
 /**
- * @brief Set total consumtion to 0
+ * @brief Set total consumption to 0
  *
  */
 void energy_meter_reset_total_consumption(void);

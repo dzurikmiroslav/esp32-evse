@@ -64,6 +64,18 @@ static int l_set_charging_current(lua_State* L)
     return 0;
 }
 
+static int l_get_default_charging_current(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_default_charging_current() / 10.0f);
+    return 1;
+}
+
+static int l_get_max_charging_current(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_max_charging_current());
+    return 1;
+}
+
 static int l_get_power(lua_State* L)
 {
     lua_pushinteger(L, energy_meter_get_power());
@@ -145,6 +157,8 @@ static const luaL_Reg lib[] = {
     { "setavailable", l_set_available },
     { "getchargingcurrent", l_get_charging_current },
     { "setchargingcurrent", l_set_charging_current },
+    { "getdefaultchargingcurrent", l_get_default_charging_current },
+    { "getmaxchargingcurrent", l_get_max_charging_current },
     { "getpower", l_get_power },
     { "getchargingtime", l_get_charging_time },
     { "getsessiontime", l_get_session_time },

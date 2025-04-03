@@ -4,6 +4,7 @@
 #include <esp_ota_ops.h>
 #include <esp_timer.h>
 #include <string.h>
+#include <time.h>
 
 #include "board_config.h"
 #include "energy_meter.h"
@@ -11,9 +12,13 @@
 #include "temp_sensor.h"
 #include "wifi.h"
 
-#define BUF_SIZE             256
-#define NEX_RET_AUTO_SLEEP   0x86
+#define BUF_SIZE 256
+
 #define NEX_RET_BUF_OVERFLOW 0x24
+#define NEX_RET_AUTO_SLEEP   0x86
+#define NEX_RET_READY        0x88
+
+#define NEX_UPLOAD_ACK 0x05
 
 static const char* VAR_STATE = "state";
 static const char* VAR_ENABLED = "en";
@@ -26,6 +31,7 @@ static const char* VAR_SESSION_TIME = "sesTime";
 static const char* VAR_CHARGING_TIME = "chTime";
 static const char* VAR_POWER = "power";
 static const char* VAR_CONSUMPTION = "consum";
+static const char* VAR_TOTAL_CONSUMPTION = "totConsum";
 static const char* VAR_VOLTAGE_L1 = "vltL1";
 static const char* VAR_VOLTAGE_L2 = "vltL2";
 static const char* VAR_VOLTAGE_L3 = "vltL3";
@@ -53,7 +59,8 @@ static const char* VAR_FMT_CHARGING_CURRENT = "chCur.val=%" PRIu16;
 static const char* VAR_FMT_SESSION_TIME = "sesTime.val=%" PRIu32;
 static const char* VAR_FMT_CHARGING_TIME = "chTime.val=%" PRIu32;
 static const char* VAR_FMT_POWER = "power.val=%" PRIu16;
-static const char* VAR_FMT_CONSUMPTION = "consum.val=%" PRIu16;
+static const char* VAR_FMT_CONSUMPTION = "consum.val=%" PRIu32;
+static const char* VAR_FMT_TOTAL_CONSUMPTION = "totConsum.val=%" PRIu64;
 static const char* VAR_FMT_VOLTAGE_L1 = "vltL1.val=%" PRIu16;
 static const char* VAR_FMT_VOLTAGE_L2 = "vltL2.val=%" PRIu16;
 static const char* VAR_FMT_VOLTAGE_L3 = "vltL3.val=%" PRIu16;
@@ -70,6 +77,7 @@ static const char* VAR_FMT_IP = "ip.txt=\"%s\"";
 static const char* VAR_FMT_APP_VERSION = "appVer.txt=\"%s\"";
 static const char* VAR_FMT_HEAP_SIZE = "heap.val=%" PRIu32;
 static const char* VAR_FMT_MAX_HEAP_SIZE = "maxHeap.val=%" PRIu32;
+static const char* VAR_FMT_RTC = "rtc%d=%" PRIu32;
 
 static const char* CMD_SUBSCRIBE = "sub %s";
 static const char* CMD_UNSUBSCRIBE = "unsub";
@@ -89,7 +97,13 @@ static const char* TAG = "serial_nextion";
 
 static uart_port_t port = -1;
 
+static uint32_t baud_rate;
+
 static TaskHandle_t serial_nextion_task = NULL;
+
+static SemaphoreHandle_t mutex = NULL;
+
+// static SemaphoreHandle_t shutdown_sem = NULL;
 
 typedef struct {
     bool state : 1;
@@ -103,6 +117,7 @@ typedef struct {
     bool charging_time : 1;
     bool power : 1;
     bool consumption : 1;
+    bool total_consumption : 1;
     bool voltage_l1 : 1;
     bool voltage_l2 : 1;
     bool voltage_l3 : 1;
@@ -143,6 +158,7 @@ static void handle_subscribe(context_t* ctx, const char* var)
 
     if (!strcmp(var, VAR_STATE)) {
         ctx->var_sub.state = true;
+        ctx->state = EVSE_STATE_A;
     } else if (!strcmp(var, VAR_ENABLED)) {
         ctx->var_sub.enabled = true;
         ctx->enabled = evse_is_enabled();
@@ -172,6 +188,8 @@ static void handle_subscribe(context_t* ctx, const char* var)
         ctx->var_sub.power = true;
     } else if (!strcmp(var, VAR_CONSUMPTION)) {
         ctx->var_sub.consumption = true;
+    } else if (!strcmp(var, VAR_TOTAL_CONSUMPTION)) {
+        ctx->var_sub.total_consumption = true;
     } else if (!strcmp(var, VAR_VOLTAGE_L1)) {
         ctx->var_sub.voltage_l1 = true;
     } else if (!strcmp(var, VAR_VOLTAGE_L2)) {
@@ -230,17 +248,24 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
     char rx_cmd[64];
 
     // nextion return codes
-    if (cmd[0] == NEX_RET_AUTO_SLEEP) {
+    switch (cmd[0]) {
+    case NEX_RET_BUF_OVERFLOW:
+        ESP_LOGW(TAG, "Buffer overflow");
+        vTaskDelay(pdMS_TO_TICKS(250));
+        return;
+    case NEX_RET_AUTO_SLEEP:
         ESP_LOGD(TAG, "Enter auto sleep");
         ctx->sleep = true;
         ctx->state = evse_get_state();
         return;
+    case NEX_RET_READY:
+        ESP_LOGI(TAG, "Display ready");
+        break;
+    default:
+        break;
     }
-    if (cmd[0] == NEX_RET_BUF_OVERFLOW) {
-        ESP_LOGW(TAG, "Buffer overflow");
-        vTaskDelay(pdMS_TO_TICKS(250));
-        return;
-    }
+
+    ESP_LOG_BUFFER_CHAR(TAG, (const char*)cmd, cmd_len);
 
     // commands
     strncpy(rx_cmd, (const char*)cmd, cmd_len);
@@ -319,6 +344,10 @@ static void tx_vars(context_t* ctx)
         sprintf(tx_cmd, VAR_FMT_CONSUMPTION, energy_meter_get_consumption());
         tx_str(tx_cmd);
     }
+    if (ctx->var_sub.total_consumption) {
+        sprintf(tx_cmd, VAR_FMT_TOTAL_CONSUMPTION, energy_meter_get_total_consumption());
+        tx_str(tx_cmd);
+    }
     if (ctx->var_sub.voltage_l1) {
         sprintf(tx_cmd, VAR_FMT_VOLTAGE_L1, (uint16_t)(energy_meter_get_l1_voltage() * 100));
         tx_str(tx_cmd);
@@ -395,11 +424,17 @@ static void serial_nextion_task_func(void* param)
     tx_str(NEX_CMD_WAKE);
 
     while (true) {
-        int len = uart_read_bytes(port, buf, (BUF_SIZE - 1), pdMS_TO_TICKS(250));
+        xSemaphoreTake(mutex, portMAX_DELAY);
+
+        int len = uart_read_bytes(port, buf, BUF_SIZE, pdMS_TO_TICKS(0));
         if (len > 0) {
             int start = 0;
             for (int i = 1; i < len - 2; i++) {
                 if (buf[i] == 0xFF && buf[i + 1] == 0xFF && buf[i + 2] == 0xFF) {
+                    if (i < len - 3 && buf[i + 3] == 0xFF) {
+                        // not last delimiter sequence in buffer
+                        continue;
+                    }
                     handle_cmd(&ctx, &buf[start], i - start);
                     start = i + 3;
                 }
@@ -415,12 +450,18 @@ static void serial_nextion_task_func(void* param)
         } else {
             tx_vars(&ctx);
         }
+
+        xSemaphoreGive(mutex);
+
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
-void serial_nextion_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bit, uart_parity_t parity, bool rs485)
+void serial_nextion_start(uart_port_t uart_num, uint32_t _baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bit, uart_parity_t parity, bool rs485)
 {
     ESP_LOGI(TAG, "Starting on uart %d", uart_num);
+
+    baud_rate = _baud_rate;
 
     uart_config_t uart_config = {
         .baud_rate = baud_rate,
@@ -458,6 +499,8 @@ void serial_nextion_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_le
         }
     }
 
+    mutex = xSemaphoreCreateMutex();
+
     xTaskCreate(serial_nextion_task_func, "serial_nextion_task", 4 * 1024, NULL, 5, &serial_nextion_task);
 }
 
@@ -468,10 +511,35 @@ void serial_nextion_stop(void)
     if (serial_nextion_task) {
         vTaskDelete(serial_nextion_task);
         serial_nextion_task = NULL;
+
+        vSemaphoreDelete(mutex);
+        mutex = NULL;
     }
 
     if (port != -1) {
         uart_driver_delete(port);
         port = -1;
+    }
+}
+
+void serial_nextion_set_time(void)
+{
+    if (port != -1) {
+        time_t now = time(NULL);
+        struct tm timeinfo = { 0 };
+        localtime_r(&now, &timeinfo);
+        char tx_cmd[16];
+        sprintf(tx_cmd, VAR_FMT_RTC, 0, timeinfo.tm_year + 1900);
+        tx_str(tx_cmd);
+        sprintf(tx_cmd, VAR_FMT_RTC, 1, timeinfo.tm_mon + 1);
+        tx_str(tx_cmd);
+        sprintf(tx_cmd, VAR_FMT_RTC, 2, timeinfo.tm_mday);
+        tx_str(tx_cmd);
+        sprintf(tx_cmd, VAR_FMT_RTC, 3, timeinfo.tm_hour);
+        tx_str(tx_cmd);
+        sprintf(tx_cmd, VAR_FMT_RTC, 4, timeinfo.tm_min);
+        tx_str(tx_cmd);
+        sprintf(tx_cmd, VAR_FMT_RTC, 5, timeinfo.tm_sec);
+        tx_str(tx_cmd);
     }
 }

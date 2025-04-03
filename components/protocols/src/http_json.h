@@ -63,8 +63,6 @@ cJSON* http_json_get_info(void);
 
 cJSON* http_json_get_board_config(void);
 
-cJSON* http_json_get_nextion_info(void);
-
 cJSON* http_json_firmware_check_update(void);
 
 esp_err_t http_json_set_credentials(cJSON* root);
