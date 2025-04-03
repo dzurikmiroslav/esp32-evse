@@ -778,14 +778,6 @@ cJSON* http_json_get_board_config(void)
     return json;
 }
 
-cJSON* http_json_get_nextion_info(void)
-{
-    cJSON* json = cJSON_CreateNull();
-    // TODO
-
-    return json;
-}
-
 cJSON* http_json_firmware_check_update(void)
 {
     cJSON* root = NULL;
