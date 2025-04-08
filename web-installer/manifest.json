@@ -1,6 +1,6 @@
 {
     "name": "esp32-evse",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "funding_url": "https://github.com/sponsors/dzurikmiroslav",
     "new_install_prompt_erase": true,
     "builds": [
