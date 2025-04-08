@@ -653,7 +653,7 @@ esp_err_t evse_set_socket_outlet(bool _socket_outlet)
     ESP_LOGI(TAG, "Set socket outlet %d", _socket_outlet);
 
     if (_socket_outlet && !board_cfg_is_proximity(board_config)) {
-        ESP_LOGE(TAG, "Cant work in socket outlet mode, proximity pilot not available");
+        ESP_LOGE(TAG, "Cannot work in socket outlet mode, proximity pilot not available");
         return ESP_ERR_INVALID_ARG;
     }
 

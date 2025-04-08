@@ -4,7 +4,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "energy_meter.h"
+#include "energy_meter.h"  //TODO remove
 #include "evse.h"
 #include "lauxlib.h"
 #include "lua.h"
@@ -128,6 +128,66 @@ static int l_get_high_temperature(lua_State* L)
     return 1;
 }
 
+static int l_get_consumption_limit(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_consumption_limit());
+    return 1;
+}
+
+static int l_get_charging_time_limit(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_charging_time_limit());
+    return 1;
+}
+
+static int l_get_under_power_limit(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_under_power_limit());
+    return 1;
+}
+
+static int l_set_consumption_limit(lua_State* L)
+{
+    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be number");
+    uint32_t value = round(lua_tonumber(L, 1));
+    evse_set_consumption_limit(value);
+    return 0;
+}
+
+static int l_set_charging_time_limit(lua_State* L)
+{
+    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be number");
+    uint32_t value = round(lua_tonumber(L, 1));
+    evse_set_charging_time_limit(value);
+    return 0;
+}
+
+static int l_set_under_power_limit(lua_State* L)
+{
+    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be number");
+    uint16_t value = round(lua_tonumber(L, 1));
+    evse_set_under_power_limit(value);
+    return 0;
+}
+
+static int l_get_default_consumption_limit(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_default_consumption_limit());
+    return 1;
+}
+
+static int l_get_default_charging_time_limit(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_default_charging_time_limit());
+    return 1;
+}
+
+static int l_get_default_under_power_limit(lua_State* L)
+{
+    lua_pushnumber(L, evse_get_default_under_power_limit());
+    return 1;
+}
+
 static const luaL_Reg lib[] = {
     // states
     { "STATEA", NULL },
@@ -159,14 +219,23 @@ static const luaL_Reg lib[] = {
     { "setchargingcurrent", l_set_charging_current },
     { "getdefaultchargingcurrent", l_get_default_charging_current },
     { "getmaxchargingcurrent", l_get_max_charging_current },
-    { "getpower", l_get_power },
-    { "getchargingtime", l_get_charging_time },
-    { "getsessiontime", l_get_session_time },
-    { "getconsumption", l_get_consumption },
-    { "getvoltage", l_get_voltage },
-    { "getcurrent", l_get_current },
+    { "getpower", l_get_power },                 // TODO has energymeter module, remove
+    { "getchargingtime", l_get_charging_time },  // TODO has energymeter module, remove
+    { "getsessiontime", l_get_session_time },    // TODO has energymeter module, remove
+    { "getconsumption", l_get_consumption },     // TODO has energymeter module, remove
+    { "getvoltage", l_get_voltage },             // TODO has energymeter module, remove
+    { "getcurrent", l_get_current },             // TODO has energymeter module, remove
     { "getlowtemperature", l_get_low_temperature },
     { "gethightemperature", l_get_high_temperature },
+    { "getconsumptionlimit", l_get_consumption_limit },
+    { "getchargingtimelimit", l_get_charging_time_limit },
+    { "getunderpowerlimit", l_get_under_power_limit },
+    { "setconsumptionlimit", l_set_consumption_limit },
+    { "setchargingtimelimit", l_set_charging_time_limit },
+    { "setunderpowerlimit", l_set_under_power_limit },
+    { "getdefaultconsumptionlimit", l_get_default_consumption_limit },
+    { "getdefaultchargingtimelimit", l_get_default_charging_time_limit },
+    { "getdefaultunderpowerlimit", l_get_default_under_power_limit },
     { NULL, NULL },
 };
 

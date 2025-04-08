@@ -12,6 +12,7 @@
 #include "l_aux_lib.h"
 #include "l_board_config_lib.h"
 #include "l_component.h"
+#include "l_energy_meter_lib.h"
 #include "l_evse_lib.h"
 #include "l_json_lib.h"
 #include "l_mqtt_lib.h"
@@ -64,6 +65,9 @@ static void script_task_func(void* param)
     luaL_requiref(L, "evse", luaopen_evse, 0);
     lua_pop(L, 1);
 
+    luaL_requiref(L, "energymeter", luaopen_energy_meter, 0);
+    lua_pop(L, 1);
+
     luaL_requiref(L, "mqtt", luaopen_mqtt, 0);
     lua_pop(L, 1);
 
@@ -107,6 +111,10 @@ static void script_task_func(void* param)
             lua_writeline();
             lua_pop(L, 1);
         }
+    } else {
+        const char* not_init_msg = "failed to load file '/usr/lua/init.lua'";
+        lua_writestring(not_init_msg, strlen(not_init_msg));
+        lua_writeline();
     }
 
     while (true) {
