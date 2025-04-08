@@ -87,7 +87,7 @@ static int l_decode(lua_State* L)
     cJSON* root = cJSON_Parse(str);
 
     if (root == NULL) {
-        luaL_error(L, "cant decode json");
+        luaL_error(L, "failed to decode json");
     }
 
     decode_child(L, root);

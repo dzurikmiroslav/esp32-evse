@@ -151,10 +151,10 @@ static int l_client_connect(lua_State* L)
 
     if (userdata->client_status == CLIENT_STATUS_INIT) {
         if (esp_mqtt_client_register_event(userdata->client, ESP_EVENT_ANY_ID, event_handler, userdata) != ESP_OK) {
-            luaL_error(L, "cant register handler");
+            luaL_error(L, "failed to register handler");
         }
         if (esp_mqtt_client_start(userdata->client) != ESP_OK) {
-            luaL_error(L, "cant start config");
+            luaL_error(L, "failed to start config");
         }
         userdata->client_status = CLIENT_STATUS_BEFORE_CONNECT;
     }
@@ -185,7 +185,7 @@ static int l_client_subscribe(lua_State* L)
     luaL_checktype(L, 3, LUA_TFUNCTION);
 
     if (esp_mqtt_client_subscribe_single(userdata->client, topic, 0) < 0) {
-        luaL_error(L, "cant subscribe");
+        luaL_error(L, "failed to subscribe");
     }
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->handler_table_ref);
@@ -204,7 +204,7 @@ static int l_client_unsubscribe(lua_State* L)
 
     const char* topic = luaL_checkstring(L, 2);
     if (esp_mqtt_client_unsubscribe(userdata->client, topic) < 0) {
-        ESP_LOGW(TAG, "Cant unsubscribe");
+        ESP_LOGW(TAG, "Failed to unsubscribe");
     }
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->handler_table_ref);

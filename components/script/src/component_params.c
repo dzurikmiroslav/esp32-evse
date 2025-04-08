@@ -21,7 +21,7 @@ static component_param_list_t* yaml_file_read(FILE* src, const char* key)
     yaml_event_t event;
 
     if (!yaml_parser_initialize(&parser)) {
-        ESP_LOGE(TAG, "Cant initialize yaml parser");
+        ESP_LOGE(TAG, "Failed to initialize yaml parser");
         return NULL;
     }
 
@@ -124,11 +124,11 @@ static void yaml_file_copy_omit(FILE* dst, FILE* src, const char* key)
     yaml_event_t event;
 
     if (!yaml_parser_initialize(&parser)) {
-        ESP_LOGE(TAG, "Cant initialize yaml parser");
+        ESP_LOGE(TAG, "Failed to initialize yaml parser");
         return;
     }
     if (!yaml_emitter_initialize(&emitter)) {
-        ESP_LOGE(TAG, "Cant initialize yaml emitter");
+        ESP_LOGE(TAG, "Failed to initialize yaml emitter");
         yaml_parser_delete(&parser);
         return;
     }
@@ -196,7 +196,7 @@ void yaml_file_append(FILE* dst, const char* key, component_param_list_t* list)
     yaml_event_t event;
 
     if (!yaml_emitter_initialize(&emitter)) {
-        ESP_LOGE(TAG, "Cant initialize yaml emitter");
+        ESP_LOGE(TAG, "Failed to initialize yaml emitter");
         return;
     }
 

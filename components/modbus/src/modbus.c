@@ -506,7 +506,7 @@ uint8_t modbus_get_unit_id(void)
 esp_err_t modbus_set_unit_id(uint8_t _unit_id)
 {
     if (_unit_id == 0) {
-        ESP_LOGE(TAG, "Unit id cant be 0");
+        ESP_LOGE(TAG, "Unit id cannot be 0");
         return ESP_ERR_INVALID_ARG;
     }
 

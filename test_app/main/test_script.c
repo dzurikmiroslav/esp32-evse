@@ -12,10 +12,12 @@
 
 #include "board_config.h"
 #include "component_params.h"
+#include "energy_meter.h"
 #include "evse.h"
 #include "l_aux_lib.h"
 #include "l_board_config_lib.h"
 #include "l_component.h"
+#include "l_energy_meter_lib.h"
 #include "l_evse_lib.h"
 #include "l_json_lib.h"
 #include "l_mqtt_lib.h"
@@ -47,6 +49,9 @@ TEST_SETUP(script)
     lua_pop(L, 1);
 
     luaL_requiref(L, "evse", luaopen_evse, 1);
+    lua_pop(L, 1);
+
+    luaL_requiref(L, "energymeter", luaopen_energy_meter, 1);
     lua_pop(L, 1);
 
     luaL_requiref(L, "mqtt", luaopen_mqtt, 0);
@@ -429,6 +434,64 @@ TEST(script, evse)
     TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "evse.setchargingcurrent(8.6)"));
     TEST_ASSERT_EQUAL(86, evse_get_charging_current());
 
+    evse_set_consumption_limit(123);
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = evse.getconsumptionlimit()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isnumber(L, -1));
+    TEST_ASSERT_EQUAL(evse_get_consumption_limit(), lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "evse.setconsumptionlimit(321)"));
+    TEST_ASSERT_EQUAL(321, evse_get_consumption_limit());
+    evse_set_consumption_limit(0);
+
+    evse_set_charging_time_limit(456);
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = evse.getchargingtimelimit()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isnumber(L, -1));
+    TEST_ASSERT_EQUAL(evse_get_charging_time_limit(), lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "evse.setchargingtimelimit(654)"));
+    TEST_ASSERT_EQUAL(654, evse_get_charging_time_limit());
+    evse_set_charging_time_limit(0);
+
+    evse_set_under_power_limit(5000);
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = evse.getunderpowerlimit()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isnumber(L, -1));
+    TEST_ASSERT_EQUAL(evse_get_under_power_limit(), lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "evse.setunderpowerlimit(10000)"));
+    TEST_ASSERT_EQUAL(10000, evse_get_under_power_limit());
+    evse_set_under_power_limit(0);
+
+    TEST_ASSERT_EQUAL(0, lua_gettop(L));  // after all Lua stack should be empty
+}
+
+TEST(script, energy_meter)
+{
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "energymeter = require(\"energymeter\")"));
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = energymeter.getmode()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isnumber(L, -1));
+    TEST_ASSERT_EQUAL(energy_meter_get_mode(), lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = energymeter.getpower()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isnumber(L, -1));
+    TEST_ASSERT_EQUAL(energy_meter_get_power(), lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = energymeter.getthreephases()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isboolean(L, -1));
+    TEST_ASSERT_EQUAL(energy_meter_is_three_phases(), lua_toboolean(L, -1));
+    lua_pop(L, 1);
+
     TEST_ASSERT_EQUAL(0, lua_gettop(L));  // after all Lua stack should be empty
 }
 
@@ -517,6 +580,7 @@ TEST_GROUP_RUNNER(script)
     RUN_TEST_CASE(script, component);
     RUN_TEST_CASE(script, component_params);
     RUN_TEST_CASE(script, evse);
+    RUN_TEST_CASE(script, energy_meter);
     RUN_TEST_CASE(script, config)
     RUN_TEST_CASE(script, json);
 }

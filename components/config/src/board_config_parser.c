@@ -292,7 +292,7 @@ esp_err_t board_config_parse_file(FILE* src, board_cfg_t* board_cfg)
     yaml_mark_t key_mark;
 
     if (!yaml_parser_initialize(&parser)) {
-        ESP_LOGE(TAG, "Cant initialize yaml parser");
+        ESP_LOGE(TAG, "Can initialize yaml parser");
         return ESP_ERR_INVALID_STATE;
     }
 
