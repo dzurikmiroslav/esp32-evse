@@ -182,8 +182,13 @@ static void tcp_server_task_func(void* param)
                     ESP_LOGW(TAG, "Maximum connection count %d reached", TCP_MAX_CONN);
                     close_conn(&sock);
                 } else {
-                    socks[conn_cout] = sock;
-                    recv_ticks[conn_cout] = xTaskGetTickCount();
+                    for (int i = 0; i < TCP_MAX_CONN; i++) {
+                        if (socks[i] == -1) {
+                            socks[i] = sock;
+                            recv_ticks[i] = xTaskGetTickCount();
+                            break;
+                        }
+                    }
                     conn_cout++;
                 }
             }
