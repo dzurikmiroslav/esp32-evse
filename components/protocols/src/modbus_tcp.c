@@ -123,7 +123,7 @@ static int port_bind(void)
 
     struct sockaddr_in dest_addr = {
         .sin_family = PF_INET,
-        .sin_addr = { 
+        .sin_addr = {
             .s_addr = htonl(INADDR_ANY),
         },
         .sin_port = htons(TCP_PORT),
@@ -165,11 +165,8 @@ static void tcp_server_task_func(void* param)
         FD_ZERO(&read_set);
         FD_SET(listen_sock, &read_set);
 
-        int conn_cout = 0;
-
         for (int i = 0; i < TCP_MAX_CONN; i++) {
             if (socks[i] > 0) {
-                conn_cout++;
                 FD_SET(socks[i], &read_set);
                 max_fd = MAX(max_fd, socks[i]);
             }
@@ -178,18 +175,19 @@ static void tcp_server_task_func(void* param)
         if (select(max_fd + 1, &read_set, NULL, NULL, NULL) > 0) {
             if (FD_ISSET(listen_sock, &read_set)) {
                 int sock = accept_conn(listen_sock);
-                if (conn_cout >= TCP_MAX_CONN) {
+                int avail_index = -1;
+                for (int i = 0; i < TCP_MAX_CONN; i++) {
+                    if (socks[i] == -1) {
+                        avail_index = i;
+                        break;
+                    }
+                }
+                if (avail_index == -1) {
                     ESP_LOGW(TAG, "Maximum connection count %d reached", TCP_MAX_CONN);
                     close_conn(&sock);
                 } else {
-                    for (int i = 0; i < TCP_MAX_CONN; i++) {
-                        if (socks[i] == -1) {
-                            socks[i] = sock;
-                            recv_ticks[i] = xTaskGetTickCount();
-                            break;
-                        }
-                    }
-                    conn_cout++;
+                    socks[avail_index] = sock;
+                    recv_ticks[avail_index] = xTaskGetTickCount();
                 }
             }
 
