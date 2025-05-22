@@ -1,5 +1,6 @@
 #include "serial_nextion.h"
 
+#include <driver/gpio.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <esp_timer.h>
@@ -18,8 +19,6 @@
 #define NEX_RET_AUTO_SLEEP   0x86
 #define NEX_RET_READY        0x88
 
-#define NEX_UPLOAD_ACK 0x05
-
 static const char* VAR_STATE = "state";
 static const char* VAR_ENABLED = "en";
 static const char* VAR_ERROR = "err";
@@ -27,6 +26,7 @@ static const char* VAR_PENDING_AUTH = "pendAuth";
 static const char* VAR_LIMIT_REACHED = "limReach";
 static const char* VAR_MAX_CHARGING_CURRENT = "maxChCur";
 static const char* VAR_CHARGING_CURRENT = "chCur";
+static const char* VAR_DEFAULT_CHARGING_CURRENT = "defChCur";
 static const char* VAR_SESSION_TIME = "sesTime";
 static const char* VAR_CHARGING_TIME = "chTime";
 static const char* VAR_POWER = "power";
@@ -41,9 +41,14 @@ static const char* VAR_CURRENT_L3 = "curL3";
 static const char* VAR_CONSUMPTION_LIMIT = "consumLim";
 static const char* VAR_CHARGING_TIME_LIMIT = "chTimeLim";
 static const char* VAR_UNDER_POWER_LIMIT = "uPowerLim";
+static const char* VAR_DEFAULT_CONSUMPTION_LIMIT = "defConsumLim";
+static const char* VAR_DEFAULT_CHARGING_TIME_LIMIT = "defChTimeLim";
+static const char* VAR_DEFAULT_UNDER_POWER_LIMIT = "defUPowerLim";
 static const char* VAR_DEVICE_NAME = "devName";
 static const char* VAR_UPTIME = "uptime";
-static const char* VAR_TEMPERATURE = "temp";
+static const char* VAR_TEMPERATURE = "temp";  // TODO deprecated, same as VAR_HIGH_TEMPERATURE
+static const char* VAR_LOW_TEMPERATURE = "loTemp";
+static const char* VAR_HIGH_TEMPERATURE = "hiTemp";
 static const char* VAR_IP = "ip";
 static const char* VAR_APP_VERSION = "appVer";
 static const char* VAR_HEAP_SIZE = "heap";
@@ -56,6 +61,7 @@ static const char* VAR_FMT_PENDING_AUTH = "pendAuth.val=%" PRIu8;
 static const char* VAR_FMT_LIMIT_REACHED = "limReach.val=%" PRIu8;
 static const char* VAR_FMT_MAX_CHARGING_CURRENT = "maxChCur.val=%" PRIu8;
 static const char* VAR_FMT_CHARGING_CURRENT = "chCur.val=%" PRIu16;
+static const char* VAR_FMT_DEFAULT_CHARGING_CURRENT = "defChCur.val=%" PRIu16;
 static const char* VAR_FMT_SESSION_TIME = "sesTime.val=%" PRIu32;
 static const char* VAR_FMT_CHARGING_TIME = "chTime.val=%" PRIu32;
 static const char* VAR_FMT_POWER = "power.val=%" PRIu16;
@@ -70,9 +76,14 @@ static const char* VAR_FMT_CURRENT_L3 = "curL3.val=%" PRIu16;
 static const char* VAR_FMT_CONSUMPTION_LIMIT = "consumLim.val=%" PRIu32;
 static const char* VAR_FMT_CHARGING_TIME_LIMIT = "chTimeLim.val=%" PRIu32;
 static const char* VAR_FMT_UNDER_POWER_LIMIT = "uPowerLim.val=%" PRIu16;
+static const char* VAR_FMT_DEFAULT_CONSUMPTION_LIMIT = "defConsumLim.val=%" PRIu32;
+static const char* VAR_FMT_DEFAULT_CHARGING_TIME_LIMIT = "defChTimeLim.val=%" PRIu32;
+static const char* VAR_FMT_DEFAULT_UNDER_POWER_LIMIT = "defUPowerLim.val=%" PRIu16;
 static const char* VAR_FMT_DEVICE_NAME = "devName.txt=\"%s\"";
 static const char* VAR_FMT_UPTIME = "uptime.val=%" PRIu32;
-static const char* VAR_FMT_TEMPERATURE = "temp.val=%" PRIi16;
+static const char* VAR_FMT_TEMPERATURE = "temp.val=%" PRIi16;  // TODO deprecated, same as VAR_FMT_HIGH_TEMPERATURE
+static const char* VAR_FMT_LOW_TEMPERATURE = "loTemp.val=%" PRIi16;
+static const char* VAR_FMT_HIGH_TEMPERATURE = "hiTemp.val=%" PRIi16;
 static const char* VAR_FMT_IP = "ip.txt=\"%s\"";
 static const char* VAR_FMT_APP_VERSION = "appVer.txt=\"%s\"";
 static const char* VAR_FMT_HEAP_SIZE = "heap.val=%" PRIu32;
@@ -80,16 +91,20 @@ static const char* VAR_FMT_MAX_HEAP_SIZE = "maxHeap.val=%" PRIu32;
 static const char* VAR_FMT_RTC = "rtc%d=%" PRIu32;
 
 static const char* CMD_SUBSCRIBE = "sub %s";
-static const char* CMD_UNSUBSCRIBE = "unsub";
+static const char* CMD_UNSUBSCRIBE = "unsub %s";
+static const char* CMD_UNSUBSCRIBE_ALL = "unsub";
 static const char* CMD_ENABLED = "en %" PRIu8;
+static const char* CMD_AVAILABLE = "avail %" PRIu8;
 static const char* CMD_CHARGING_CURRENT = "chCur %" PRIu16;
 static const char* CMD_CONSUMPTION_LIMIT = "consumLim %" PRIu32;
 static const char* CMD_CHARGING_TIME_LIMIT = "chTimeLim %" PRIu32;
 static const char* CMD_UNDER_POWER_LIMIT = "uPowerLim %" PRIu16;
 static const char* CMD_AUTHORIZE = "auth";
+static const char* CMD_REBOOT = "reboot";
 
 static const char* NEX_CMD_WAKE = "sleep=0";
 static const char* NEX_CMD_RESET = "rest";
+static const char* NEX_CMD_FULL_BRIGHTNESS = "dims=100";
 
 static const uint8_t DELIMITER[] = { 0xFF, 0xFF, 0xFF };
 
@@ -103,8 +118,6 @@ static TaskHandle_t serial_nextion_task = NULL;
 
 static SemaphoreHandle_t mutex = NULL;
 
-// static SemaphoreHandle_t shutdown_sem = NULL;
-
 typedef struct {
     bool state : 1;
     bool enabled : 1;
@@ -113,6 +126,7 @@ typedef struct {
     bool limit_reached : 1;
     bool charging_current : 1;
     bool max_charging_current : 1;
+    bool default_charging_current : 1;
     bool session_time : 1;
     bool charging_time : 1;
     bool power : 1;
@@ -127,8 +141,13 @@ typedef struct {
     bool consumption_limit : 1;
     bool charging_time_limit : 1;
     bool under_power_limit : 1;
+    bool default_consumption_limit : 1;
+    bool default_charging_time_limit : 1;
+    bool default_under_power_limit : 1;
     bool uptime : 1;
-    bool temperature : 1;
+    bool temperature : 1;  // TODO deprecated, same as high_temperature
+    bool low_temperature : 1;
+    bool high_temperature : 1;
     bool ip : 1;
     bool heap_size : 1;
     bool max_heap_size : 1;
@@ -141,9 +160,14 @@ typedef struct {
     bool enabled;
     uint16_t charging_current;
     uint16_t max_charging_current;
+    uint16_t default_charging_current;
     uint32_t consumption_limit;
     uint32_t charging_time_limit;
     uint16_t under_power_limit;
+    uint32_t default_consumption_limit;
+    uint32_t default_charging_time_limit;
+    uint16_t default_under_power_limit;
+    char ip[16];
 } context_t;
 
 static void tx_str(const char* cmd)
@@ -152,90 +176,139 @@ static void tx_str(const char* cmd)
     uart_write_bytes(port, DELIMITER, 3);
 }
 
-static void handle_subscribe(context_t* ctx, const char* var)
+static void set_subscribe(context_t* ctx, const char* var, bool subscribe)
 {
     char tx_cmd[64];
 
     if (!strcmp(var, VAR_STATE)) {
-        ctx->var_sub.state = true;
+        ctx->var_sub.state = subscribe;
         ctx->state = EVSE_STATE_A;
     } else if (!strcmp(var, VAR_ENABLED)) {
-        ctx->var_sub.enabled = true;
-        ctx->enabled = evse_is_enabled();
-        sprintf(tx_cmd, VAR_FMT_ENABLED, ctx->enabled);
-        tx_str(tx_cmd);
+        ctx->var_sub.enabled = subscribe;
+        if (subscribe) {
+            ctx->enabled = evse_is_enabled();
+            sprintf(tx_cmd, VAR_FMT_ENABLED, ctx->enabled);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_ERROR)) {
-        ctx->var_sub.error = true;
+        ctx->var_sub.error = subscribe;
     } else if (!strcmp(var, VAR_PENDING_AUTH)) {
-        ctx->var_sub.pending_auth = true;
+        ctx->var_sub.pending_auth = subscribe;
     } else if (!strcmp(var, VAR_LIMIT_REACHED)) {
-        ctx->var_sub.limit_reached = true;
+        ctx->var_sub.limit_reached = subscribe;
     } else if (!strcmp(var, VAR_CHARGING_CURRENT)) {
-        ctx->var_sub.charging_current = true;
-        ctx->charging_current = evse_get_charging_current();
-        sprintf(tx_cmd, VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
-        tx_str(tx_cmd);
+        ctx->var_sub.charging_current = subscribe;
+        if (subscribe) {
+            ctx->charging_current = evse_get_charging_current();
+            sprintf(tx_cmd, VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
+            tx_str(tx_cmd);
+        }
+    } else if (!strcmp(var, VAR_DEFAULT_CHARGING_CURRENT)) {
+        ctx->var_sub.default_charging_current = subscribe;
+        if (subscribe) {
+            ctx->default_charging_current = evse_get_default_charging_current();
+            sprintf(tx_cmd, VAR_FMT_DEFAULT_CHARGING_CURRENT, ctx->default_charging_current);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_MAX_CHARGING_CURRENT)) {
-        ctx->var_sub.max_charging_current = true;
-        ctx->max_charging_current = evse_get_max_charging_current();
-        sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
-        tx_str(tx_cmd);
+        ctx->var_sub.max_charging_current = subscribe;
+        if (subscribe) {
+            ctx->max_charging_current = evse_get_max_charging_current();
+            sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_SESSION_TIME)) {
-        ctx->var_sub.session_time = true;
+        ctx->var_sub.session_time = subscribe;
     } else if (!strcmp(var, VAR_CHARGING_TIME)) {
-        ctx->var_sub.charging_time = true;
+        ctx->var_sub.charging_time = subscribe;
     } else if (!strcmp(var, VAR_POWER)) {
-        ctx->var_sub.power = true;
+        ctx->var_sub.power = subscribe;
     } else if (!strcmp(var, VAR_CONSUMPTION)) {
-        ctx->var_sub.consumption = true;
+        ctx->var_sub.consumption = subscribe;
     } else if (!strcmp(var, VAR_TOTAL_CONSUMPTION)) {
-        ctx->var_sub.total_consumption = true;
+        ctx->var_sub.total_consumption = subscribe;
     } else if (!strcmp(var, VAR_VOLTAGE_L1)) {
-        ctx->var_sub.voltage_l1 = true;
+        ctx->var_sub.voltage_l1 = subscribe;
     } else if (!strcmp(var, VAR_VOLTAGE_L2)) {
-        ctx->var_sub.voltage_l2 = true;
+        ctx->var_sub.voltage_l2 = subscribe;
     } else if (!strcmp(var, VAR_VOLTAGE_L3)) {
-        ctx->var_sub.voltage_l3 = true;
+        ctx->var_sub.voltage_l3 = subscribe;
     } else if (!strcmp(var, VAR_CURRENT_L1)) {
-        ctx->var_sub.current_l1 = true;
+        ctx->var_sub.current_l1 = subscribe;
     } else if (!strcmp(var, VAR_CURRENT_L2)) {
-        ctx->var_sub.current_l2 = true;
+        ctx->var_sub.current_l2 = subscribe;
     } else if (!strcmp(var, VAR_CURRENT_L3)) {
-        ctx->var_sub.current_l3 = true;
+        ctx->var_sub.current_l3 = subscribe;
     } else if (!strcmp(var, VAR_CONSUMPTION_LIMIT)) {
-        ctx->var_sub.consumption_limit = true;
-        ctx->consumption_limit = evse_get_consumption_limit();
-        sprintf(tx_cmd, VAR_FMT_CONSUMPTION_LIMIT, ctx->consumption_limit);
-        tx_str(tx_cmd);
+        ctx->var_sub.consumption_limit = subscribe;
+        if (subscribe) {
+            ctx->consumption_limit = evse_get_consumption_limit();
+            sprintf(tx_cmd, VAR_FMT_CONSUMPTION_LIMIT, ctx->consumption_limit);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_CHARGING_TIME_LIMIT)) {
-        ctx->var_sub.charging_time_limit = true;
+        ctx->var_sub.charging_time_limit = subscribe;
         ctx->charging_time_limit = evse_get_charging_time_limit();
         sprintf(tx_cmd, VAR_FMT_CHARGING_TIME_LIMIT, ctx->charging_time_limit);
         tx_str(tx_cmd);
     } else if (!strcmp(var, VAR_UNDER_POWER_LIMIT)) {
-        ctx->var_sub.under_power_limit = true;
-        ctx->under_power_limit = evse_get_under_power_limit();
-        sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->under_power_limit);
+        ctx->var_sub.default_under_power_limit = subscribe;
+        if (subscribe) {
+            ctx->default_under_power_limit = evse_get_default_under_power_limit();
+            sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
+            tx_str(tx_cmd);
+        }
+    } else if (!strcmp(var, VAR_DEFAULT_CONSUMPTION_LIMIT)) {
+        ctx->var_sub.default_consumption_limit = subscribe;
+        if (subscribe) {
+            ctx->default_consumption_limit = evse_get_default_consumption_limit();
+            sprintf(tx_cmd, VAR_FMT_DEFAULT_CONSUMPTION_LIMIT, ctx->default_consumption_limit);
+            tx_str(tx_cmd);
+        }
+    } else if (!strcmp(var, VAR_DEFAULT_CHARGING_TIME_LIMIT)) {
+        ctx->var_sub.default_charging_time_limit = subscribe;
+        ctx->default_charging_time_limit = evse_get_default_charging_time_limit();
+        sprintf(tx_cmd, VAR_FMT_DEFAULT_CHARGING_TIME_LIMIT, ctx->default_charging_time_limit);
         tx_str(tx_cmd);
+    } else if (!strcmp(var, VAR_DEFAULT_UNDER_POWER_LIMIT)) {
+        ctx->var_sub.default_under_power_limit = subscribe;
+        if (subscribe) {
+            ctx->default_under_power_limit = evse_get_default_under_power_limit();
+            sprintf(tx_cmd, VAR_FMT_DEFAULT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_UPTIME)) {
-        ctx->var_sub.uptime = true;
+        ctx->var_sub.uptime = subscribe;
     } else if (!strcmp(var, VAR_TEMPERATURE)) {
-        ctx->var_sub.temperature = true;
+        ctx->var_sub.temperature = subscribe;
+    } else if (!strcmp(var, VAR_LOW_TEMPERATURE)) {
+        ctx->var_sub.low_temperature = subscribe;
+    } else if (!strcmp(var, VAR_HIGH_TEMPERATURE)) {
+        ctx->var_sub.high_temperature = subscribe;
     } else if (!strcmp(var, VAR_IP)) {
-        ctx->var_sub.ip = true;
+        ctx->var_sub.ip = subscribe;
+        if (subscribe) {
+            wifi_get_ip(false, ctx->ip);
+            sprintf(tx_cmd, VAR_FMT_IP, ctx->ip);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_HEAP_SIZE)) {
-        ctx->var_sub.heap_size = true;
+        ctx->var_sub.heap_size = subscribe;
     } else if (!strcmp(var, VAR_MAX_HEAP_SIZE)) {
-        ctx->var_sub.max_heap_size = true;
+        ctx->var_sub.max_heap_size = subscribe;
     } else if (!strcmp(var, VAR_DEVICE_NAME)) {
-        sprintf(tx_cmd, VAR_FMT_DEVICE_NAME, board_config.device_name);
-        tx_str(tx_cmd);
+        if (subscribe) {
+            sprintf(tx_cmd, VAR_FMT_DEVICE_NAME, board_config.device_name);
+            tx_str(tx_cmd);
+        }
     } else if (!strcmp(var, VAR_APP_VERSION)) {
-        const esp_app_desc_t* app_desc = esp_app_get_description();
-        sprintf(tx_cmd, VAR_FMT_APP_VERSION, app_desc->version);
-        tx_str(tx_cmd);
+        if (subscribe) {
+            const esp_app_desc_t* app_desc = esp_app_get_description();
+            sprintf(tx_cmd, VAR_FMT_APP_VERSION, app_desc->version);
+            tx_str(tx_cmd);
+        }
     } else {
-        ESP_LOGW(TAG, "Subscribe unknown variable: %s", var);
+        ESP_LOGW(TAG, "Unknown variable: %s", var);
     }
 }
 
@@ -265,21 +338,24 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
         break;
     }
 
-    ESP_LOG_BUFFER_CHAR(TAG, (const char*)cmd, cmd_len);
-
     // commands
     strncpy(rx_cmd, (const char*)cmd, cmd_len);
     rx_cmd[cmd_len] = '\0';
 
-    if (strcmp(rx_cmd, CMD_UNSUBSCRIBE) == 0) {
+    if (sscanf(rx_cmd, CMD_UNSUBSCRIBE, var_str) > 0) {
+        ESP_LOGD(TAG, "Unsubscribe %s", var_str);
+        set_subscribe(ctx, var_str, false);
+    } else if (strcmp(rx_cmd, CMD_UNSUBSCRIBE_ALL) == 0) {
         ESP_LOGD(TAG, "Unsubscribe all");
         memset((void*)&ctx->var_sub, 0, sizeof(var_sub_t));
     } else if (sscanf(rx_cmd, CMD_SUBSCRIBE, var_str) > 0) {
         ESP_LOGD(TAG, "Subscribe %s", var_str);
         ctx->sleep = false;
-        handle_subscribe(ctx, var_str);
+        set_subscribe(ctx, var_str, true);
     } else if (sscanf(rx_cmd, CMD_ENABLED, &var_u8) > 0) {
         evse_set_enabled(var_u8);
+    } else if (sscanf(rx_cmd, CMD_AVAILABLE, &var_u8) > 0) {
+        evse_set_available(var_u8);
     } else if (sscanf(rx_cmd, CMD_CHARGING_CURRENT, &var_u16) > 0) {
         evse_set_charging_current(var_u16);
     } else if (sscanf(rx_cmd, CMD_CONSUMPTION_LIMIT, &var_u32) > 0) {
@@ -290,6 +366,8 @@ static void handle_cmd(context_t* ctx, const uint8_t* cmd, uint8_t cmd_len)
         evse_set_under_power_limit(var_u16);
     } else if (strcmp(rx_cmd, CMD_AUTHORIZE) == 0) {
         evse_authorize();
+    } else if (strcmp(rx_cmd, CMD_REBOOT) == 0) {
+        esp_restart();
     }
 }
 
@@ -326,6 +404,11 @@ static void tx_vars(context_t* ctx)
     if (ctx->var_sub.max_charging_current && ctx->max_charging_current != evse_get_max_charging_current()) {
         ctx->max_charging_current = evse_get_max_charging_current();
         sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
+        tx_str(tx_cmd);
+    }
+    if (ctx->var_sub.default_charging_current && ctx->default_charging_current != evse_get_default_charging_current()) {
+        ctx->default_charging_current = evse_get_default_charging_current();
+        sprintf(tx_cmd, VAR_FMT_DEFAULT_CHARGING_CURRENT, ctx->default_charging_current);
         tx_str(tx_cmd);
     }
     if (ctx->var_sub.session_time) {
@@ -387,6 +470,21 @@ static void tx_vars(context_t* ctx)
         sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->under_power_limit);
         tx_str(tx_cmd);
     }
+    if (ctx->var_sub.default_consumption_limit && ctx->default_consumption_limit != evse_get_default_consumption_limit()) {
+        ctx->default_consumption_limit = evse_get_default_consumption_limit();
+        sprintf(tx_cmd, VAR_FMT_CONSUMPTION_LIMIT, ctx->default_consumption_limit);
+        tx_str(tx_cmd);
+    }
+    if (ctx->var_sub.default_charging_time_limit && ctx->default_charging_time_limit != evse_get_default_charging_time_limit()) {
+        ctx->default_charging_time_limit = evse_get_default_charging_time_limit();
+        sprintf(tx_cmd, VAR_FMT_CHARGING_TIME_LIMIT, ctx->default_charging_time_limit);
+        tx_str(tx_cmd);
+    }
+    if (ctx->var_sub.default_under_power_limit && ctx->default_under_power_limit != evse_get_default_under_power_limit()) {
+        ctx->default_under_power_limit = evse_get_default_under_power_limit();
+        sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
+        tx_str(tx_cmd);
+    }
     if (ctx->var_sub.uptime) {
         sprintf(tx_cmd, VAR_FMT_UPTIME, (uint32_t)(esp_timer_get_time() / 1000000));
         tx_str(tx_cmd);
@@ -395,11 +493,22 @@ static void tx_vars(context_t* ctx)
         sprintf(tx_cmd, VAR_FMT_TEMPERATURE, temp_sensor_get_high());
         tx_str(tx_cmd);
     }
+    if (ctx->var_sub.low_temperature) {
+        sprintf(tx_cmd, VAR_FMT_LOW_TEMPERATURE, temp_sensor_get_low());
+        tx_str(tx_cmd);
+    }
+    if (ctx->var_sub.high_temperature) {
+        sprintf(tx_cmd, VAR_FMT_HIGH_TEMPERATURE, temp_sensor_get_high());
+        tx_str(tx_cmd);
+    }
     if (ctx->var_sub.ip) {
         char str[16];
         wifi_get_ip(false, str);
-        sprintf(tx_cmd, VAR_FMT_IP, str);
-        tx_str(tx_cmd);
+        if (strncmp(ctx->ip, str, 16) != 0) {
+            strncpy(ctx->ip, str, 16);
+            sprintf(tx_cmd, VAR_FMT_IP, str);
+            tx_str(tx_cmd);
+        }
     }
     if (ctx->var_sub.heap_size || ctx->var_sub.max_heap_size) {
         multi_heap_info_t heap_info;

@@ -71,7 +71,7 @@ static void serial_modbus_task_func(void* param)
                     ESP_LOG_BUFFER_HEX_LEVEL(TAG, buf, event.size, LOG_LVL_DATA);
 
                     len -= 2;
-                    if (len > 2) {
+                    if (modbus_filter_request(buf, len)) {
                         if (compute_crc(buf, len) == MODBUS_READ_UINT16(buf, len)) {
                             len = modbus_request_exec(buf, len);
                             if (len > 0) {
@@ -86,8 +86,6 @@ static void serial_modbus_task_func(void* param)
                         } else {
                             ESP_LOGW(TAG, "Invalid packet CRC");
                         }
-                    } else {
-                        ESP_LOGW(TAG, "Invalid packet data length");
                     }
                 }
                 break;

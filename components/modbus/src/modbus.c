@@ -447,55 +447,81 @@ uint16_t modbus_request_exec(uint8_t* data, uint16_t len)
 {
     uint16_t resp_len = 0;
 
-    if (unit_id == data[0]) {
-        uint8_t fc = data[1];
-        uint16_t addr;
-        uint16_t count;
-        uint16_t value;
-        uint8_t ex = MODBUS_EX_NONE;
+    // if (unit_id == data[0]) checked in modbus_filter_request
 
-        if (fc == 3) {
-            addr = MODBUS_READ_UINT16(data, 2);
-            count = MODBUS_READ_UINT16(data, 4);
+    uint8_t fc = data[1];
+    uint16_t addr;
+    uint16_t count;
+    uint16_t value;
+    uint8_t ex = MODBUS_EX_NONE;
 
-            data[2] = count * 2;
-            resp_len = 3 + count * 2;
+    if (fc == 3) {
+        addr = MODBUS_READ_UINT16(data, 2);
+        count = MODBUS_READ_UINT16(data, 4);
 
-            for (uint16_t i = 0; i < count; i++) {
-                if ((ex = read_holding_register(addr + i, &value)) != MODBUS_EX_NONE) {
-                    break;
-                }
-                MODBUS_WRITE_UINT16(data, 3 + 2 * i, value);
+        data[2] = count * 2;
+        resp_len = 3 + count * 2;
+
+        for (uint16_t i = 0; i < count; i++) {
+            if ((ex = read_holding_register(addr + i, &value)) != MODBUS_EX_NONE) {
+                break;
             }
-        } else if (fc == 6) {
-            addr = MODBUS_READ_UINT16(data, 2);
+            MODBUS_WRITE_UINT16(data, 3 + 2 * i, value);
+        }
+    } else if (fc == 6) {
+        addr = MODBUS_READ_UINT16(data, 2);
 
-            resp_len = 6;
+        resp_len = 6;
 
-            ex = write_holding_register(addr, &data[4], 0);
-        } else if (fc == 16) {
-            addr = MODBUS_READ_UINT16(data, 2);
-            count = MODBUS_READ_UINT16(data, 4);
+        ex = write_holding_register(addr, &data[4], 0);
+    } else if (fc == 16) {
+        addr = MODBUS_READ_UINT16(data, 2);
+        count = MODBUS_READ_UINT16(data, 4);
 
-            resp_len = 6;
+        resp_len = 6;
 
-            for (uint16_t i = 0; i < count; i++) {
-                if ((ex = write_holding_register(addr + i, &data[7 + 2 * i], count - i)) != MODBUS_EX_NONE) {
-                    break;
-                }
+        for (uint16_t i = 0; i < count; i++) {
+            if ((ex = write_holding_register(addr + i, &data[7 + 2 * i], count - i)) != MODBUS_EX_NONE) {
+                break;
             }
-        } else {
-            ex = MODBUS_EX_ILLEGAL_FUNCTION;
         }
+    } else {
+        ex = MODBUS_EX_ILLEGAL_FUNCTION;
+    }
 
-        if (ex != MODBUS_EX_NONE) {
-            data[1] = 0x8 | fc;
-            data[2] = ex;
-            resp_len = 3;
-        }
+    if (ex != MODBUS_EX_NONE) {
+        data[1] = 0x8 | fc;
+        data[2] = ex;
+        resp_len = 3;
     }
 
     return resp_len;
+}
+
+bool modbus_filter_request(uint8_t* data, uint16_t len)
+{
+    if (len > 2) {
+        ESP_LOGI(TAG, "Invalid packet length");
+        return false;
+    }
+
+    if (unit_id != data[0]) {
+        ESP_LOGD(TAG, "Unit id not match");
+        return false;
+    }
+
+    uint8_t fc = data[1];
+    if (fc != 3 && fc != 6 && fc != 16) {
+        ESP_LOGD(TAG, "Unknown function code %" PRIu8, fc);
+        return false;
+    }
+
+    if (fc == 16 && MODBUS_READ_UINT16(data, 4) != (len - 7)) {
+        ESP_LOGD(TAG, "Invalid packet data length");
+        return false;
+    }
+
+    return true;
 }
 
 uint8_t modbus_get_unit_id(void)

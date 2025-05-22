@@ -244,7 +244,7 @@ uint8_t evse_get_temp_threshold(void);
 /**
  * @brief Set consumption limit
  *
- * @param consumption_limit Consumption in Ws
+ * @param consumption_limit Consumption in Wh
  */
 void evse_set_consumption_limit(uint32_t consumption_limit);
 
@@ -279,14 +279,14 @@ void evse_set_under_power_limit(uint16_t under_power_limit);
 /**
  * @brief Get consumption limit, stored in NVS
  *
- * @return consumption in Ws
+ * @return consumption in Wh
  */
 uint32_t evse_get_default_consumption_limit(void);
 
 /**
  * @brief Set consumption limit, stored in NVS
  *
- * @param consumption_limit consumption in 1Ws
+ * @param consumption_limit consumption in Wh
  */
 void evse_set_default_consumption_limit(uint32_t consumption_limit);
 
