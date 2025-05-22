@@ -97,6 +97,12 @@ TEST(config, custom)
     FILE* config_file = fopen(file_name, "w");
     fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, config_file);
 
+#ifndef SKIP_NONFREE
+    config_file = freopen(file_name, "a", config_file);
+    fputs("nextion:\n", config_file);
+    fputs("  resetGpio: 17\n", config_file);
+#endif /* SKIP_NONFREE */
+
     config_file = freopen(file_name, "r", config_file);
 
     board_cfg_t config;
