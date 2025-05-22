@@ -329,7 +329,7 @@ static esp_err_t handle_firmware_update(httpd_req_t* req)
                 schedule_restart();
             } else {
                 ESP_LOGE(TAG, "OTA failed (%s)", esp_err_to_name(err));
-                httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
+                httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
                 return ESP_FAIL;
             }
         }
@@ -358,7 +358,7 @@ static esp_err_t handle_firmware_upload(httpd_req_t* req)
     ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%lx", update_partition->subtype, update_partition->address);
     if (update_partition == NULL) {
         ESP_LOGE(TAG, "No OTA partition");
-        httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
+        httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
         return ESP_FAIL;
     }
 
@@ -390,7 +390,7 @@ static esp_err_t handle_firmware_upload(httpd_req_t* req)
             err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "OTA begin failed (%s)", esp_err_to_name(err));
-                httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
+                httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
                 return ESP_FAIL;
             }
             ESP_LOGI(TAG, "OTA begin succeeded");
@@ -399,7 +399,7 @@ static esp_err_t handle_firmware_upload(httpd_req_t* req)
         err = esp_ota_write(update_handle, (const void*)buf, received);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "OTA write failed (%s)", esp_err_to_name(err));
-            httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
+            httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
             return ESP_FAIL;
         }
 
@@ -412,14 +412,14 @@ static esp_err_t handle_firmware_upload(httpd_req_t* req)
             ESP_LOGE(TAG, "Image validation failed, image is corrupted");
         }
         ESP_LOGE(TAG, "OTA end failed (%s)!", esp_err_to_name(err));
-        httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
+        httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
         return ESP_FAIL;
     }
 
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "OTA set boot partition failed (%s)", esp_err_to_name(err));
-        httpd_resp_send_custom_err(req, "521 Firmware Upgrade Failed", "Firmware upgrade failed");
+        httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
         return ESP_FAIL;
     }
 

@@ -1,6 +1,7 @@
 #ifndef PERIPHERALS_MOCK_H_
 #define PERIPHERALS_MOCK_H_
 
+#include "energy_meter.h"
 #include "pilot.h"
 
 // pilot
@@ -28,5 +29,7 @@ extern uint16_t energy_meter_mock_power;
 extern uint32_t energy_meter_mock_charging_time;
 
 extern uint32_t energy_meter_mock_consumption;
+
+extern uint64_t energy_meter_mock_total_consumption;
 
 #endif /* PERIPHERALS_MOCK_H_ */

@@ -24,6 +24,7 @@
 #include "lauxlib.h"
 #include "lua.h"
 #include "lualib.h"
+#include "peripherals_mock.h"
 #include "script_utils.h"
 #include "script_watchdog.h"
 
@@ -491,6 +492,16 @@ TEST(script, energy_meter)
     TEST_ASSERT_TRUE(lua_isboolean(L, -1));
     TEST_ASSERT_EQUAL(energy_meter_is_three_phases(), lua_toboolean(L, -1));
     lua_pop(L, 1);
+
+    energy_meter_mock_total_consumption = 123456;
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "ret = energymeter.gettotalconsumption()"));
+    lua_getglobal(L, "ret");
+    TEST_ASSERT_TRUE(lua_isnumber(L, -1));
+    TEST_ASSERT_EQUAL(energy_meter_mock_total_consumption, lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    TEST_ASSERT_EQUAL(LUA_OK, luaL_dostring(L, "energymeter.resettotalconsumption()"));
+    TEST_ASSERT_EQUAL(0, energy_meter_mock_total_consumption);
 
     TEST_ASSERT_EQUAL(0, lua_gettop(L));  // after all Lua stack should be empty
 }

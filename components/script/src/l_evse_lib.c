@@ -48,6 +48,31 @@ static int l_set_available(lua_State* L)
     return 0;
 }
 
+static int l_get_require_auth(lua_State* L)
+{
+    lua_pushboolean(L, evse_is_require_auth());
+    return 1;
+}
+
+static int l_set_require_auth(lua_State* L)
+{
+    luaL_argcheck(L, lua_isboolean(L, 1), 1, "Must be boolean");
+    evse_set_require_auth(lua_toboolean(L, 1));
+    return 0;
+}
+
+static int l_get_pending_auth(lua_State* L)
+{
+    lua_pushboolean(L, evse_is_pending_auth());
+    return 1;
+}
+
+static int l_authorize(lua_State* L)
+{
+    evse_authorize();
+    return 0;
+}
+
 static int l_get_charging_current(lua_State* L)
 {
     lua_pushnumber(L, evse_get_charging_current() / 10.0f);
@@ -57,8 +82,7 @@ static int l_get_charging_current(lua_State* L)
 static int l_set_charging_current(lua_State* L)
 {
     luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be number");
-    uint16_t value = round(lua_tonumber(L, 1) * 10);
-    if (evse_set_charging_current(value) != ESP_OK) {
+    if (evse_set_charging_current(round(lua_tonumber(L, 1) * 10)) != ESP_OK) {
         luaL_argerror(L, 1, "Invalid value");
     }
     return 0;
@@ -70,10 +94,28 @@ static int l_get_default_charging_current(lua_State* L)
     return 1;
 }
 
+static int l_set_default_charging_current(lua_State* L)
+{
+    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be number");
+    if (evse_set_default_charging_current(round(lua_tonumber(L, 1) * 10)) != ESP_OK) {
+        luaL_argerror(L, 1, "Invalid value");
+    }
+    return 0;
+}
+
 static int l_get_max_charging_current(lua_State* L)
 {
     lua_pushnumber(L, evse_get_max_charging_current());
     return 1;
+}
+
+static int l_set_max_charging_current(lua_State* L)
+{
+    luaL_argcheck(L, lua_isnumber(L, 1), 1, "Must be number");
+    if (evse_set_max_charging_current(lua_tointeger(L, 1)) != ESP_OK) {
+        luaL_argerror(L, 1, "Invalid value");
+    }
+    return 0;
 }
 
 static int l_get_power(lua_State* L)
@@ -188,6 +230,12 @@ static int l_get_default_under_power_limit(lua_State* L)
     return 1;
 }
 
+static int l_get_limit_reached(lua_State* L)
+{
+    lua_pushboolean(L, evse_is_limit_reached());
+    return 1;
+}
+
 static const luaL_Reg lib[] = {
     // states
     { "STATEA", NULL },
@@ -215,10 +263,16 @@ static const luaL_Reg lib[] = {
     { "setenabled", l_set_enabled },
     { "getavailable", l_get_available },
     { "setavailable", l_set_available },
+    { "getrequireauth", l_get_require_auth },
+    { "setrequireauth", l_set_require_auth },
+    { "getpendingauth", l_get_pending_auth },
+    { "authorize", l_authorize },
     { "getchargingcurrent", l_get_charging_current },
     { "setchargingcurrent", l_set_charging_current },
     { "getdefaultchargingcurrent", l_get_default_charging_current },
+    { "setdefaultchargingcurrent", l_set_default_charging_current },
     { "getmaxchargingcurrent", l_get_max_charging_current },
+    { "setmaxchargingcurrent", l_set_max_charging_current },
     { "getpower", l_get_power },                 // TODO has energymeter module, remove
     { "getchargingtime", l_get_charging_time },  // TODO has energymeter module, remove
     { "getsessiontime", l_get_session_time },    // TODO has energymeter module, remove
@@ -236,6 +290,7 @@ static const luaL_Reg lib[] = {
     { "getdefaultconsumptionlimit", l_get_default_consumption_limit },
     { "getdefaultchargingtimelimit", l_get_default_charging_time_limit },
     { "getdefaultunderpowerlimit", l_get_default_under_power_limit },
+    { "getlimitreached", l_get_limit_reached },
     { NULL, NULL },
 };
 

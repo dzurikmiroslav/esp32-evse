@@ -85,7 +85,7 @@
             },
             "required": [
                 "deviceName",
-                "buttonWifiGpio",
+                "buttonGpio",
                 "pilot",
                 "acRelayGpio"
             ],

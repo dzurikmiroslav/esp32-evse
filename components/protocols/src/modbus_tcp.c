@@ -211,21 +211,23 @@ static void tcp_server_task_func(void* param)
 
                             uint16_t len = MODBUS_READ_UINT16(buf, MODBUS_TCP_LEN);
                             if (len == err - 6) {
-                                len = modbus_request_exec(&buf[MODBUS_TCP_DATA], len);
+                                if (modbus_filter_request(&buf[MODBUS_TCP_DATA], len)) {
+                                    len = modbus_request_exec(&buf[MODBUS_TCP_DATA], len);
 
-                                if (len > 0) {
-                                    MODBUS_WRITE_UINT16(buf, MODBUS_TCP_LEN, len);
-                                    uint16_t resp_len = len + 6;
-                                    ESP_LOG_LEVEL(LOG_LVL_DATA, TAG, "Socket (#%d), write buffer length %d", socks[i], resp_len);
-                                    ESP_LOG_BUFFER_HEX_LEVEL(TAG, buf, resp_len, LOG_LVL_DATA);
+                                    if (len > 0) {
+                                        MODBUS_WRITE_UINT16(buf, MODBUS_TCP_LEN, len);
+                                        uint16_t resp_len = len + 6;
+                                        ESP_LOG_LEVEL(LOG_LVL_DATA, TAG, "Socket (#%d), write buffer length %d", socks[i], resp_len);
+                                        ESP_LOG_BUFFER_HEX_LEVEL(TAG, buf, resp_len, LOG_LVL_DATA);
 
-                                    err = send(socks[i], buf, resp_len, MSG_DONTWAIT);
-                                    if (err < 0) {
-                                        ESP_LOGE(TAG, "Socket (#%d), fail to send data: errno %d", socks[i], errno);
-                                        close_conn(&socks[i]);
+                                        err = send(socks[i], buf, resp_len, MSG_DONTWAIT);
+                                        if (err < 0) {
+                                            ESP_LOGE(TAG, "Socket (#%d), fail to send data: errno %d", socks[i], errno);
+                                            close_conn(&socks[i]);
+                                        }
+                                    } else {
+                                        ESP_LOGW(TAG, "Socket (#%d), no response", socks[i]);
                                     }
-                                } else {
-                                    ESP_LOGW(TAG, "Socket (#%d), no response", socks[i]);
                                 }
                             } else {
                                 ESP_LOGW(TAG, "Socket (#%d), invalid packet data length", socks[i]);

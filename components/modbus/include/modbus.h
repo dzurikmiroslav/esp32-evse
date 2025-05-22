@@ -2,6 +2,7 @@
 #define MODBUS_H_
 
 #include <esp_err.h>
+#include <stdbool.h>
 
 #define MODBUS_PACKET_SIZE 256
 
@@ -17,13 +18,23 @@
 void modbus_init(void);
 
 /**
- * @brief Process modbus request
+ * @brief Test if buffer like modbus request and match unit_id
  *
- * @param buf Request/response data
+ * @param data
+ * @param len
+ * @return true
+ * @return false
+ */
+bool modbus_filter_request(uint8_t *data, uint16_t len);
+
+/**
+ * @brief Process modbus request, before always call modbus_filter_request
+ *
+ * @param data Request/response data
  * @param len Length of request data
  * @return uint16_t Length of response data, 0 if no response
  */
-uint16_t modbus_request_exec(uint8_t *buf, uint16_t len);
+uint16_t modbus_request_exec(uint8_t *data, uint16_t len);
 
 /**
  * @brief Get modbus unit id
