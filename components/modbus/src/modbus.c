@@ -500,7 +500,7 @@ uint16_t modbus_request_exec(uint8_t* data, uint16_t len)
 
 bool modbus_filter_request(uint8_t* data, uint16_t len)
 {
-    if (len > 2) {
+    if (len <= 2) {
         ESP_LOGI(TAG, "Invalid packet length");
         return false;
     }
