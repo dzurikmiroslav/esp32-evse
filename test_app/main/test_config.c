@@ -1,3 +1,4 @@
+#include <soc/uart_channel.h>
 #include <sys/stat.h>
 #include <unity.h>
 #include <unity_fixture.h>
@@ -6,6 +7,27 @@
 #include "board_config_parser.h"
 
 #define BOARD_YAML "/usr/board.yaml"
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define DEVICE_NANE       "ESP32 minimal EVSE"
+#define PILOT_GPIO        33
+#define PILOT_ADC_CHANNEL 7
+#define AC_RELAY_GPIO     32
+#endif /* CONFIG_IDF_TARGET_ESP32 */
+
+#ifdef CONFIG_IDF_TARGET_ESP32S2
+#define DEVICE_NANE       "ESP32-S2 minimal EVSE"
+#define PILOT_GPIO        6
+#define PILOT_ADC_CHANNEL 3
+#define AC_RELAY_GPIO     5
+#endif /* CONFIG_IDF_TARGET_ESP32S2 */
+
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+#define DEVICE_NANE       "ESP32-S3 minimal EVSE"
+#define PILOT_GPIO        6
+#define PILOT_ADC_CHANNEL 3
+#define AC_RELAY_GPIO     5
+#endif /* CONFIG_IDF_TARGET_ESP32S3 */
 
 extern const char board_yaml_start[] asm("_binary_board_yaml_start");
 extern const char board_yaml_end[] asm("_binary_board_yaml_end");
@@ -24,20 +46,22 @@ TEST(config, minimal)
 
     board_config_load(false);
 
-    TEST_ASSERT_EQUAL_STRING("ESP32 minimal EVSE", board_config.device_name);
+    TEST_ASSERT_EQUAL_STRING(DEVICE_NANE, board_config.device_name);
 
     TEST_ASSERT_EQUAL(-1, board_config.led_charging_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.led_error_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.led_wifi_gpio);
     TEST_ASSERT_EQUAL(0, board_config.button_gpio);
 
-    TEST_ASSERT_EQUAL(33, board_config.pilot_gpio);
-    TEST_ASSERT_EQUAL(7, board_config.pilot_adc_channel);
+    TEST_ASSERT_EQUAL(PILOT_GPIO, board_config.pilot_gpio);
+    TEST_ASSERT_EQUAL(PILOT_ADC_CHANNEL, board_config.pilot_adc_channel);
     TEST_ASSERT_EQUAL(2410, board_config.pilot_levels[0]);
     TEST_ASSERT_EQUAL(2104, board_config.pilot_levels[1]);
     TEST_ASSERT_EQUAL(1797, board_config.pilot_levels[2]);
     TEST_ASSERT_EQUAL(1491, board_config.pilot_levels[3]);
     TEST_ASSERT_EQUAL(265, board_config.pilot_levels[4]);
+
+    TEST_ASSERT_EQUAL(AC_RELAY_GPIO, board_config.ac_relay_gpio);
 
     TEST_ASSERT_EQUAL(-1, board_config.socket_lock_a_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.socket_lock_b_gpio);
@@ -56,6 +80,7 @@ TEST(config, minimal)
 
     TEST_ASSERT_EQUAL(-1, board_config.rcm_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.rcm_test_gpio);
+    TEST_ASSERT_EQUAL(500, board_config.rcm_test_delay);
 
     TEST_ASSERT_EQUAL(-1, board_config.aux_inputs[0].gpio);
     TEST_ASSERT_EQUAL(-1, board_config.aux_inputs[1].gpio);
@@ -72,8 +97,8 @@ TEST(config, minimal)
 
     TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_UART, board_config.serials[0].type);
     TEST_ASSERT_EQUAL_STRING("UART via USB", board_config.serials[0].name);
-    TEST_ASSERT_EQUAL(3, board_config.serials[0].rxd_gpio);
-    TEST_ASSERT_EQUAL(1, board_config.serials[0].txd_gpio);
+    TEST_ASSERT_EQUAL(UART_NUM_0_RXD_DIRECT_GPIO_NUM, board_config.serials[0].rxd_gpio);
+    TEST_ASSERT_EQUAL(UART_NUM_0_TXD_DIRECT_GPIO_NUM, board_config.serials[0].txd_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.serials[0].rts_gpio);
 
     TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, board_config.serials[1].type);
@@ -96,12 +121,6 @@ TEST(config, custom)
 
     FILE* config_file = fopen(file_name, "w");
     fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, config_file);
-
-#ifndef SKIP_NONFREE
-    config_file = freopen(file_name, "a", config_file);
-    fputs("nextion:\n", config_file);
-    fputs("  resetGpio: 17\n", config_file);
-#endif /* SKIP_NONFREE */
 
     config_file = freopen(file_name, "r", config_file);
 
@@ -142,6 +161,7 @@ TEST(config, custom)
 
     TEST_ASSERT_EQUAL(30, config.rcm_gpio);
     TEST_ASSERT_EQUAL(31, config.rcm_test_gpio);
+    TEST_ASSERT_EQUAL(700, config.rcm_test_delay);
 
     TEST_ASSERT_EQUAL(21, config.aux_inputs[0].gpio);
     TEST_ASSERT_EQUAL_STRING("IN1", config.aux_inputs[0].name);

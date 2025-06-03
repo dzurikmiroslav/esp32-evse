@@ -54,7 +54,7 @@ bool rcm_test(void)
     // return test_triggered;
 
     gpio_set_level(board_config.rcm_test_gpio, 1);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(board_config.rcm_test_delay));
     bool success = gpio_get_level(board_config.rcm_gpio) == 1;
     gpio_set_level(board_config.rcm_test_gpio, 0);
 
