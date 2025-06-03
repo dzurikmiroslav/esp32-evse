@@ -238,7 +238,7 @@
             },
             "required": [
                 "gpio",
-                "testDelay"
+                "testGpio"
             ],
             "title": "Rcm"
         },
