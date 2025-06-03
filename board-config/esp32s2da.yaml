@@ -29,6 +29,7 @@ socketLock:
 rcm:
   gpio: 41
   testGpio: 26
+  testDelay: 500
 
 energyMeter:
   currentAdcChannels: [4, 5, 6]
