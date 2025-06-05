@@ -42,7 +42,7 @@ void rcm_init(void)
 }
 
 bool rcm_test(void)
-{   
+{
     xSemaphoreTake(triggered_sem, 0);
 
     gpio_set_level(board_config.rcm_test_gpio, 1);
