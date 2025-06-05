@@ -56,7 +56,7 @@ bool rcm_is_triggered(void)
 {
     if (xSemaphoreTake(triggered_sem, 0)) {
         vTaskDelay(pdMS_TO_TICKS(1));  // prevent from noise triggering
-        return gpio_get_level();
+        return gpio_get_level(board_config.rcm_gpio);
     }
     return false;
 }
