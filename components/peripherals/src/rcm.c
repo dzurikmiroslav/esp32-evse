@@ -42,7 +42,9 @@ void rcm_init(void)
 }
 
 bool rcm_test(void)
-{
+{   
+    xSemaphoreTake(triggered_sem, 0);
+
     gpio_set_level(board_config.rcm_test_gpio, 1);
     bool success = xSemaphoreTake(triggered_sem, pdMS_TO_TICKS(board_config.rcm_test_delay));
     gpio_set_level(board_config.rcm_test_gpio, 0);
@@ -52,5 +54,9 @@ bool rcm_test(void)
 
 bool rcm_is_triggered(void)
 {
-    return xSemaphoreTake(triggered_sem, 0);
+    if (xSemaphoreTake(triggered_sem, 0)) {
+        vTaskDelay(pdMS_TO_TICKS(1));  // prevent from noise triggering
+        return gpio_get_level();
+    }
+    return false;
 }
