@@ -80,7 +80,6 @@ TEST(config, minimal)
 
     TEST_ASSERT_EQUAL(-1, board_config.rcm_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.rcm_test_gpio);
-    TEST_ASSERT_EQUAL(500, board_config.rcm_test_delay);
 
     TEST_ASSERT_EQUAL(-1, board_config.aux_inputs[0].gpio);
     TEST_ASSERT_EQUAL(-1, board_config.aux_inputs[1].gpio);
@@ -161,7 +160,6 @@ TEST(config, custom)
 
     TEST_ASSERT_EQUAL(30, config.rcm_gpio);
     TEST_ASSERT_EQUAL(31, config.rcm_test_gpio);
-    TEST_ASSERT_EQUAL(700, config.rcm_test_delay);
 
     TEST_ASSERT_EQUAL(21, config.aux_inputs[0].gpio);
     TEST_ASSERT_EQUAL_STRING("IN1", config.aux_inputs[0].name);

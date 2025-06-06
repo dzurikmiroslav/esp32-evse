@@ -81,7 +81,6 @@ typedef enum {
     KEY_DETECTION_DELAY,
     KEY_MIN_BREAK_TIME,
     KEY_TEST_GPIO,
-    KEY_TEST_DELAY,
     KEY_ENERGY_METER,
     KEY_CURRENT_ADC_CHANNELS,
     KEY_VOLTAGE_ADC_CHANNELS,
@@ -123,7 +122,6 @@ static const char* keys[] = {
     "detectionDelay",
     "minBreakTime",
     "testGpio",
-    "testDelay",
     "energyMeter",
     "currentAdcChannels",
     "voltageAdcChannels",
@@ -197,7 +195,6 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         switch (key[1]) {
             CASE_SET_VALUE(KEY_GPIO, rcm_gpio, str_to_gpio);
             CASE_SET_VALUE(KEY_TEST_GPIO, rcm_test_gpio, str_to_gpio);
-            CASE_SET_VALUE(KEY_TEST_DELAY, rcm_test_delay, atoi);
         default:
             return false;
         }
@@ -266,7 +263,6 @@ static void empty_config(board_cfg_t* config)
     config->socket_lock_detection_gpio = -1;
     config->rcm_gpio = -1;
     config->rcm_test_gpio = -1;
-    config->rcm_test_delay = 500;
     config->onewire_gpio = -1;
 
     for (uint8_t i = 0; i < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX; i++) {
