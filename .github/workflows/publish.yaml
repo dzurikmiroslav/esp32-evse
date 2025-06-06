@@ -1,0 +1,29 @@
+name: Write binaries to gh-pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    name: Publish binaries to gh-pages
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download artifacts
+        run: gh release download ${{ inputs.tag }} --dir artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: check
+        run: ls -al artifacts
+
+      - name: Checkout GitHub Pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
