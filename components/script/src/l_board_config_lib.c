@@ -52,7 +52,7 @@ int luaopen_board_config(lua_State* L)
     if (board_cfg_is_energy_meter_cur(board_config)) {
         if (board_cfg_is_energy_meter_vlt(board_config)) {
             energy_meter = ENERGY_METER_CUR_VLT;
-            energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
+            energy_meter_three_phases = board_cfg_is_energy_meter_cur_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config);
         } else {
             energy_meter = ENERGY_METER_CUR;
             energy_meter_three_phases = board_cfg_is_energy_meter_vlt_3p(board_config);

@@ -38,7 +38,10 @@ static int read_char(char* ch)
     return readed;
 }
 
-static struct cat_io_interface iface = { .read = read_char, .write = write_char };
+static struct cat_io_interface iface = {
+    .read = read_char,
+    .write = write_char,
+};
 
 static void serial_at_task_func(void* param)
 {
@@ -46,7 +49,12 @@ static void serial_at_task_func(void* param)
 
     struct cat_command_group* cmd_desc[] = { &at_cmd_group };
 
-    struct cat_descriptor desc = { .cmd_group = cmd_desc, .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]), .buf = buf, .buf_size = sizeof(buf) };
+    struct cat_descriptor desc = {
+        .cmd_group = cmd_desc,
+        .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]),
+        .buf = buf,
+        .buf_size = sizeof(buf),
+    };
 
     struct cat_object at;
 
@@ -64,13 +72,15 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
 {
     ESP_LOGI(TAG, "Starting on uart %d", uart_num);
 
-    uart_config_t uart_config = { .baud_rate = baud_rate,
-                                  .data_bits = data_bits,
-                                  .parity = parity,
-                                  .stop_bits = stop_bit,
-                                  .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-                                  .rx_flow_ctrl_thresh = 122,
-                                  .source_clk = UART_SCLK_APB };
+    uart_config_t uart_config = {
+        .baud_rate = baud_rate,
+        .data_bits = data_bits,
+        .parity = parity,
+        .stop_bits = stop_bit,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .rx_flow_ctrl_thresh = 122,
+        .source_clk = UART_SCLK_APB,
+    };
 
     esp_err_t err = uart_param_config(uart_num, &uart_config);
     if (err != ESP_OK) {

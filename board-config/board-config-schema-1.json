@@ -229,11 +229,6 @@
                 "testGpio": {
                     "type": "integer",
                     "description": "Test gpio number"
-                },
-                "testDelay": {
-                    "type": "integer",
-                    "description": "Delay after test for check state in ms",
-                    "default": 500
                 }
             },
             "required": [

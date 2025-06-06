@@ -288,7 +288,7 @@ static void* get_measure_fn(energy_meter_mode_t mode)
     case ENERGY_METER_MODE_CUR:
         return board_cfg_is_energy_meter_vlt_3p(board_config) ? measure_three_phases_cur : measure_single_phase_cur;
     case ENERGY_METER_MODE_CUR_VLT:
-        return board_cfg_is_energy_meter_vlt_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config) ? measure_three_phases_cur_vlt : measure_single_phase_cur_vlt;
+        return board_cfg_is_energy_meter_cur_3p(board_config) && board_cfg_is_energy_meter_vlt_3p(board_config) ? measure_three_phases_cur_vlt : measure_single_phase_cur_vlt;
     default:
         return measure_dummy;
     }

@@ -100,7 +100,6 @@ typedef struct {
 
     int8_t rcm_gpio;
     int8_t rcm_test_gpio;
-    uint16_t rcm_test_delay;
 
     int8_t energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX];
     float energy_meter_cur_scale;
