@@ -1,0 +1,26 @@
+name: Publish bleeding edge
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish bleeding edge
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout GitHub Pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Download artifacts
+        run: |
+           run_id=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
+           echo $run_id
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  
+
+
