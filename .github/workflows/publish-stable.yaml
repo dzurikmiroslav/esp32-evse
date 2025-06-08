@@ -1,16 +1,16 @@
-name: Write binaries to gh-pages
+name: Publish stable
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to publish'
+        description: 'Tag'
         required: true
         type: string
 
 jobs:
   publish:
-    name: Publish binaries to gh-pages
+    name: Publish stable
     runs-on: ubuntu-latest
     
     steps:
@@ -20,10 +20,11 @@ jobs:
           ref: gh-pages
 
       - name: Download artifacts
-        run: gh release download ${{ inputs.tag }} --dir artifacts
+        run: gh release download ${{ inputs.tag }} --dir ota/stable --pattern '*.ota.bin'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: check
-        run: ls -al artifacts
+        run: ls -al ota/stable
 
 
