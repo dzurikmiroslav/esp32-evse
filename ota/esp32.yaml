@@ -1,6 +1,0 @@
-stable:
-  version: 1.2.3
-  path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32-evse.ota.bin
-bleeding-edge:
-  version: f5SW30KTs
-  path: https://dzurikmiroslav.github.io/esp32-evse/ota/bleeding-edge/esp32-evse.ota.bin

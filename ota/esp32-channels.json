@@ -1,0 +1,10 @@
+[
+    {
+        "name": "stable",
+        "path": "https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json"
+    },
+    {
+        "name": "bleeding edge",
+        "path": "https://dzurikmiroslav.github.io/esp32-evse/ota/esp32-stable.json"
+    }
+]
