@@ -16,8 +16,10 @@ jobs:
 
       - name: Download artifacts
         run: |
-           run_id=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
-           echo $run_id
+           gh run list --workflow="build.yml" --json databaseId,status,conclusion
+           RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
+           echo $RUN_ID
+           gh run download "$RUN_ID" -D artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
