@@ -12,7 +12,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yaml
 
-  checkout:
+  publish:
     runs-on: ubuntu-latest
     
     steps:
@@ -21,28 +21,13 @@ jobs:
         with:
           ref: gh-pages
     
-  download:
-    needs: 
-      - build
-      - checkout
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        platform: [esp32, esp32s2, esp32s3]
-
-    steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ota-${{ matrix.platform }}
           path: ./dist
         
-  publish:
-    needs: download
-    runs-on: ubuntu-latest
-    steps:
       - name: ls
-        run: ls dist
+        run: ls dist/*
       # - name: Download artifacts
       #   run: |
       #      gh run list --workflow="build.yml"
