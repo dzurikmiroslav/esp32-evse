@@ -29,7 +29,8 @@ jobs:
             # rm "artifact-$id.zip"
           done
 
-          ls ota-files
+          FILES=$(ls ota-files)
+          echo "$FILES"
           # if [ -n "${{ inputs.commit_sha }}" ]; then
           #   ARTIFACT_NAME="build-${{ inputs.commit_sha }}"
           #   echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
