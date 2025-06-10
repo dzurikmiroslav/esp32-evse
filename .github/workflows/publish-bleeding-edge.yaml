@@ -25,10 +25,21 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./dist
+          path: /tmp
         
       - name: ls
-        run: ls dist/*
+        run: |
+            ls /tmp/*
+            mv /tmp/*-evse.ota.bin ota/bleeding-edge/
+            
+      - name: Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git status
+          # git add .
+          # git commit -m "${{ github.event.inputs.message }}"
+          # git push
       # - name: Download artifacts
       #   run: |
       #      gh run list --workflow="build.yml"
