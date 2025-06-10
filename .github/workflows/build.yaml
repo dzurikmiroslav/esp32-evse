@@ -10,6 +10,7 @@ on:
   release:
     types:
       - created
+  workflow_call: 
 
 jobs:
   env:
