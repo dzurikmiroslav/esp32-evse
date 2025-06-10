@@ -25,11 +25,12 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: /tmp
+          path: tmp
         
       - name: Write
         run: |
-            mv /tmp/*-evse.ota.bin ota/bleeding-edge/
+            mv tmp/*-evse.ota.bin ota/bleeding-edge/
+            rm -rf tmp
             
       - name: Push
         run: |
