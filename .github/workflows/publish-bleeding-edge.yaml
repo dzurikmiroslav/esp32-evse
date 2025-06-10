@@ -27,9 +27,8 @@ jobs:
         with:
           path: /tmp
         
-      - name: ls
+      - name: Write
         run: |
-            ls /tmp/*
             mv /tmp/*-evse.ota.bin ota/bleeding-edge/
             
       - name: Push
