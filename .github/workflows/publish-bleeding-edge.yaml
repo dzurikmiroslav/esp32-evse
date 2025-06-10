@@ -25,10 +25,11 @@ jobs:
           mkdir -p ota-files
           for id in $ARTIFACT_IDS; do
             gh api repos/${{ github.repository }}/actions/artifacts/$id/zip > "artifact-$id.zip"
-            unzip -q "artifact-$id.zip" -d ota-files/
-            rm "artifact-$id.zip"
+            # unzip -q "artifact-$id.zip" -d ota-files/
+            # rm "artifact-$id.zip"
           done
-          
+
+          ls ota-files
           # if [ -n "${{ inputs.commit_sha }}" ]; then
           #   ARTIFACT_NAME="build-${{ inputs.commit_sha }}"
           #   echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
