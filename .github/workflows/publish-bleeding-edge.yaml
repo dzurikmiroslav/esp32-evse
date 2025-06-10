@@ -16,7 +16,7 @@ jobs:
 
       - name: Download artifacts
         run: |
-           gh run list --workflow="build.yml" --json databaseId,status,conclusion
+           gh run list --workflow="build.yml" --json
            RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
            echo $RUN_ID
            gh run download "$RUN_ID" -D artifacts
