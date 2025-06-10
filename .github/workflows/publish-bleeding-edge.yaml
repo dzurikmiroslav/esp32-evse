@@ -19,44 +19,54 @@ jobs:
       - name: Find build artifact
         id: find-artifact
         run: |
-          if [ -n "${{ inputs.commit_sha }}" ]; then
-            ARTIFACT_NAME="build-${{ inputs.commit_sha }}"
-            echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
-          else
-            LATEST_SHA=$(gh api repos/${{ github.repository }}/actions/artifacts \
-              --jq '.artifacts | map(select(.name | startswith("ota-"))) | sort_by(.created_at) | reverse | .[0].name')
-            echo "artifact-name=$LATEST_SHA" >> $GITHUB_OUTPUT
-          fi
-          echo "found=true" >> $GITHUB_OUTPUT
+          ARTIFACT_IDS=$(gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.name | startswith("ota-")) | .id' | head -10)
+
+          mkdir -p ota-files
+          for id in $ARTIFACT_IDS; do
+            gh api repos/${{ github.repository }}/actions/artifacts/$id/zip > "artifact-$id.zip"
+            unzip -q "artifact-$id.zip" -d ota-files/
+            rm "artifact-$id.zip"
+          done
+          
+          # if [ -n "${{ inputs.commit_sha }}" ]; then
+          #   ARTIFACT_NAME="build-${{ inputs.commit_sha }}"
+          #   echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          # else
+          #   LATEST_SHA=$(gh api repos/${{ github.repository }}/actions/artifacts \
+          #     --jq '.artifacts | map(select(.name | startswith("ota-"))) | sort_by(.created_at) | reverse | .[0].name')
+          #   echo "artifact-name=$LATEST_SHA" >> $GITHUB_OUTPUT
+          # fi
+          # echo "found=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  publish:
-    needs: find-build
-    if: needs.find-build.outputs.found == 'true'
-    runs-on: ubuntu-latest
+  # publish:
+  #   needs: find-build
+  #   if: needs.find-build.outputs.found == 'true'
+  #   runs-on: ubuntu-latest
     
-    steps:
-      - name: Checkout GitHub Pages
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
+  #   steps:
+  #     - name: Checkout GitHub Pages
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: gh-pages
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.find-build.outputs.artifact-name }}
-          path: ./dist
+  #     - name: Download build artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.find-build.outputs.artifact-name }}
+  #         path: ./dist
         
 
-      # - name: Download artifacts
-      #   run: |
-      #      gh run list --workflow="build.yml"
-      #      RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
-      #      echo $RUN_ID
-      #      gh run download "$RUN_ID" -D artifacts
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     # - name: Download artifacts
+  #     #   run: |
+  #     #      gh run list --workflow="build.yml"
+  #     #      RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
+  #     #      echo $RUN_ID
+  #     #      gh run download "$RUN_ID" -D artifacts
+  #     #   env:
+  #     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   
 
