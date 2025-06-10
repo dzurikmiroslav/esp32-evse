@@ -2,10 +2,38 @@ name: Publish bleeding edge
 
 on:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA to deploy (leave empty for latest)'
+        required: false
+        type: string
 
 jobs:
+  find-build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.find-artifact.outputs.artifact-name }}
+      found: ${{ steps.find-artifact.outputs.found }}
+    
+    steps:
+      - name: Find build artifact
+        id: find-artifact
+        run: |
+          if [ -n "${{ inputs.commit_sha }}" ]; then
+            ARTIFACT_NAME="build-${{ inputs.commit_sha }}"
+            echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          else
+            LATEST_SHA=$(gh api repos/${{ github.repository }}/actions/artifacts \
+              --jq '.artifacts | map(select(.name | startswith("ota-"))) | sort_by(.created_at) | reverse | .[0].name')
+            echo "artifact-name=$LATEST_SHA" >> $GITHUB_OUTPUT
+          fi
+          echo "found=true" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish:
-    name: Publish bleeding edge
+    needs: find-build
+    if: needs.find-build.outputs.found == 'true'
     runs-on: ubuntu-latest
     
     steps:
@@ -14,14 +42,21 @@ jobs:
         with:
           ref: gh-pages
 
-      - name: Download artifacts
-        run: |
-           gh run list --workflow="build.yml"
-           RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
-           echo $RUN_ID
-           gh run download "$RUN_ID" -D artifacts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.find-build.outputs.artifact-name }}
+          path: ./dist
+        
+
+      # - name: Download artifacts
+      #   run: |
+      #      gh run list --workflow="build.yml"
+      #      RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
+      #      echo $RUN_ID
+      #      gh run download "$RUN_ID" -D artifacts
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   
 
