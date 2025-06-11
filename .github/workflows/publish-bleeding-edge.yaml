@@ -29,6 +29,7 @@ jobs:
         
       - name: Write
         run: |
+            ms tmp
             mv tmp/*-evse.ota.bin ota/bleeding-edge/
             rm -rf tmp
             
