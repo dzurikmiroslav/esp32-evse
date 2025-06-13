@@ -17,39 +17,38 @@ jobs:
     needs: build
     
     steps:
-      - name: Checkout GitHub Pages
+    -  name: Install apt packages
+         uses: awalsh128/cache-apt-pkgs-action@latest
+         with:
+           packages: jq
+           version: 1.0   
+
+    - name: Checkout GitHub Pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-    
+     
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: tmp
-        
+
       - name: Write
         run: |
-            ls tmp/*
-            mv tmp/*/*-evse.ota.bin ota/bleeding-edge/
+            VERSION=$(git describe --always --tags --dirty)
+            echo $VERSION
+            for file in ota/bleeding-edge/*.json; do
+              jq -iP ".version = \"$VERSION\"" $file
+            done
+            mv tmp/ota-*/*-evse.ota.bin ota/bleeding-edge/
             rm -rf tmp
-            
+
       - name: Push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git status
+          cat ota/bleeding-edge/esp32.json
           # git add .
           # git commit -m "${{ github.event.inputs.message }}"
           # git push
-      # - name: Download artifacts
-      #   run: |
-      #      gh run list --workflow="build.yml"
-      #      RUN_ID=$(gh run list --workflow="build.yml" --json databaseId,status,conclusion -L 1 | jq -r '.[0].databaseId')
-      #      echo $RUN_ID
-      #      gh run download "$RUN_ID" -D artifacts
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  
-
-
