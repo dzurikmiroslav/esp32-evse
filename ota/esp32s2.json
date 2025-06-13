@@ -1,0 +1,14 @@
+[
+    {
+        "name": "stable",
+        "path": "https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s2.json"
+    },
+    {
+        "name": "testing",
+        "path": "https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32s2.json"
+    },
+    {
+        "name": "bleeding-edge",
+        "path": "https://dzurikmiroslav.github.io/esp32-evse/ota/bleeding-edge/esp32s2.json"
+    }
+]
