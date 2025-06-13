@@ -30,7 +30,7 @@ jobs:
       - name: Write
         run: |
             ls tmp/*
-            mv tmp/*-evse.ota.bin ota/bleeding-edge/
+            mv tmp/*/*-evse.ota.bin ota/bleeding-edge/
             rm -rf tmp
             
       - name: Push
