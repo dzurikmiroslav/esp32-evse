@@ -17,11 +17,11 @@ jobs:
     needs: build
     
     steps:
-      - name: Install apt packages
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: jq
-          version: 1.0   
+      # - name: Install apt packages
+      #   uses: awalsh128/cache-apt-pkgs-action@latest
+      #   with:
+      #     packages: jq
+      #     version: 1.0   
 
       - name: Checkout GitHub Pages
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
             VERSION=$(git describe --always --tags --dirty)
             echo $VERSION
             for file in ota/bleeding-edge/*.json; do
-              jq -iP ".version = \"$VERSION\"" $file
+              cat $file | jq ".version = \"$VERSION\"" | tee $file
             done
             mv tmp/ota-*/*-evse.ota.bin ota/bleeding-edge/
             rm -rf tmp
