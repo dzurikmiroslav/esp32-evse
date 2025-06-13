@@ -2,11 +2,6 @@ name: Publish bleeding edge
 
 on:
   workflow_dispatch:
-    inputs:
-      commit_sha:
-        description: 'Commit SHA to deploy (leave empty for latest)'
-        required: false
-        type: string
 
 jobs:
   build:
@@ -17,12 +12,6 @@ jobs:
     needs: build
     
     steps:
-      # - name: Install apt packages
-      #   uses: awalsh128/cache-apt-pkgs-action@latest
-      #   with:
-      #     packages: jq
-      #     version: 1.0   
-
       - name: Checkout GitHub Pages
         uses: actions/checkout@v4
         with:
@@ -48,7 +37,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git status
-          cat ota/bleeding-edge/esp32.json
-          # git add .
-          # git commit -m "${{ github.event.inputs.message }}"
-          # git push
+
+          git add .
+          git commit -m "Publish bleeding-edge version $VERSION"
+          git push
