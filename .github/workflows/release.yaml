@@ -6,12 +6,12 @@ on:
       - created
 
 jobs:
-  build:
-    uses: ./.github/workflows/build.yaml
+  # build:
+  #   uses: ./.github/workflows/build.yaml
 
   release:
     runs-on: ubuntu-latest
-    needs: build
+    # needs: build
     strategy:
       matrix:
         platform: [esp32, esp32s2, esp32s3]
