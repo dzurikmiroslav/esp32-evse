@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Upload release assets ota
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ota-${{ matrix.platform }}/${{ matrix.platform }}-evse.ota.bin
+          asset_name: ${{ matrix.platform }}-evse.ota.bin
+          asset_content_type: application/octet-stream
+
+      - name: Upload release assets factory
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: factory-${{ matrix.platform }}/${{ matrix.platform }}-evse.factory.bin
+          asset_name: ${{ matrix.platform }}-evse.factory.bin
+          asset_content_type: application/octet-stream

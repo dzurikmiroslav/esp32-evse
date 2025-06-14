@@ -2,6 +2,16 @@ name: Publish bleeding edge
 
 on:
   workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        description: 'Select channel'
+        required: true
+        default: bleeding-edge
+        options:
+          - bleeding-edge
+          - testing
+          - stable
 
 jobs:
   build:
@@ -24,8 +34,7 @@ jobs:
 
       - name: Write
         run: |
-            VERSION=$(git describe --always --tags --dirty)
-            echo $VERSION
+            export VERSION=$(git describe --always --tags --dirty)
             for file in ota/bleeding-edge/*.json; do
               cat $file | jq ".version = \"$VERSION\"" | tee $file
             done
