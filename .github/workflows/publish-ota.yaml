@@ -20,7 +20,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: build
-    
+    strategy:
+      matrix:
+        platform: [esp32, esp32s2, esp32s3]
     steps:
       - name: Checkout GitHub Pages
         uses: actions/checkout@v4
