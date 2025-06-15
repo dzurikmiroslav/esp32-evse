@@ -1,4 +1,4 @@
-name: Publish bleeding edge
+name: Publish OTA
 
 on:
   workflow_dispatch:
@@ -30,12 +30,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: tmp
+      - name: log
+        run: echo "app_version=${{ needs.build.outputs.app_version }}"
 
       - name: Write
         run: |
-            export VERSION=$(git describe --always --tags --dirty)
             for file in ota/$channel/*.json; do
-              cat $file | jq ".version = \"$VERSION\"" | tee $file
+              cat $file | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee $file
             done
             mv tmp/ota-*/*-evse.ota.bin ota/$channel/
             rm -rf tmp
@@ -45,5 +46,6 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
+          git status
           git commit -m "Publish $channel version $VERSION"
           git push
