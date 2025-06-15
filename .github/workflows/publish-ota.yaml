@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Checkout GitHub Pages
+      - name: Checkout gh-pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
     
-      - name: Download build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: tmp
@@ -34,18 +34,16 @@ jobs:
       - name: Write
         run: |
             export VERSION=$(git describe --always --tags --dirty)
-            for file in ota/bleeding-edge/*.json; do
+            for file in ota/$channel/*.json; do
               cat $file | jq ".version = \"$VERSION\"" | tee $file
             done
-            mv tmp/ota-*/*-evse.ota.bin ota/bleeding-edge/
+            mv tmp/ota-*/*-evse.ota.bin ota/$channel/
             rm -rf tmp
 
       - name: Push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git status
-
           git add .
-          git commit -m "Publish bleeding-edge version $VERSION"
+          git commit -m "Publish $channel version $VERSION"
           git push
