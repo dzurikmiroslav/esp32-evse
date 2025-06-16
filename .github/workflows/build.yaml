@@ -11,7 +11,7 @@ on:
     outputs:
       app_version:
         description: "App version"
-        version: ${{ jobs.build.outputs.app_version }}
+        value: ${{ jobs.build.outputs.app_version }}
 
 jobs:
   env:
