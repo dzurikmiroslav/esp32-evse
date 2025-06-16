@@ -32,6 +32,7 @@ jobs:
 
       - name: App version
         id: app_version
+        if: matrix.platform == 'esp32'
         run: |
           VERSION=$(git describe --always --tags --dirty)
           echo "app_version=$VERSION >> $GITHUB_OUTPUT
