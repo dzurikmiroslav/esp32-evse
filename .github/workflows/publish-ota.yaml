@@ -42,7 +42,7 @@ jobs:
         if: ${{ github.event.inputs.channel == 'stable' }}
         run: |
           cat web-installer-test/manifest.json | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee web-installer-test/manifest.json
-          mv tmp/factory-*/*-evse.factory.bin web-installer-test/${{ github.event.inputs.channel }}/
+          mv tmp/factory-*/*-evse.factory.bin web-installer-test/
 
       - name: Clean artifacts
         run: rm -rf tmp
