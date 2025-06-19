@@ -31,13 +31,21 @@ jobs:
         with:
           path: tmp
 
-      - name: Write
+      - name: Write ota
         run: |
-            for file in ota/${{ github.event.inputs.channel }}/*.json; do
-              cat $file | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee $file
-            done
-            mv tmp/ota-*/*-evse.ota.bin ota/${{ github.event.inputs.channel }}/
-            rm -rf tmp
+          for file in ota/${{ github.event.inputs.channel }}/*.json; do
+            cat $file | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee $file
+          done
+          mv tmp/ota-*/*-evse.ota.bin ota/${{ github.event.inputs.channel }}/
+
+      - name: Write web installer
+        if: ${{ github.event.inputs.channel == 'stable' }}
+        run: |
+          cat web-installer-test/manifest.json | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee web-installer-test/manifest.json
+          mv tmp/factory-*/*-evse.factory.bin web-installer-test/${{ github.event.inputs.channel }}/
+
+      - name: Clean artifacts
+        run: rm -rf tmp
 
       - name: Push
         run: |
