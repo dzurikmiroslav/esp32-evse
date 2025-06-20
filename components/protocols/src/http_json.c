@@ -778,18 +778,52 @@ cJSON* http_json_get_board_config(void)
     return json;
 }
 
+cJSON* http_json_firmware_channels(void)
+{
+    cJSON* json = cJSON_CreateArray();
+
+    ota_channel_list_t* list = ota_get_channel_list();
+
+    ota_channel_entry_t* entry;
+    SLIST_FOREACH (entry, list, entries) {
+        cJSON_AddItemToArray(json, cJSON_CreateString(entry->channel));
+    }
+
+    ota_channel_list_free(list);
+
+    return json;
+}
+
+cJSON* http_json_firmware_channel(void)
+{
+    char channel[OTA_CHANNEL_SIZE];
+    ota_get_channel(channel);
+    return cJSON_CreateString(channel);
+}
+
+esp_err_t http_json_set_firmware_channel(cJSON* json)
+{
+    if (cJSON_IsString(json)) {
+        ota_set_channel(cJSON_GetStringValue(json));
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
 cJSON* http_json_firmware_check_update(void)
 {
     cJSON* root = NULL;
 
-    char avl_version[32];
-    if (ota_get_available_version(avl_version) == ESP_OK) {
+    char* version;
+    if (ota_get_available(&version, NULL) == ESP_OK) {
         const esp_app_desc_t* app_desc = esp_app_get_description();
 
         root = cJSON_CreateObject();
-        cJSON_AddStringToObject(root, "available", avl_version);
+        cJSON_AddStringToObject(root, "available", version);
         cJSON_AddStringToObject(root, "current", app_desc->version);
-        cJSON_AddBoolToObject(root, "newer", ota_is_newer_version(app_desc->version, avl_version));
+        cJSON_AddBoolToObject(root, "newer", true);
+
+        free((void*)version);
     }
 
     return root;

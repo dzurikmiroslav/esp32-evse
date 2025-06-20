@@ -50,13 +50,6 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password);
 bool wifi_is_enabled(void);
 
 /**
- * @brief Scan for AP
- *
- * @param scan_aps array with length WIFI_SCAN_SCAN_LIST_SIZE
- * @return uint16_t number of available AP
- */
-
-/**
  * @brief Scan AP entry
  *
  */
