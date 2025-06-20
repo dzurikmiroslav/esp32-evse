@@ -65,6 +65,12 @@ cJSON* http_json_get_board_config(void);
 
 cJSON* http_json_firmware_check_update(void);
 
+cJSON* http_json_firmware_channel(void);
+
+esp_err_t http_json_set_firmware_channel(cJSON* json);
+
+cJSON* http_json_firmware_channels(void);
+
 esp_err_t http_json_set_credentials(cJSON* root);
 
 #endif /* HTTP_JSON_UTILS_H */

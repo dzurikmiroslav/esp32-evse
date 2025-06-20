@@ -51,6 +51,8 @@ typedef enum {
     URI_SCRIPT_RELOAD,
     URI_SCRIPT_COMPONENTS_ID,
     URI_SCRIPT_COMPONENTS,
+    URI_FIRMWARE_CHANNELS,
+    URI_FIRMWARE_CHANNEL,
     URI_FIRMWARE_CHECK_UPDATE,
     URI_FIRMWARE_UPDATE,
     URI_FIRMWARE_UPLOAD,
@@ -87,6 +89,8 @@ static const char* uris[] = {
     "/script/reload",
     "/script/components/",
     "/script/components",
+    "/firmware/channels",
+    "/firmware/channel",
     "/firmware/check-update",
     "/firmware/update",
     "/firmware/upload",
@@ -309,21 +313,26 @@ esp_err_t handle_void_request(httpd_req_t* req, void (*action)(void))
 
 static esp_err_t handle_firmware_update(httpd_req_t* req)
 {
-    char avl_version[32];
-    if (ota_get_available_version(avl_version) == ESP_OK) {
+    char* version;
+    char* path;
+    if (ota_get_available(&version, &path) == ESP_OK) {
         const esp_app_desc_t* app_desc = esp_app_get_description();
 
-        if (ota_is_newer_version(app_desc->version, avl_version)) {
+        bool not_match = strcmp(app_desc->version, version) != 0;
+        free((void*)version);
+
+        if (not_match) {
             esp_http_client_config_t http_config = {
-                .url = OTA_FIRMWARE_URL CONFIG_IDF_TARGET "-evse.bin",
+                .url = path,
                 .crt_bundle_attach = esp_crt_bundle_attach,
             };
-
             esp_https_ota_config_t config = {
                 .http_config = &http_config,
             };
 
             esp_err_t err = esp_https_ota(&config);
+            free((void*)path);
+
             if (err == ESP_OK) {
                 ESP_LOGI(TAG, "OTA upgrade done");
                 schedule_restart();
@@ -332,6 +341,9 @@ static esp_err_t handle_firmware_update(httpd_req_t* req)
                 httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
                 return ESP_FAIL;
             }
+        } else {
+            httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");  // TODO erro code
+            return ESP_FAIL;
         }
     } else {
         httpd_resp_send_custom_err(req, "520 Cannot Fetch Latest Version Info", "Cannot fetch latest version info");
@@ -460,6 +472,10 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_get_script_components());
         case URI_SCRIPT_COMPONENTS_ID:
             return handle_json_response(req, http_json_get_script_component_config(req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID)));
+        case URI_FIRMWARE_CHANNELS:
+            return handle_json_response(req, http_json_firmware_channels());
+        case URI_FIRMWARE_CHANNEL:
+            return handle_json_response(req, http_json_firmware_channel());
         case URI_FIRMWARE_CHECK_UPDATE:
             return handle_json_response(req, http_json_firmware_check_update());
         case URI_LOG:
@@ -516,6 +532,8 @@ static esp_err_t post_handler(httpd_req_t* req)
             return handle_void_request(req, script_reload);
         case URI_SCRIPT_COMPONENTS_ID:
             return handle_str_json_request(req, req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID), http_json_set_script_component_config);
+        case URI_FIRMWARE_CHANNEL:
+            return handle_json_request(req, http_json_set_firmware_channel);
         case URI_FIRMWARE_UPDATE:
             return handle_firmware_update(req);
         case URI_FIRMWARE_UPLOAD:
