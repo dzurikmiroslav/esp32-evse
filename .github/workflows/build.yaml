@@ -40,7 +40,7 @@ jobs:
         # if: matrix.platform == 'esp32'
         run: |
           GIT_VERSION=$(git describe --always --tags --dirty)
-          VERSION_PREFIX="${{ github.event.inputs.version_prefix }}}"
+          VERSION_PREFIX="${{ github.event.inputs.version_prefix }}"
           PROJECT_VER=$([ -n "$VERSION_PREFIX" ] && echo "$VERSION_PREFIX-$(date +%y%m%d-%H%M)" || echo "$GIT_VERSION")
           echo "PROJECT_VER=${PROJECT_VER:-${GIT_VERSION}}" >> $GITHUB_OUTPUT
 
