@@ -41,10 +41,8 @@ jobs:
         run: |
           GIT_VERSION=$(git describe --always --tags --dirty)
           VERSION_PREFIX="${{ github.event.inputs.version_prefix }}}"
-          
           PROJECT_VER=$([ -n "$VERSION_PREFIX" ] && echo "$VERSION_PREFIX-$(date +%y%m%d-%H%M)" || echo "$GIT_VERSION")
-
-          echo "PROJECT_VER=${APP_VERSION:-${GIT_VERSION}}" >> $GITHUB_OUTPUT
+          echo "PROJECT_VER=${PROJECT_VER:-${GIT_VERSION}}" >> $GITHUB_OUTPUT
 
       - name: Build
         uses: espressif/esp-idf-ci-action@v1

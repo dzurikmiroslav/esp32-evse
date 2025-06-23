@@ -55,5 +55,5 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add .
           git status
-          git commit -m "Publish ${{ github.event.inputs.channel }} version {{ needs.build.outputs.app_version }}"
+          git commit -m "Publish ${{ github.event.inputs.channel }} version ${{ needs.build.outputs.app_version }}"
           git push
