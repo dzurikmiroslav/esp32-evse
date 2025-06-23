@@ -8,9 +8,14 @@ on:
       - '**'
   pull_request:
   workflow_call:
+    inputs:
+      version_prefix:
+        type: string
+        required: false
+        description: If filled, app version will be generated from timestamp
     outputs:
       app_version:
-        description: "App version"
+        description: App version
         value: ${{ jobs.build.outputs.app_version }}
 
 jobs:
@@ -22,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: env
     outputs:
-      app_version: ${{ steps.app_version.outputs.app_version }}
+      app_version: ${{ steps.app_version.outputs.PROJECT_VER }}
     strategy:
       matrix:
         platform: [esp32, esp32s2, esp32s3]
@@ -32,10 +37,14 @@ jobs:
 
       - name: App version
         id: app_version
-        if: matrix.platform == 'esp32'
+        # if: matrix.platform == 'esp32'
         run: |
-          VERSION=$(git describe --always --tags --dirty)
-          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+          GIT_VERSION=$(git describe --always --tags --dirty)
+          VERSION_PREFIX="${{ github.event.inputs.version_prefix }}}"
+          
+          PROJECT_VER=$([ -n "$VERSION_PREFIX" ] && echo "$VERSION_PREFIX-$(date +%y%m%d-%H%M)" || echo "$GIT_VERSION")
+
+          echo "PROJECT_VER=${APP_VERSION:-${GIT_VERSION}}" >> $GITHUB_OUTPUT
 
       - name: Build
         uses: espressif/esp-idf-ci-action@v1

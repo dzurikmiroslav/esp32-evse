@@ -16,6 +16,8 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build.yaml
+    with:
+      version_prefix: ${{ github.event.inputs.channel == 'stable' && null || github.event.inputs.channel }}
 
   publish:
     runs-on: ubuntu-latest
@@ -53,5 +55,5 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add .
           git status
-          git commit -m "Publish ${{ github.event.inputs.channel }} version $VERSION"
+          git commit -m "Publish ${{ github.event.inputs.channel }} version {{ needs.build.outputs.app_version }}"
           git push
