@@ -34,8 +34,8 @@ jobs:
         id: app_version
         if: matrix.platform == 'esp32'
         run: |
-          GIT_VERSION=$(git describe --always --tags --dirty)
-          echo "app_version=$GIT_VERSION >> $GITHUB_OUTPUT
+          VERSION=$(git describe --always --tags --dirty)
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
