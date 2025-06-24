@@ -341,9 +341,6 @@ static esp_err_t handle_firmware_update(httpd_req_t* req)
                 httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");
                 return ESP_FAIL;
             }
-        } else {
-            httpd_resp_send_custom_err(req, "521 Failed To Upgrade Firmware", "Failed to upgrade firmware");  // TODO erro code
-            return ESP_FAIL;
         }
     } else {
         httpd_resp_send_custom_err(req, "520 Cannot Fetch Latest Version Info", "Cannot fetch latest version info");
