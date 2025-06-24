@@ -36,7 +36,16 @@
                 },
                 "acRelayGpio": {
                     "type": "integer",
-                    "description": "AC relay gpio number for controlling mains contactor"
+                    "description": "AC relay gpio number for controlling mains contactor, only for backward compatibility use acRelaysGpios"
+                },
+                "acRelayGpios": {
+                    "type": "array",
+                    "description": "AC relay gpio numbers for controlling mains contactor, first item for L1, second item for L2-3, if second empty first item fot L1-3",
+                    "minItems": 1,
+                    "maxItems": 2,
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "socketLock": {
                     "$ref": "#/definitions/SocketLock"
@@ -81,13 +90,22 @@
                 },
                 "onewire": {
                     "$ref": "#/definitions/Onewire"
+                },
+                "ota": {
+                    "type": "array",
+                    "description": "OTA configuration",
+                    "maxItems": 3,
+                    "items": {
+                        "$ref": "#/definitions/Ota"
+                    }
                 }
             },
             "required": [
                 "deviceName",
                 "buttonGpio",
                 "pilot",
-                "acRelayGpio"
+                "acRelaysGpios",
+                "ota"
             ],
             "title": "Board config"
         },
@@ -381,6 +399,26 @@
                 "temperatureSensor"
             ],
             "title": "Onewire"
+        },
+        "Ota": {
+            "type": "object",
+            "description": "OTA configuration",
+            "additionalProperties": false,
+            "properties": {
+                "channel": {
+                    "type": "string",
+                    "description": "Name of channel"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Uri path to json file"
+                }
+            },
+            "required": [
+                "channel",
+                "path"
+            ],
+            "title": "Ota"
         }
     }
 }
