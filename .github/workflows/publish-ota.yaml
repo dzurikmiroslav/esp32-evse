@@ -16,8 +16,6 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build.yaml
-    with:
-      version_prefix: bleeding-edge #${{ github.event.inputs.channel == 'stable' && null || github.event.inputs.channel }}
 
   publish:
     runs-on: ubuntu-latest
