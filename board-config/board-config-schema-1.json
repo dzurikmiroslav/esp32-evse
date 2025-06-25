@@ -40,7 +40,7 @@
                 },
                 "acRelayGpios": {
                     "type": "array",
-                    "description": "AC relay gpio numbers for controlling mains contactor, first item for L1, second item for L2-3, if second empty first item fot L1-3",
+                    "description": "AC relay gpio numbers for controlling mains contactor, first item for L1, second item for L2-3, if second empty first item for L1-3",
                     "minItems": 1,
                     "maxItems": 2,
                     "items": {
@@ -91,12 +91,13 @@
                 "onewire": {
                     "$ref": "#/definitions/Onewire"
                 },
-                "ota": {
+                "otaChannels": {
                     "type": "array",
-                    "description": "OTA configuration",
+                    "description": "OTA channels configuration",
+                    "minItems": 1,
                     "maxItems": 3,
                     "items": {
-                        "$ref": "#/definitions/Ota"
+                        "$ref": "#/definitions/OtaChannel"
                     }
                 }
             },
@@ -104,8 +105,8 @@
                 "deviceName",
                 "buttonGpio",
                 "pilot",
-                "acRelaysGpios",
-                "ota"
+                "acRelayGpios",
+                "otaChannels"
             ],
             "title": "Board config"
         },
@@ -400,14 +401,15 @@
             ],
             "title": "Onewire"
         },
-        "Ota": {
+        "OtaChannel": {
             "type": "object",
-            "description": "OTA configuration",
+            "description": "OTA channel configuration",
             "additionalProperties": false,
             "properties": {
-                "channel": {
+                "name": {
                     "type": "string",
-                    "description": "Name of channel"
+                    "description": "Name of channel",
+                    "maxLength": 16
                 },
                 "path": {
                     "type": "string",
@@ -415,7 +417,7 @@
                 }
             },
             "required": [
-                "channel",
+                "name",
                 "path"
             ],
             "title": "Ota"
