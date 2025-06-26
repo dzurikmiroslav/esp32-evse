@@ -13,6 +13,7 @@
 #define PILOT_GPIO        33
 #define PILOT_ADC_CHANNEL 7
 #define AC_RELAY_GPIO     32
+#define OTA_CHANNEL_PATH  "https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json"
 #endif /* CONFIG_IDF_TARGET_ESP32 */
 
 #ifdef CONFIG_IDF_TARGET_ESP32S2
@@ -20,6 +21,7 @@
 #define PILOT_GPIO        6
 #define PILOT_ADC_CHANNEL 3
 #define AC_RELAY_GPIO     5
+#define OTA_CHANNEL_PATH  "https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s2.json"
 #endif /* CONFIG_IDF_TARGET_ESP32S2 */
 
 #ifdef CONFIG_IDF_TARGET_ESP32S3
@@ -27,6 +29,7 @@
 #define PILOT_GPIO        6
 #define PILOT_ADC_CHANNEL 3
 #define AC_RELAY_GPIO     5
+#define OTA_CHANNEL_PATH  "https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s3.json"
 #endif /* CONFIG_IDF_TARGET_ESP32S3 */
 
 extern const char board_yaml_start[] asm("_binary_board_yaml_start");
@@ -61,7 +64,8 @@ TEST(config, minimal)
     TEST_ASSERT_EQUAL(1491, board_config.pilot_levels[3]);
     TEST_ASSERT_EQUAL(265, board_config.pilot_levels[4]);
 
-    TEST_ASSERT_EQUAL(AC_RELAY_GPIO, board_config.ac_relay_gpio);
+    TEST_ASSERT_EQUAL(AC_RELAY_GPIO, board_config.ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L1]);
+    TEST_ASSERT_EQUAL(-1, board_config.ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3]);
 
     TEST_ASSERT_EQUAL(-1, board_config.socket_lock_a_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.socket_lock_b_gpio);
@@ -112,6 +116,9 @@ TEST(config, minimal)
 
     TEST_ASSERT_EQUAL(-1, board_config.onewire_gpio);
     TEST_ASSERT_FALSE(board_config.onewire_temp_sensor);
+
+    TEST_ASSERT_EQUAL_STRING("stable", board_config.ota_channels[0].name);
+    TEST_ASSERT_EQUAL_STRING(OTA_CHANNEL_PATH, board_config.ota_channels[0].path);
 }
 
 TEST(config, custom)
@@ -142,6 +149,9 @@ TEST(config, custom)
     TEST_ASSERT_EQUAL(130, config.pilot_levels[2]);
     TEST_ASSERT_EQUAL(140, config.pilot_levels[3]);
     TEST_ASSERT_EQUAL(150, config.pilot_levels[4]);
+
+    TEST_ASSERT_EQUAL(11, config.ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L1]);
+    TEST_ASSERT_EQUAL(12, config.ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3]);
 
     TEST_ASSERT_EQUAL(27, config.socket_lock_a_gpio);
     TEST_ASSERT_EQUAL(28, config.socket_lock_b_gpio);
@@ -198,6 +208,12 @@ TEST(config, custom)
 
     TEST_ASSERT_EQUAL(16, config.onewire_gpio);
     TEST_ASSERT_TRUE(config.onewire_temp_sensor);
+
+    TEST_ASSERT_EQUAL_STRING("stable", config.ota_channels[0].name);
+    TEST_ASSERT_EQUAL_STRING("https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json", config.ota_channels[0].path);
+
+    TEST_ASSERT_EQUAL_STRING("testing", config.ota_channels[1].name);
+    TEST_ASSERT_EQUAL_STRING("https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32.json", config.ota_channels[1].path);
 }
 
 TEST_GROUP_RUNNER(config)

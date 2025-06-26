@@ -29,7 +29,7 @@ proximity:
   adcChannel: 3
   levels: [1650, 820, 430]
 
-acRelayGpio: 26
+acRelayGpios: [11, 12]
 
 socketLock:
   aGpio: 27
@@ -81,3 +81,9 @@ serials:
 onewire:
   gpio: 16
   temperatureSensor: true
+
+otaChannels:
+  - name: stable
+    path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json
+  - name: testing
+    path: https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32.json

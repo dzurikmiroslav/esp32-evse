@@ -6,6 +6,11 @@ ledChargingGpio: 19
 ledErrorGpio: 18
 ledWifiGpio: 17
 
+# led:
+#   charging: {gpio: 19}
+#   error: {gpio: 19}
+#   wifi: {gpio: 19}
+  
 buttonGpio: 0
 
 pilot:
@@ -17,7 +22,7 @@ proximity:
   adcChannel: 3
   levels: [1650, 820, 430]
 
-acRelayGpio: 26
+acRelayGpios: [26]
 
 energyMeter:
   currentAdcChannels: [7]
@@ -43,3 +48,7 @@ serials:
 onewire:
   gpio: 16
   temperatureSensor: true
+
+otaChannels:
+  - name: stable
+    path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json

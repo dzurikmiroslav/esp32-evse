@@ -9,10 +9,14 @@ pilot:
   adcChannel: 7
   levels: [2410, 2104, 1797, 1491, 265]
 
-acRelayGpio: 32
+acRelayGpios: [32]
 
 serials:
   - type: uart
     name: UART via USB
     rxdGpio: 3
     txdGpio: 1
+
+otaChannels:
+  - name: stable
+    path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json

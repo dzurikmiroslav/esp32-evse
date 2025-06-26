@@ -11,10 +11,8 @@
 #include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
-#include <time.h>
 
-#define OTA_CHANELS_JSON_URL "https://dzurikmiroslav.github.io/esp32-evse/ota/" CONFIG_IDF_TARGET ".json"
-#define OTA_DEFAULT_CHANEL   "stable"
+#include "board_config.h"
 
 #define NVS_NAMESPACE "ota"
 #define NVS_CHANNEL   "channel"
@@ -85,28 +83,29 @@ cJSON* http_get_json(const char* url)
 
 esp_err_t ota_get_available(char** version, char** path)
 {
-    // read channels
-    cJSON* json = http_get_json(OTA_CHANELS_JSON_URL);
+    char channel_name[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
+    ota_get_channel(channel_name);
+
+    const char* channel_info_path = NULL;
+    for (int i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
+        if (board_cfg_is_ota_channel(board_config, i) && strcmp(channel_name, board_config.ota_channels[i].name) == 0) {
+            channel_info_path = board_config.ota_channels[i].path;
+            break;
+        }
+    }
+
+    if (!channel_info_path) {
+        ESP_LOGE(TAG, "Unknow channel: %s", channel_name);
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    // read channel info
+    cJSON* json = http_get_json(channel_info_path);
     if (json == NULL) {
         return ESP_ERR_NOT_FOUND;
     }
 
-    char* version_url = NULL;
-    char channel[OTA_CHANNEL_SIZE];
-    ota_get_channel(channel);
-    cJSON* json_item = cJSON_GetObjectItem(json, channel);
-    if (cJSON_IsString(json_item)) {
-        version_url = strdup(cJSON_GetStringValue(json_item));
-    }
-
-    cJSON_free(json);
-
-    // read version & path
-    json = http_get_json(version_url);
-    if (json == NULL) {
-        return ESP_ERR_NOT_FOUND;
-    }
-
+    cJSON* json_item;
     if (version) {
         json_item = cJSON_GetObjectItem(json, "version");
         if (cJSON_IsString(json_item)) {
@@ -126,45 +125,11 @@ esp_err_t ota_get_available(char** version, char** path)
     return ESP_OK;
 }
 
-ota_channel_list_t* ota_get_channel_list(void)
-{
-    ota_channel_list_t* list = (ota_channel_list_t*)malloc(sizeof(ota_channel_list_t));
-    SLIST_INIT(list);
-
-    ota_channel_entry_t* entry = (ota_channel_entry_t*)malloc(sizeof(ota_channel_entry_t));
-    entry->channel = strdup("testing");
-    SLIST_INSERT_HEAD(list, entry, entries);
-
-    entry = (ota_channel_entry_t*)malloc(sizeof(ota_channel_entry_t));
-    entry->channel = strdup("bleeding-edge");
-    SLIST_INSERT_HEAD(list, entry, entries);
-
-    entry = (ota_channel_entry_t*)malloc(sizeof(ota_channel_entry_t));
-    entry->channel = strdup("stable");
-    SLIST_INSERT_HEAD(list, entry, entries);
-
-    return list;
-}
-
-void ota_channel_list_free(ota_channel_list_t* list)
-{
-    while (!SLIST_EMPTY(list)) {
-        ota_channel_entry_t* item = SLIST_FIRST(list);
-
-        SLIST_REMOVE_HEAD(list, entries);
-
-        if (item->channel) free((void*)item->channel);
-        free((void*)item);
-    }
-
-    free((void*)list);
-}
-
 void ota_get_channel(char* value)
 {
-    size_t len = OTA_CHANNEL_SIZE;
+    size_t len = BOARD_CFG_OTA_CHANNEL_NAME_SIZE;
     if (nvs_get_str(nvs, NVS_CHANNEL, value, &len) != ESP_OK) {
-        strcpy(value, OTA_DEFAULT_CHANEL);
+        strcpy(value, board_config.ota_channels[0].name);
     }
 }
 

@@ -12,21 +12,11 @@
                     "description": "Name of the device",
                     "maxLength": 32
                 },
-                "ledChargingGpio": {
-                    "type": "integer",
-                    "description": "Charging led gpio number"
+                "leds": {
+                    "$ref": "#/definitions/Leds"
                 },
-                "ledErrorGpio": {
-                    "type": "integer",
-                    "description": "Error led gpio number"
-                },
-                "ledWifiGpio": {
-                    "type": "integer",
-                    "description": "WiFi led gpio number"
-                },
-                "buttonGpio": {
-                    "type": "integer",
-                    "description": "Button gpio number"
+                "button": {
+                    "$ref": "#/definitions/Button"
                 },
                 "pilot": {
                     "$ref": "#/definitions/Pilot"
@@ -34,18 +24,8 @@
                 "proximity": {
                     "$ref": "#/definitions/Proximity"
                 },
-                "acRelayGpio": {
-                    "type": "integer",
-                    "description": "AC relay gpio number for controlling mains contactor, only for backward compatibility use acRelaysGpios"
-                },
-                "acRelayGpios": {
-                    "type": "array",
-                    "description": "AC relay gpio numbers for controlling mains contactor, first item for L1, second item for L2-3, if second empty first item for L1-3",
-                    "minItems": 1,
-                    "maxItems": 2,
-                    "items": {
-                        "type": "integer"
-                    }
+                "acRelay": {
+                    "$ref": "#/definitions/AcRelay"
                 },
                 "socketLock": {
                     "$ref": "#/definitions/SocketLock"
@@ -56,29 +36,8 @@
                 "energyMeter": {
                     "$ref": "#/definitions/EnergyMeter"
                 },
-                "auxInputs": {
-                    "type": "array",
-                    "description": "Aux inputs configuration",
-                    "maxLength": 4,
-                    "items": {
-                        "$ref": "#/definitions/AuxInput"
-                    }
-                },
-                "auxOutputs": {
-                    "type": "array",
-                    "description": "Aux outputs configuration",
-                    "maxLength": 4,
-                    "items": {
-                        "$ref": "#/definitions/AuxOutput"
-                    }
-                },
-                "auxAnalogInputs": {
-                    "type": "array",
-                    "description": "Aux analog inputs configuration",
-                    "maxLength": 2,
-                    "items": {
-                        "$ref": "#/definitions/AuxAnalogInput"
-                    }
+                "aux": {
+                    "$ref": "#/definitions/Aux"
                 },
                 "serials": {
                     "type": "array",
@@ -91,60 +50,127 @@
                 "onewire": {
                     "$ref": "#/definitions/Onewire"
                 },
-                "otaChannels": {
-                    "type": "array",
-                    "description": "OTA channels configuration",
-                    "minItems": 1,
-                    "maxItems": 3,
-                    "items": {
-                        "$ref": "#/definitions/OtaChannel"
-                    }
+                "ota": {
+                    "$ref": "#/definitions/Ota"
                 }
             },
             "required": [
                 "deviceName",
-                "buttonGpio",
+                "button",
                 "pilot",
-                "acRelayGpios",
-                "otaChannels"
+                "acRelay",
+                "ota"
             ],
             "title": "Board config"
+        },
+        "Leds": {
+            "type": "object",
+            "description": "Leds configuration",
+            "additionalProperties": false,
+            "properties": {
+                "charging": {
+                    "$ref": "#/definitions/Led"
+                },
+                "error": {
+                    "$ref": "#/definitions/Led"
+                },
+                "wifi": {
+                    "$ref": "#/definitions/Led"
+                }
+            },
+            "title": "Leds"
+        },
+        "Led": {
+            "type": "object",
+            "description": "LED configuration",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer",
+                    "description": "LED gpio number"
+                }
+            },
+            "required": [
+                "gpio"
+            ],
+            "title": "Led"
+        },
+        "Button": {
+            "type": "object",
+            "description": "Button configuration",
+            "additionalProperties": false,
+            "properties": {
+                "gpio": {
+                    "type": "integer",
+                    "description": "Button gpio number"
+                }
+            },
+            "required": [
+                "gpio"
+            ],
+            "title": "Button"
+        },
+        "AcRelay": {
+            "type": "object",
+            "description": "AC relay configuration for controlling mains contactor",
+            "additionalProperties": false,
+            "properties": {
+                "gpios": {
+                    "type": "array",
+                    "description": "AC relay gpio numbers for controlling mains contactor, first item for L1, second item for L2-3, if second empty first item for L1-3",
+                    "minItems": 1,
+                    "maxItems": 2,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "gpios"
+            ],
+            "title": "AcRelay"
         },
         "EnergyMeter": {
             "type": "object",
             "description": "Energy meter configuration",
             "additionalProperties": false,
             "properties": {
-                "currentAdcChannels": {
-                    "type": "array",
-                    "description": "Current sensing of L1, L2, L3 adc1 channels, for single phase set array with one item",
-                    "maxItems": 3,
-                    "items": {
-                        "type": "integer"
-                    }
+                "current": {
+                    "$ref": "#/definitions/EnergyMeterCurrentVoltage"
                 },
-                "currentScale": {
-                    "type": "number",
-                    "description": "Multiplier of measured current values"
-                },
-                "voltageAdcChannels": {
-                    "type": "array",
-                    "description": "Voltage sensing of L1, L2, L3 adc1 channels, for single phase set array with one item",
-                    "maxItems": 3,
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "voltageScale": {
-                    "type": "number",
-                    "description": "Multiplier of measured voltage values"
+                "voltage": {
+                    "$ref": "#/definitions/EnergyMeterCurrentVoltage"
                 }
             },
             "required": [
-                "currentAdcChannels",
-                "currentScale"
+                "current"
             ],
             "title": "EnergyMeter"
+        },
+        "EnergyMeterCurrentVoltage": {
+            "type": "object",
+            "description": "Energy meter current/voltage configuration",
+            "additionalProperties": false,
+            "properties": {
+                "adcChannels": {
+                    "type": "array",
+                    "description": "Sensing of L1, L2, L3 adc1 channels, for single phase set array with one item",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "scale": {
+                    "type": "number",
+                    "description": "Multiplier of measured values"
+                }
+            },
+            "required": [
+                "adcChannels",
+                "scale"
+            ],
+            "title": "EnergyMeterCurrentVoltage"
         },
         "Pilot": {
             "type": "object",
@@ -206,13 +232,14 @@
             "description": "Socket lock configuration",
             "additionalProperties": false,
             "properties": {
-                "aGpio": {
-                    "type": "integer",
-                    "description": "Lock A gpio number"
-                },
-                "bGpio": {
-                    "type": "integer",
-                    "description": "Lock B gpio number"
+                "gpios": {
+                    "type": "array",
+                    "description": "Lock A & B gpio numbers",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "detectionGpio": {
                     "type": "integer",
@@ -228,8 +255,7 @@
                 }
             },
             "required": [
-                "aGpio",
-                "bGpio",
+                "gpios",
                 "detectionDelay",
                 "detectionGpio",
                 "minBreakTime"
@@ -255,6 +281,38 @@
                 "testGpio"
             ],
             "title": "Rcm"
+        },
+        "Aux": {
+            "type": "object",
+            "description": "Aux configuration",
+            "additionalProperties": false,
+            "properties": {
+                "inputs": {
+                    "type": "array",
+                    "description": "Aux inputs configuration",
+                    "maxLength": 4,
+                    "items": {
+                        "$ref": "#/definitions/AuxInput"
+                    }
+                },
+                "outputs": {
+                    "type": "array",
+                    "description": "Aux outputs configuration",
+                    "maxLength": 4,
+                    "items": {
+                        "$ref": "#/definitions/AuxOutput"
+                    }
+                },
+                "analogInputs": {
+                    "type": "array",
+                    "description": "Aux analog inputs configuration",
+                    "maxLength": 2,
+                    "items": {
+                        "$ref": "#/definitions/AuxAnalogInput"
+                    }
+                }
+            },
+            "title": "Aux"
         },
         "AuxInput": {
             "type": "object",
@@ -401,6 +459,26 @@
             ],
             "title": "Onewire"
         },
+        "Ota": {
+            "type": "object",
+            "description": "OTA configuration",
+            "additionalProperties": false,
+            "properties": {
+                "channels": {
+                    "type": "array",
+                    "description": "OTA channels configuration",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                        "$ref": "#/definitions/OtaChannel"
+                    }
+                }
+            },
+            "required": [
+                "channels"
+            ],
+            "title": "Ota"
+        },
         "OtaChannel": {
             "type": "object",
             "description": "OTA channel configuration",
@@ -420,7 +498,7 @@
                 "name",
                 "path"
             ],
-            "title": "Ota"
+            "title": "OtaChannel"
         }
     }
 }

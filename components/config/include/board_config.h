@@ -12,8 +12,11 @@
 #define BOARD_CFG_AUX_ANALOG_INPUT_COUNT 2
 #define BOARD_CFG_SERIAL_NAME_SIZE       16
 #define BOARD_CFG_SERIAL_COUNT           SOC_UART_NUM
+#define BOARD_CFG_OTA_CHANNEL_COUNT      3
+#define BOARD_CFG_OTA_CHANNEL_NAME_SIZE  16
 
 #define board_cfg_is_proximity(config)             (config.proximity_adc_channel != -1)
+#define board_cfg_is_ac_relay_l2_l3(config)        (config.ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3] != -1)
 #define board_cfg_is_socket_lock(config)           (config.socket_lock_a_gpio != -1 && config.socket_lock_b_gpio != -1 && config.socket_lock_detection_gpio != -1)
 #define board_cfg_is_rcm(config)                   (config.rcm_gpio != -1 && config.rcm_test_gpio != -1)
 #define board_cfg_is_aux_input(config, idx)        (config.aux_inputs[idx].gpio != -1)
@@ -26,6 +29,7 @@
     (config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
 #define board_cfg_is_energy_meter_vlt_3p(config) \
     (config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
+#define board_cfg_is_ota_channel(config, idx) (config.ota_channels[idx].path != NULL)
 
 typedef enum {
     BOARD_CFG_PILOT_LEVEL_12,
@@ -42,6 +46,17 @@ typedef enum {
     BOARD_CFG_PROXIMITY_LEVEL_32,
     BOARD_CFG_PROXIMITY_LEVEL_MAX
 } board_cfg_proximity_level_t;
+
+typedef enum {
+    BOARD_CFG_AC_RELAY_GPIO_L1,
+    BOARD_CFG_AC_RELAY_GPIO_L2_L3,
+    BOARD_CFG_AC_RELAY_GPIO_MAX
+} board_cfg_ac_relay_gpio_t;
+
+typedef struct {
+    char name[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
+    const char* path;
+} board_cfg_ota_channel_t;
 
 typedef struct {
     char name[BOARD_CFG_AUX_NAME_SIZE];
@@ -90,7 +105,7 @@ typedef struct {
     int8_t proximity_adc_channel;
     uint16_t proximity_levels[BOARD_CFG_PROXIMITY_LEVEL_MAX];
 
-    int8_t ac_relay_gpio;
+    int8_t ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_MAX];
 
     int8_t socket_lock_a_gpio;
     int8_t socket_lock_b_gpio;
@@ -117,6 +132,8 @@ typedef struct {
 
     int8_t onewire_gpio;
     bool onewire_temp_sensor : 1;
+
+    board_cfg_ota_channel_t ota_channels[BOARD_CFG_OTA_CHANNEL_COUNT];
 } board_cfg_t;
 
 extern board_cfg_t board_config;
