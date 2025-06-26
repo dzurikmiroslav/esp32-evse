@@ -88,8 +88,8 @@ esp_err_t ota_get_available(char** version, char** path)
 
     const char* channel_info_path = NULL;
     for (int i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
-        if (board_cfg_is_ota_channel(board_config, i) && strcmp(channel_name, board_config.ota_channels[i].name) == 0) {
-            channel_info_path = board_config.ota_channels[i].path;
+        if (board_cfg_is_ota_channel(board_config, i) && strcmp(channel_name, board_config.ota.channels[i].name) == 0) {
+            channel_info_path = board_config.ota.channels[i].path;
             break;
         }
     }
@@ -129,7 +129,7 @@ void ota_get_channel(char* value)
 {
     size_t len = BOARD_CFG_OTA_CHANNEL_NAME_SIZE;
     if (nvs_get_str(nvs, NVS_CHANNEL, value, &len) != ESP_OK) {
-        strcpy(value, board_config.ota_channels[0].name);
+        strcpy(value, board_config.ota.channels[0].name);
     }
 }
 

@@ -72,13 +72,13 @@ int luaopen_board_config(lua_State* L)
     }
     lua_setfield(L, -2, "serials");
 
-    lua_pushboolean(L, board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
+    lua_pushboolean(L, board_cfg_is_onewire(board_config) && board_config.onewire.temp_sensor);
     lua_setfield(L, -2, "temperaturesensor");
 
     lua_newtable(L);
     for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
         if (board_cfg_is_aux_input(board_config, i)) {
-            lua_pushstring(L, board_config.aux_inputs[i].name);
+            lua_pushstring(L, board_config.aux.inputs[i].name);
             lua_rawseti(L, -2, i + 1);
         }
     }
@@ -87,7 +87,7 @@ int luaopen_board_config(lua_State* L)
     lua_newtable(L);
     for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
         if (board_cfg_is_aux_output(board_config, i)) {
-            lua_pushstring(L, board_config.aux_outputs[i].name);
+            lua_pushstring(L, board_config.aux.outputs[i].name);
             lua_rawseti(L, -2, i + 1);
         }
     }
@@ -96,7 +96,7 @@ int luaopen_board_config(lua_State* L)
     lua_newtable(L);
     for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
         if (board_cfg_is_aux_analog_input(board_config, i)) {
-            lua_pushstring(L, board_config.aux_analog_inputs[i].name);
+            lua_pushstring(L, board_config.aux.analog_inputs[i].name);
             lua_rawseti(L, -2, i + 1);
         }
     }

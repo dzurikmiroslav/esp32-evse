@@ -30,7 +30,7 @@ static void temp_sensor_task_func(void* param)
     while (true) {
         int16_t temps[MAX_SENSORS];
 
-        esp_err_t err = ds18x20_measure_and_read_multi(board_config.onewire_gpio, sensor_addrs, sensor_count, temps);
+        esp_err_t err = ds18x20_measure_and_read_multi(board_config.onewire.gpio, sensor_addrs, sensor_count, temps);
         if (err == ESP_OK) {
             int16_t low = INT16_MAX;
             int16_t high = INT16_MIN;
@@ -53,12 +53,12 @@ static void temp_sensor_task_func(void* param)
 
 void temp_sensor_init(void)
 {
-    if (board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor) {
-        gpio_reset_pin(board_config.onewire_gpio);
-        gpio_set_pull_mode(board_config.onewire_gpio, GPIO_PULLUP_ONLY);
+    if (board_cfg_is_onewire(board_config) && board_config.onewire.temp_sensor) {
+        gpio_reset_pin(board_config.onewire.gpio);
+        gpio_set_pull_mode(board_config.onewire.gpio, GPIO_PULLUP_ONLY);
 
         size_t found = 0;
-        ESP_ERROR_CHECK(ds18x20_scan_devices(board_config.onewire_gpio, sensor_addrs, MAX_SENSORS, &found));
+        ESP_ERROR_CHECK(ds18x20_scan_devices(board_config.onewire.gpio, sensor_addrs, MAX_SENSORS, &found));
 
         if (found > MAX_SENSORS) {
             ESP_LOGW(TAG, "Found %d sensors, but can handle max %d", found, MAX_SENSORS);

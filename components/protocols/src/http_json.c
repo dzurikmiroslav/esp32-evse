@@ -722,9 +722,9 @@ cJSON* http_json_get_board_config(void)
     cJSON_AddStringToObject(json, "deviceName", board_config.device_name);
     cJSON_AddBoolToObject(json, "socketLock", board_cfg_is_socket_lock(board_config));
     cJSON_AddBoolToObject(json, "proximity", board_cfg_is_proximity(board_config));
-    cJSON_AddNumberToObject(json, "socketLockMinBreakTime", board_config.socket_lock_min_break_time);
+    cJSON_AddNumberToObject(json, "socketLockMinBreakTime", board_config.socket_lock.min_break_time);
     cJSON_AddBoolToObject(json, "rcm", board_cfg_is_rcm(board_config));
-    cJSON_AddBoolToObject(json, "temperatureSensor", board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor);
+    cJSON_AddBoolToObject(json, "temperatureSensor", board_cfg_is_onewire(board_config) && board_config.onewire.temp_sensor);
 
     const char* energy_meter = "none";
     bool energy_meter_three_phases = false;
@@ -754,7 +754,7 @@ cJSON* http_json_get_board_config(void)
     array_json = cJSON_CreateArray();
     for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
         if (board_cfg_is_aux_input(board_config, i)) {
-            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_inputs[i].name));
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux.inputs[i].name));
         }
     }
     cJSON_AddItemToObject(json, "auxInputs", array_json);
@@ -762,7 +762,7 @@ cJSON* http_json_get_board_config(void)
     array_json = cJSON_CreateArray();
     for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
         if (board_cfg_is_aux_output(board_config, i)) {
-            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_outputs[i].name));
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux.outputs[i].name));
         }
     }
     cJSON_AddItemToObject(json, "auxOutputs", array_json);
@@ -770,7 +770,7 @@ cJSON* http_json_get_board_config(void)
     array_json = cJSON_CreateArray();
     for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
         if (board_cfg_is_aux_analog_input(board_config, i)) {
-            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux_analog_inputs[i].name));
+            cJSON_AddItemToArray(array_json, cJSON_CreateString(board_config.aux.analog_inputs[i].name));
         }
     }
     cJSON_AddItemToObject(json, "auxAnalogInputs", array_json);
@@ -784,7 +784,7 @@ cJSON* http_json_firmware_channels(void)
 
     for (int i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
         if (board_cfg_is_ota_channel(board_config, i)) {
-            cJSON_AddItemToArray(json, cJSON_CreateString(board_config.ota_channels[i].name));
+            cJSON_AddItemToArray(json, cJSON_CreateString(board_config.ota.channels[i].name));
         }
     }
 
@@ -845,4 +845,21 @@ esp_err_t http_json_set_credentials(cJSON* root)
     http_set_credentials(user, password);
 
     return ESP_OK;
+}
+
+cJSON* http_json_get_nextion_info(void)
+{
+    cJSON* json = cJSON_CreateNull();
+
+    serial_nextion_info_t info;
+    if (serial_nextion_get_info(&info) == ESP_OK) {
+        json = cJSON_CreateObject();
+        cJSON_AddStringToObject(json, "model", info.model);
+        cJSON_AddBoolToObject(json, "touch", info.touch);
+        cJSON_AddNumberToObject(json, "flashSize", info.flash_size);
+    } else {
+        json = cJSON_CreateNull();
+    }
+
+    return json;
 }

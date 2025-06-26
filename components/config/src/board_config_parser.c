@@ -5,7 +5,7 @@
 
 #include "yaml.h"
 
-#define YAML_MAX_LEVEL 2
+#define YAML_MAX_LEVEL 3
 
 #define CASE_SET_VALUE(level, prop, convert_fn) \
     case level:                                 \
@@ -31,6 +31,10 @@
     case level:                                           \
         if (condition) config->prop = strdup(value);      \
         break;
+
+#define CASE_DEFAULT() \
+    default:           \
+        return false;
 
 static const char* TAG = "board_config_parser";
 
@@ -64,86 +68,56 @@ typedef enum {
     KEY_NONE = -1,
     //
     KEY_DEVICE_NAME,
-    KEY_LED_CHARGING_GPIO,
-    KEY_LED_ERROR_GPIO,
-    KEY_LED_WIFI_GPIO,
-    KEY_BUTTON_GPIO,
-    KEY_AC_RELAY_GPIO,  // deprecated
-    KEY_AC_RELAY_GPIOS,
+    KEY_LEDS,
+    KEY_CHARGING,
+    KEY_ERROR,
+    KEY_WIFI,
+    KEY_BUTTON,
+    KEY_AC_RELAY,
     KEY_PILOT,
     KEY_PROXIMITY,
     KEY_SOCKET_LOCK,
     KEY_RCM,
-    KEY_AUX_IN,
-    KEY_AUX_OUT,
-    KEY_AUX_ANALOG_IN,
+    KEY_AUX,
+    KEY_INPUTS,
+    KEY_OUTPUTS,
+    KEY_ANALOG_INPUTS,
     KEY_GPIO,
+    KEY_GPIOS,
     KEY_NAME,
     KEY_ADC_CHANNEL,
+    KEY_ADC_CHANNELS,
     KEY_LEVELS,
-    KEY_A_GPIO,
-    KEY_B_GPIO,
     KEY_DETECTION_GPIO,
     KEY_DETECTION_DELAY,
     KEY_MIN_BREAK_TIME,
     KEY_TEST_GPIO,
     KEY_ENERGY_METER,
-    KEY_CURRENT_ADC_CHANNELS,
-    KEY_VOLTAGE_ADC_CHANNELS,
-    KEY_CURRENT_SCALE,
-    KEY_VOLTAGE_SCALE,
-    KEY_SERIAL,
+    KEY_CURRENT,
+    KEY_VOLTAGE,
+    KEY_SCALE,
+    KEY_SERIALS,
     KEY_TYPE,
     KEY_RXD_GPIO,
     KEY_TXD_GPIO,
     KEY_RTS_GPIO,
     KEY_ONEWIRE,
     KEY_TEMPERATURE_SENSOR,
-    KEY_OTA_CHANNEL,
+    KEY_OTA,
+    KEY_CHANNELS,
     KEY_PATH,
     //
     KEY_MAX,
 } key_t;
 
 // string values of key_t, must match key_t order
-static const char* keys[] = { "deviceName",
-                              "ledChargingGpio",
-                              "ledErrorGpio",
-                              "ledWifiGpio",
-                              "buttonGpio",
-                              "acRelayGpio",  // deprecated
-                              "acRelayGpios",
-                              "pilot",
-                              "proximity",
-                              "socketLock",
-                              "rcm",
-                              "auxInputs",
-                              "auxOutputs",
-                              "auxAnalogInputs",
-                              "gpio",
-                              "name",
-                              "adcChannel",
-                              "levels",
-                              "aGpio",
-                              "bGpio",
-                              "detectionGpio",
-                              "detectionDelay",
-                              "minBreakTime",
-                              "testGpio",
-                              "energyMeter",
-                              "currentAdcChannels",
-                              "voltageAdcChannels",
-                              "currentScale",
-                              "voltageScale",
-                              "serials",
-                              "type",
-                              "rxdGpio",
-                              "txdGpio",
-                              "rtsGpio",
-                              "onewire",
-                              "temperatureSensor",
-                              "otaChannels",
-                              "path" };
+static const char* keys[] = {
+    "deviceName", "leds",        "charging", "error",         "wifi",           "button",       "acRelay",  "pilot",       "proximity",
+    "socketLock", "rcm",         "aux",      "inputs",        "outputs",        "analogInputs", "gpio",     "gpios",       "name",
+    "adcChannel", "adcChannels", "levels",   "detectionGpio", "detectionDelay", "minBreakTime", "testGpio", "energyMeter", "current",
+    "voltage",    "scale",       "serials",  "type",          "rxdGpio",        "txdGpio",      "rtsGpio",  "onewire",     "temperatureSensor",
+    "ota",        "channels",    "path",
+};
 
 static key_t get_key(const char* key)
 {
@@ -157,105 +131,146 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
 {
     switch (key[0]) {
         CASE_SET_VALUE_STR(KEY_DEVICE_NAME, device_name, BOARD_CFG_DEVICE_NAME_SIZE);
-        CASE_SET_VALUE(KEY_LED_CHARGING_GPIO, led_charging_gpio, str_to_gpio);
-        CASE_SET_VALUE(KEY_LED_ERROR_GPIO, led_error_gpio, str_to_gpio);
-        CASE_SET_VALUE(KEY_LED_WIFI_GPIO, led_wifi_gpio, str_to_gpio);
-        CASE_SET_VALUE(KEY_BUTTON_GPIO, button_gpio, str_to_gpio);
-        CASE_SET_VALUE(KEY_AC_RELAY_GPIO, ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L1], str_to_gpio);  // deprecated
-        CASE_SET_SEQ_VALUE(KEY_AC_RELAY_GPIOS, ac_relay_gpios[seq_idx[0]], atoi, seq_idx[0] < BOARD_CFG_AC_RELAY_GPIO_MAX);
-    case KEY_PILOT:
+    case KEY_LEDS:
         switch (key[1]) {
-            CASE_SET_VALUE(KEY_GPIO, pilot_gpio, str_to_gpio);
-            CASE_SET_VALUE(KEY_ADC_CHANNEL, pilot_adc_channel, str_to_gpio);
-            CASE_SET_SEQ_VALUE(KEY_LEVELS, pilot_levels[seq_idx[1]], atoi, seq_idx[1] < BOARD_CFG_PILOT_LEVEL_MAX);
+        case KEY_CHARGING:
+            switch (key[2]) {
+                CASE_SET_VALUE(KEY_GPIO, leds.charging_gpio, str_to_gpio);
+                CASE_DEFAULT();
+            }
+            break;
+        case KEY_ERROR:
+            switch (key[2]) {
+                CASE_SET_VALUE(KEY_GPIO, leds.error_gpio, str_to_gpio);
+                CASE_DEFAULT();
+            }
+            break;
+        case KEY_WIFI:
+            switch (key[2]) {
+                CASE_SET_VALUE(KEY_GPIO, leds.wifi_gpio, str_to_gpio);
+                CASE_DEFAULT();
+            }
+            break;
         default:
             return false;
+        }
+        break;
+    case KEY_BUTTON:
+        switch (key[1]) {
+            CASE_SET_VALUE(KEY_GPIO, button.gpio, str_to_gpio);
+            CASE_DEFAULT();
+        }
+        break;
+    case KEY_AC_RELAY:
+        switch (key[1]) {
+            CASE_SET_SEQ_VALUE(KEY_GPIOS, ac_relay.gpios[seq_idx[1]], atoi, seq_idx[1] < BOARD_CFG_AC_RELAY_GPIO_MAX);
+            CASE_DEFAULT();
+        }
+        break;
+    case KEY_PILOT:
+        switch (key[1]) {
+            CASE_SET_VALUE(KEY_GPIO, pilot.gpio, str_to_gpio);
+            CASE_SET_VALUE(KEY_ADC_CHANNEL, pilot.adc_channel, str_to_gpio);
+            CASE_SET_SEQ_VALUE(KEY_LEVELS, pilot.levels[seq_idx[1]], atoi, seq_idx[1] < BOARD_CFG_PILOT_LEVEL_MAX);
+            CASE_DEFAULT();
         }
         break;
     case KEY_PROXIMITY:
         switch (key[1]) {
-            CASE_SET_VALUE(KEY_ADC_CHANNEL, proximity_adc_channel, str_to_gpio);
-            CASE_SET_SEQ_VALUE(KEY_LEVELS, proximity_levels[seq_idx[1]], atoi, seq_idx[1] < BOARD_CFG_PROXIMITY_LEVEL_MAX);
-        default:
-            return false;
+            CASE_SET_VALUE(KEY_ADC_CHANNEL, proximity.adc_channel, str_to_gpio);
+            CASE_SET_SEQ_VALUE(KEY_LEVELS, proximity.levels[seq_idx[1]], atoi, seq_idx[1] < BOARD_CFG_PROXIMITY_LEVEL_MAX);
+            CASE_DEFAULT();
         }
         break;
     case KEY_SOCKET_LOCK:
         switch (key[1]) {
-            CASE_SET_VALUE(KEY_A_GPIO, socket_lock_a_gpio, str_to_gpio);
-            CASE_SET_VALUE(KEY_B_GPIO, socket_lock_b_gpio, str_to_gpio);
-            CASE_SET_VALUE(KEY_DETECTION_GPIO, socket_lock_detection_gpio, atoi);
-            CASE_SET_VALUE(KEY_DETECTION_DELAY, socket_lock_detection_delay, atoi);
-            CASE_SET_VALUE(KEY_MIN_BREAK_TIME, socket_lock_min_break_time, atoi);
-        default:
-            return false;
+            CASE_SET_SEQ_VALUE(KEY_GPIOS, socket_lock.gpios[seq_idx[1]], atoi, seq_idx[1] < BOARD_CFG_SOCKET_LOCK_GPIO_MAX);
+            CASE_SET_VALUE(KEY_DETECTION_GPIO, socket_lock.detection_gpio, atoi);
+            CASE_SET_VALUE(KEY_DETECTION_DELAY, socket_lock.detection_delay, atoi);
+            CASE_SET_VALUE(KEY_MIN_BREAK_TIME, socket_lock.min_break_time, atoi);
+            CASE_DEFAULT();
         }
         break;
     case KEY_ENERGY_METER:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE(KEY_CURRENT_ADC_CHANNELS, energy_meter_cur_adc_channel[seq_idx[1]], str_to_gpio, seq_idx[1] < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX);
-            CASE_SET_SEQ_VALUE(KEY_VOLTAGE_ADC_CHANNELS, energy_meter_vlt_adc_channel[seq_idx[1]], str_to_gpio, seq_idx[1] < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX);
-            CASE_SET_VALUE(KEY_CURRENT_SCALE, energy_meter_cur_scale, atof);
-            CASE_SET_VALUE(KEY_VOLTAGE_SCALE, energy_meter_vlt_scale, atof);
+        case KEY_CURRENT:
+            switch (key[2]) {
+                CASE_SET_SEQ_VALUE(KEY_ADC_CHANNELS, energy_meter.cur_adc_channel[seq_idx[2]], str_to_gpio, seq_idx[2] < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX);
+                CASE_SET_VALUE(KEY_SCALE, energy_meter.cur_scale, atof);
+                CASE_DEFAULT();
+            }
+            break;
+        case KEY_VOLTAGE:
+            switch (key[2]) {
+                CASE_SET_SEQ_VALUE(KEY_ADC_CHANNELS, energy_meter.vlt_adc_channel[seq_idx[2]], str_to_gpio, seq_idx[2] < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX);
+                CASE_SET_VALUE(KEY_SCALE, energy_meter.vlt_scale, atof);
+                CASE_DEFAULT();
+            }
+            break;
         default:
             return false;
         }
         break;
     case KEY_RCM:
         switch (key[1]) {
-            CASE_SET_VALUE(KEY_GPIO, rcm_gpio, str_to_gpio);
-            CASE_SET_VALUE(KEY_TEST_GPIO, rcm_test_gpio, str_to_gpio);
-        default:
-            return false;
+            CASE_SET_VALUE(KEY_GPIO, rcm.gpio, str_to_gpio);
+            CASE_SET_VALUE(KEY_TEST_GPIO, rcm.test_gpio, str_to_gpio);
+            CASE_DEFAULT();
         }
         break;
-    case KEY_AUX_IN:
+    case KEY_AUX:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_GPIO, aux_inputs[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_INPUT_COUNT);
+        case KEY_INPUTS:
+            switch (key[2]) {
+                CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux.inputs[seq_idx[1]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[1] < BOARD_CFG_AUX_INPUT_COUNT);
+                CASE_SET_SEQ_VALUE(KEY_GPIO, aux.inputs[seq_idx[1]].gpio, str_to_gpio, seq_idx[1] < BOARD_CFG_AUX_INPUT_COUNT);
+                CASE_DEFAULT();
+            }
+            break;
+        case KEY_OUTPUTS:
+            switch (key[2]) {
+                CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux.outputs[seq_idx[1]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[1] < BOARD_CFG_AUX_OUTPUT_COUNT);
+                CASE_SET_SEQ_VALUE(KEY_GPIO, aux.outputs[seq_idx[1]].gpio, str_to_gpio, seq_idx[1] < BOARD_CFG_AUX_OUTPUT_COUNT);
+                CASE_DEFAULT();
+            }
+            break;
+        case KEY_ANALOG_INPUTS:
+            switch (key[2]) {
+                CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux.analog_inputs[seq_idx[1]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[1] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
+                CASE_SET_SEQ_VALUE(KEY_ADC_CHANNEL, aux.analog_inputs[seq_idx[1]].adc_channel, str_to_gpio, seq_idx[1] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
+                CASE_DEFAULT();
+            }
+            break;
         default:
             return false;
         }
         break;
-    case KEY_AUX_OUT:
-        switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_outputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_GPIO, aux_outputs[seq_idx[0]].gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_OUTPUT_COUNT);
-        default:
-            return false;
-        }
-        break;
-    case KEY_AUX_ANALOG_IN:
-        switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, aux_analog_inputs[seq_idx[0]].name, BOARD_CFG_AUX_NAME_SIZE, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
-            CASE_SET_SEQ_VALUE(KEY_ADC_CHANNEL, aux_analog_inputs[seq_idx[0]].adc_channel, str_to_gpio, seq_idx[0] < BOARD_CFG_AUX_ANALOG_INPUT_COUNT);
-        default:
-            return false;
-        }
-        break;
-    case KEY_SERIAL:
+    case KEY_SERIALS:
         switch (key[1]) {
             CASE_SET_SEQ_VALUE(KEY_TYPE, serials[seq_idx[0]].type, str_to_serial_type, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE_STR(KEY_NAME, serials[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE(KEY_RXD_GPIO, serials[seq_idx[0]].rxd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE(KEY_TXD_GPIO, serials[seq_idx[0]].txd_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
             CASE_SET_SEQ_VALUE(KEY_RTS_GPIO, serials[seq_idx[0]].rts_gpio, str_to_gpio, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-        default:
-            return false;
+            CASE_DEFAULT();
         }
         break;
     case KEY_ONEWIRE:
         switch (key[1]) {
-            CASE_SET_VALUE(KEY_GPIO, onewire_gpio, str_to_gpio);
-            CASE_SET_VALUE(KEY_TEMPERATURE_SENSOR, onewire_temp_sensor, str_to_bool);
-        default:
-            return false;
+            CASE_SET_VALUE(KEY_GPIO, onewire.gpio, str_to_gpio);
+            CASE_SET_VALUE(KEY_TEMPERATURE_SENSOR, onewire.temp_sensor, str_to_bool);
+            CASE_DEFAULT();
         }
         break;
-    case KEY_OTA_CHANNEL:
+    case KEY_OTA:
         switch (key[1]) {
-            CASE_SET_SEQ_VALUE_STR(KEY_NAME, ota_channels[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
-            CASE_SET_SEQ_VALUE_STRDUP(KEY_PATH, ota_channels[seq_idx[0]].path, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+        case KEY_CHANNELS:
+            switch (key[2]) {
+                CASE_SET_SEQ_VALUE_STR(KEY_NAME, ota.channels[seq_idx[1]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[1] < BOARD_CFG_SERIAL_COUNT);
+                CASE_SET_SEQ_VALUE_STRDUP(KEY_PATH, ota.channels[seq_idx[1]].path, seq_idx[1] < BOARD_CFG_SERIAL_COUNT);
+                CASE_DEFAULT();
+            }
+            break;
         default:
             return false;
         }
@@ -269,34 +284,34 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
 static void empty_config(board_cfg_t* config)
 {
     memset(config, 0, sizeof(board_cfg_t));
-    config->led_charging_gpio = -1;
-    config->led_error_gpio = -1;
-    config->led_wifi_gpio = -1;
-    config->button_gpio = -1;
-    config->pilot_gpio = -1;
-    config->pilot_adc_channel = -1;
-    config->proximity_adc_channel = -1;
-    config->ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L1] = -1;
-    config->ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3] = -1;
-    config->socket_lock_a_gpio = -1;
-    config->socket_lock_b_gpio = -1;
-    config->socket_lock_detection_gpio = -1;
-    config->rcm_gpio = -1;
-    config->rcm_test_gpio = -1;
-    config->onewire_gpio = -1;
+    config->leds.charging_gpio = -1;
+    config->leds.error_gpio = -1;
+    config->leds.wifi_gpio = -1;
+    config->button.gpio = -1;
+    config->pilot.gpio = -1;
+    config->pilot.adc_channel = -1;
+    config->proximity.adc_channel = -1;
+    config->ac_relay.gpios[BOARD_CFG_AC_RELAY_GPIO_L1] = -1;
+    config->ac_relay.gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3] = -1;
+    config->socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A] = -1;
+    config->socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B] = -1;
+    config->socket_lock.detection_gpio = -1;
+    config->rcm.gpio = -1;
+    config->rcm.test_gpio = -1;
+    config->onewire.gpio = -1;
 
     for (uint8_t i = 0; i < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX; i++) {
-        config->energy_meter_cur_adc_channel[i] = -1;
-        config->energy_meter_vlt_adc_channel[i] = -1;
+        config->energy_meter.cur_adc_channel[i] = -1;
+        config->energy_meter.vlt_adc_channel[i] = -1;
     }
     for (uint8_t i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
-        config->aux_inputs[i].gpio = -1;
+        config->aux.inputs[i].gpio = -1;
     }
     for (uint8_t i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
-        config->aux_outputs[i].gpio = -1;
+        config->aux.outputs[i].gpio = -1;
     }
     for (uint8_t i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
-        config->aux_analog_inputs[i].adc_channel = -1;
+        config->aux.analog_inputs[i].adc_channel = -1;
     }
     for (uint8_t i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
         config->serials[i].rxd_gpio = -1;
@@ -304,8 +319,8 @@ static void empty_config(board_cfg_t* config)
         config->serials[i].rts_gpio = -1;
     }
     for (uint8_t i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
-        config->ota_channels[i].name[0] = '\0';
-        config->ota_channels[i].path = NULL;
+        config->ota.channels[i].name[0] = '\0';
+        config->ota.channels[i].path = NULL;
     }
 }
 

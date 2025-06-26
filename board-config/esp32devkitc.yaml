@@ -2,16 +2,16 @@
 
 deviceName: ESP32-DevKitC EVSE
 
-ledChargingGpio: 19
-ledErrorGpio: 18
-ledWifiGpio: 17
+leds:
+  charging:
+    gpio: 19
+  error:
+    gpio: 18
+  wifi:
+    gpio: 17
 
-# led:
-#   charging: {gpio: 19}
-#   error: {gpio: 19}
-#   wifi: {gpio: 19}
-  
-buttonGpio: 0
+button:
+  gpio: 0
 
 pilot:
   gpio: 27
@@ -22,13 +22,16 @@ proximity:
   adcChannel: 3
   levels: [1650, 820, 430]
 
-acRelayGpios: [26]
+acRelay:
+  gpios: [26]
 
 energyMeter:
-  currentAdcChannels: [7]
-  currentScale: 0.090909091
-  voltageAdcChannels: [6]
-  voltageScale: 0.47
+  current:
+    adcChannels: [7]
+    scale: 0.090909091
+  voltage:
+    adcChannels: [6]
+    scale: 0.47
 
 serials:
   - type: uart
@@ -49,6 +52,11 @@ onewire:
   gpio: 16
   temperatureSensor: true
 
-otaChannels:
-  - name: stable
-    path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json
+ota:
+  channels:
+    - name: stable
+      path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json
+    # - name: testing
+    #   path: https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32.json
+    # - name: bleeding edge
+    #   path: https://dzurikmiroslav.github.io/esp32-evse/ota/bleeding-edge/esp32.json

@@ -15,21 +15,22 @@
 #define BOARD_CFG_OTA_CHANNEL_COUNT      3
 #define BOARD_CFG_OTA_CHANNEL_NAME_SIZE  16
 
-#define board_cfg_is_proximity(config)             (config.proximity_adc_channel != -1)
-#define board_cfg_is_ac_relay_l2_l3(config)        (config.ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3] != -1)
-#define board_cfg_is_socket_lock(config)           (config.socket_lock_a_gpio != -1 && config.socket_lock_b_gpio != -1 && config.socket_lock_detection_gpio != -1)
-#define board_cfg_is_rcm(config)                   (config.rcm_gpio != -1 && config.rcm_test_gpio != -1)
-#define board_cfg_is_aux_input(config, idx)        (config.aux_inputs[idx].gpio != -1)
-#define board_cfg_is_aux_output(config, idx)       (config.aux_outputs[idx].gpio != -1)
-#define board_cfg_is_aux_analog_input(config, idx) (config.aux_analog_inputs[idx].adc_channel != -1)
-#define board_cfg_is_onewire(config)               (config.onewire_gpio != -1)
-#define board_cfg_is_energy_meter_cur(config)      (config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
-#define board_cfg_is_energy_meter_vlt(config)      (config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
+#define board_cfg_is_proximity(config)      (config.proximity.adc_channel != -1)
+#define board_cfg_is_ac_relay_l2_l3(config) (config.ac_relay.gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3] != -1)
+#define board_cfg_is_socket_lock(config) \
+    (config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A] != -1 && config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B] != -1 && config.socket_lock.detection_gpio != -1)
+#define board_cfg_is_rcm(config)                   (config.rcm.gpio != -1 && config.rcm.test_gpio != -1)
+#define board_cfg_is_aux_input(config, idx)        (config.aux.inputs[idx].gpio != -1)
+#define board_cfg_is_aux_output(config, idx)       (config.aux.outputs[idx].gpio != -1)
+#define board_cfg_is_aux_analog_input(config, idx) (config.aux.analog_inputs[idx].adc_channel != -1)
+#define board_cfg_is_onewire(config)               (config.onewire.gpio != -1)
+#define board_cfg_is_energy_meter_cur(config)      (config.energy_meter.cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
+#define board_cfg_is_energy_meter_vlt(config)      (config.energy_meter.vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L1] != -1)
 #define board_cfg_is_energy_meter_cur_3p(config) \
-    (config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
+    (config.energy_meter.cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter.cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
 #define board_cfg_is_energy_meter_vlt_3p(config) \
-    (config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
-#define board_cfg_is_ota_channel(config, idx) (config.ota_channels[idx].path != NULL)
+    (config.energy_meter.vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L2] != -1 && config.energy_meter.vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_L3] != -1)
+#define board_cfg_is_ota_channel(config, idx) (config.ota.channels[idx].path != NULL)
 
 typedef enum {
     BOARD_CFG_PILOT_LEVEL_12,
@@ -52,6 +53,12 @@ typedef enum {
     BOARD_CFG_AC_RELAY_GPIO_L2_L3,
     BOARD_CFG_AC_RELAY_GPIO_MAX
 } board_cfg_ac_relay_gpio_t;
+
+typedef enum {
+    BOARD_CFG_SOCKET_LOCK_GPIO_A,
+    BOARD_CFG_SOCKET_LOCK_GPIO_B,
+    BOARD_CFG_SOCKET_LOCK_GPIO_MAX
+} board_cfg_socket_lock_gpio_t;
 
 typedef struct {
     char name[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
@@ -92,48 +99,67 @@ typedef enum {
 typedef struct {
     char device_name[BOARD_CFG_DEVICE_NAME_SIZE];
 
-    int8_t led_charging_gpio;
-    int8_t led_error_gpio;
-    int8_t led_wifi_gpio;
+    struct leds_s {
+        int8_t charging_gpio;
+        int8_t error_gpio;
+        int8_t wifi_gpio;
+    } leds;
 
-    int8_t button_gpio;
+    struct button_s {
+        int8_t gpio;
+    } button;
 
-    int8_t pilot_gpio;
-    int8_t pilot_adc_channel;
-    uint16_t pilot_levels[BOARD_CFG_PILOT_LEVEL_MAX];
+    struct pilot_s {
+        int8_t gpio;
+        int8_t adc_channel;
+        uint16_t levels[BOARD_CFG_PILOT_LEVEL_MAX];
+    } pilot;
 
-    int8_t proximity_adc_channel;
-    uint16_t proximity_levels[BOARD_CFG_PROXIMITY_LEVEL_MAX];
+    struct proximity_s {
+        int8_t adc_channel;
+        uint16_t levels[BOARD_CFG_PROXIMITY_LEVEL_MAX];
+    } proximity;
 
-    int8_t ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_MAX];
+    struct ac_relay_s {
+        int8_t gpios[BOARD_CFG_AC_RELAY_GPIO_MAX];
+    } ac_relay;
 
-    int8_t socket_lock_a_gpio;
-    int8_t socket_lock_b_gpio;
-    int8_t socket_lock_detection_gpio;
-    uint16_t socket_lock_detection_delay;
-    uint16_t socket_lock_min_break_time;
+    struct socket_lock_s {
+        int8_t gpios[BOARD_CFG_SOCKET_LOCK_GPIO_MAX];
+        int8_t detection_gpio;
+        uint16_t detection_delay;
+        uint16_t min_break_time;
+    } socket_lock;
 
-    int8_t rcm_gpio;
-    int8_t rcm_test_gpio;
+    struct rcm_s {
+        int8_t gpio;
+        int8_t test_gpio;
+    } rcm;
 
-    int8_t energy_meter_cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX];
-    float energy_meter_cur_scale;
+    struct energy_meter_s {
+        int8_t cur_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX];
+        float cur_scale;
 
-    int8_t energy_meter_vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX];
-    float energy_meter_vlt_scale;
+        int8_t vlt_adc_channel[BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX];
+        float vlt_scale;
+    } energy_meter;
 
-    board_cfg_aux_input_output_t aux_inputs[BOARD_CFG_AUX_INPUT_COUNT];
-
-    board_cfg_aux_input_output_t aux_outputs[BOARD_CFG_AUX_OUTPUT_COUNT];
-
-    board_cfg_aux_analog_input_t aux_analog_inputs[BOARD_CFG_AUX_ANALOG_INPUT_COUNT];
+    struct aux_s {
+        board_cfg_aux_input_output_t inputs[BOARD_CFG_AUX_INPUT_COUNT];
+        board_cfg_aux_input_output_t outputs[BOARD_CFG_AUX_OUTPUT_COUNT];
+        board_cfg_aux_analog_input_t analog_inputs[BOARD_CFG_AUX_ANALOG_INPUT_COUNT];
+    } aux;
 
     board_cfg_serial_t serials[BOARD_CFG_SERIAL_COUNT];
 
-    int8_t onewire_gpio;
-    bool onewire_temp_sensor : 1;
+    struct onewire_s {
+        int8_t gpio;
+        bool temp_sensor : 1;
+    } onewire;
 
-    board_cfg_ota_channel_t ota_channels[BOARD_CFG_OTA_CHANNEL_COUNT];
+    struct ota_s {
+        board_cfg_ota_channel_t channels[BOARD_CFG_OTA_CHANNEL_COUNT];
+    } ota;
 } board_cfg_t;
 
 extern board_cfg_t board_config;

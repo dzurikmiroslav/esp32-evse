@@ -56,6 +56,8 @@ typedef enum {
     URI_FIRMWARE_CHECK_UPDATE,
     URI_FIRMWARE_UPDATE,
     URI_FIRMWARE_UPLOAD,
+    URI_NEXTION_INFO,
+    URI_NEXTION_UPLOAD,
     URI_LOG,
     URI_INFO,
     URI_BOARD_CONFIG,
@@ -94,6 +96,8 @@ static const char* uris[] = {
     "/firmware/check-update",
     "/firmware/update",
     "/firmware/upload",
+    "/nextion/info",
+    "/nextion/upload",
     "/log",
     "/info",
     "/board-config",
@@ -441,6 +445,87 @@ static esp_err_t handle_firmware_upload(httpd_req_t* req)
     return ESP_OK;
 }
 
+static esp_err_t handle_nextion_upload(httpd_req_t* req)
+{
+    esp_err_t err;
+
+    size_t remaining = req->content_len;
+
+    char* buf = (char*)malloc(sizeof(char) * SERIAL_NEXTION_UPLOAD_BATCH_SIZE);
+    if (!buf) {
+        ESP_LOGE(TAG, "Failed to allocate memory");
+        httpd_resp_send_custom_err(req, "512 Failed To Allocate Memory", "Failed to allocate memory");
+        return ESP_FAIL;
+    }
+
+    uint32_t baud_rate = 921600;
+    char param[16];
+    size_t skip_remaining, skip_to;
+    if (httpd_req_get_url_query_str(req, buf, SERIAL_NEXTION_UPLOAD_BATCH_SIZE) == ESP_OK) {
+        if (httpd_query_key_value(buf, "baud-rate", param, sizeof(param)) == ESP_OK) {
+            baud_rate = atoi(param);
+        }
+    }
+
+    if (serial_nextion_upload_begin(remaining, baud_rate) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to begin write program");
+        httpd_resp_send_custom_err(req, "531 Failed To Write Program", "Failed to write program");
+        free((void*)buf);
+        return ESP_FAIL;
+    }
+
+    while (remaining > 0) {
+        int received = 0;
+        do {
+            int ret = httpd_req_recv(req, &buf[received], MIN(remaining, SERIAL_NEXTION_UPLOAD_BATCH_SIZE) - received);
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            } else if (ret <= 0) {
+                ESP_LOGE(TAG, "File receive failed");
+                httpd_resp_send_custom_err(req, "532 Failed To Receive Program", "Failed to receive program");
+                free((void*)buf);
+                serial_nextion_upload_end();
+                return ESP_FAIL;
+            }
+
+            received += ret;
+        } while (received < MIN(remaining, SERIAL_NEXTION_UPLOAD_BATCH_SIZE));
+        remaining -= received;
+
+        err = serial_nextion_upload_write(buf, received, &skip_to);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to write program");
+            httpd_resp_send_custom_err(req, "531 Failed To Write Program", "Failed to write program");
+            free((void*)buf);
+            return ESP_FAIL;
+        }
+
+        if (skip_to > 0) {
+            skip_remaining = skip_to - (req->content_len - remaining);
+            while (skip_remaining > 0) {
+                if ((received = httpd_req_recv(req, buf, MIN(skip_remaining, SERIAL_NEXTION_UPLOAD_BATCH_SIZE))) <= 0) {
+                    ESP_LOGE(TAG, "File receive failed");
+                    httpd_resp_send_custom_err(req, "532 Failed To Receive Program", "Failed to receive program");
+                    free((void*)buf);
+                    serial_nextion_upload_end();
+                    return ESP_FAIL;
+                }
+                skip_remaining -= received;
+                remaining -= received;
+            }
+        }
+    }
+
+    serial_nextion_upload_end();
+
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_sendstr(req, "OK");
+
+    free((void*)buf);
+
+    return ESP_OK;
+}
+
 static esp_err_t get_handler(httpd_req_t* req)
 {
     if (http_authorize_req(req)) {
@@ -475,6 +560,8 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_firmware_channel());
         case URI_FIRMWARE_CHECK_UPDATE:
             return handle_json_response(req, http_json_firmware_check_update());
+        case URI_NEXTION_INFO:
+            return handle_json_response(req, http_json_get_nextion_info());
         case URI_LOG:
             return handle_log(req);
         case URI_INFO:
@@ -535,6 +622,8 @@ static esp_err_t post_handler(httpd_req_t* req)
             return handle_firmware_update(req);
         case URI_FIRMWARE_UPLOAD:
             return handle_firmware_upload(req);
+        case URI_NEXTION_UPLOAD:
+            return handle_nextion_upload(req);
         case URI_RESTART:
             return handle_void_request(req, schedule_restart);
         case URI_TIME:

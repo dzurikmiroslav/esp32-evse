@@ -9,29 +9,29 @@ static const char* TAG = "proximity";
 
 void proximity_init(void)
 {
-    if (board_config.proximity_adc_channel != -1) {
+    if (board_config.proximity.adc_channel != -1) {
         adc_oneshot_chan_cfg_t config = {
             .bitwidth = ADC_BITWIDTH_DEFAULT,
             .atten = ADC_ATTEN_DB_12,
         };
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.proximity_adc_channel, &config));
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, board_config.proximity.adc_channel, &config));
     }
 }
 
 uint8_t proximity_get_max_current(void)
 {
     int voltage;
-    adc_oneshot_read(adc_handle, board_config.proximity_adc_channel, &voltage);
+    adc_oneshot_read(adc_handle, board_config.proximity.adc_channel, &voltage);
     adc_cali_raw_to_voltage(adc_cali_handle, voltage, &voltage);
 
     ESP_LOGD(TAG, "Measured: %dmV", voltage);
 
     uint8_t current;
-    if (voltage >= board_config.proximity_levels[BOARD_CFG_PROXIMITY_LEVEL_13]) {
+    if (voltage >= board_config.proximity.levels[BOARD_CFG_PROXIMITY_LEVEL_13]) {
         current = 13;
-    } else if (voltage >= board_config.proximity_levels[BOARD_CFG_PROXIMITY_LEVEL_20]) {
+    } else if (voltage >= board_config.proximity.levels[BOARD_CFG_PROXIMITY_LEVEL_20]) {
         current = 20;
-    } else if (voltage >= board_config.proximity_levels[BOARD_CFG_PROXIMITY_LEVEL_32]) {
+    } else if (voltage >= board_config.proximity.levels[BOARD_CFG_PROXIMITY_LEVEL_32]) {
         current = 32;
     } else {
         current = 63;

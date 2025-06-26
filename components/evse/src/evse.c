@@ -293,7 +293,7 @@ static void check_other_error_conditions()
         set_error_bits(EVSE_ERR_RCM_TRIGGERED_BIT);
     }
 
-    if (board_cfg_is_onewire(board_config) && board_config.onewire_temp_sensor) {
+    if (board_cfg_is_onewire(board_config) && board_config.onewire.temp_sensor) {
         if (temp_sensor_get_high() > temp_threshold * 100) {
             set_error_bits(EVSE_ERR_TEMPERATURE_HIGH_BIT);
         } else {

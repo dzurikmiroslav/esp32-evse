@@ -44,12 +44,12 @@ static TaskHandle_t socket_lock_task;
 
 static bool is_locked(void)
 {
-    gpio_set_level(board_config.socket_lock_a_gpio, 1);
-    gpio_set_level(board_config.socket_lock_b_gpio, 1);
+    gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A], 1);
+    gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B], 1);
 
-    vTaskDelay(pdMS_TO_TICKS(board_config.socket_lock_detection_delay));
+    vTaskDelay(pdMS_TO_TICKS(board_config.socket_lock.detection_delay));
 
-    return gpio_get_level(board_config.socket_lock_detection_gpio) == detection_high;
+    return gpio_get_level(board_config.socket_lock.detection_gpio) == detection_high;
 }
 
 static void socket_lock_task_func(void* param)
@@ -66,8 +66,8 @@ static void socket_lock_task_func(void* param)
             }
 
             if (notification & (UNLOCK_BIT | REPEAT_UNLOCK_BIT)) {
-                gpio_set_level(board_config.socket_lock_a_gpio, 0);
-                gpio_set_level(board_config.socket_lock_b_gpio, 1);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A], 0);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B], 1);
                 vTaskDelay(pdMS_TO_TICKS(operating_time));
 
                 if (!is_locked()) {
@@ -84,14 +84,14 @@ static void socket_lock_task_func(void* param)
                     }
                 }
 
-                gpio_set_level(board_config.socket_lock_a_gpio, 0);
-                gpio_set_level(board_config.socket_lock_b_gpio, 0);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A], 0);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B], 0);
             } else if (notification & (LOCK_BIT | REPEAT_LOCK_BIT)) {
                 if (notification & LOCK_BIT) {
                     vTaskDelay(pdMS_TO_TICKS(LOCK_DELAY));  // delay before first lock attempt
                 }
-                gpio_set_level(board_config.socket_lock_a_gpio, 1);
-                gpio_set_level(board_config.socket_lock_b_gpio, 0);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A], 1);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B], 0);
                 vTaskDelay(pdMS_TO_TICKS(operating_time));
 
                 if (is_locked()) {
@@ -108,8 +108,8 @@ static void socket_lock_task_func(void* param)
                     }
                 }
 
-                gpio_set_level(board_config.socket_lock_a_gpio, 0);
-                gpio_set_level(board_config.socket_lock_b_gpio, 0);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A], 0);
+                gpio_set_level(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B], 0);
             }
 
             TickType_t delay_tick = xTaskGetTickCount() - previous_tick;
@@ -140,11 +140,11 @@ void socket_lock_init(void)
         gpio_config_t io_conf = { 0 };
 
         io_conf.mode = GPIO_MODE_OUTPUT;
-        io_conf.pin_bit_mask = BIT64(board_config.socket_lock_a_gpio) | BIT64(board_config.socket_lock_b_gpio);
+        io_conf.pin_bit_mask = BIT64(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_A]) | BIT64(board_config.socket_lock.gpios[BOARD_CFG_SOCKET_LOCK_GPIO_B]);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
         io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pin_bit_mask = BIT64(board_config.socket_lock_detection_gpio);
+        io_conf.pin_bit_mask = BIT64(board_config.socket_lock.detection_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
         xTaskCreate(socket_lock_task_func, "socket_lock_task", 2 * 1024, NULL, 10, &socket_lock_task);
@@ -202,7 +202,7 @@ uint16_t socket_lock_get_break_time(void)
 
 esp_err_t socket_lock_set_break_time(uint16_t _break_time)
 {
-    if (_break_time < board_config.socket_lock_min_break_time) {
+    if (_break_time < board_config.socket_lock.min_break_time) {
         ESP_LOGE(TAG, "Operating time out of range");
         return ESP_ERR_INVALID_ARG;
     }
