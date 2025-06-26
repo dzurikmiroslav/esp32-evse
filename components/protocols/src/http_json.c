@@ -782,21 +782,18 @@ cJSON* http_json_firmware_channels(void)
 {
     cJSON* json = cJSON_CreateArray();
 
-    ota_channel_list_t* list = ota_get_channel_list();
-
-    ota_channel_entry_t* entry;
-    SLIST_FOREACH (entry, list, entries) {
-        cJSON_AddItemToArray(json, cJSON_CreateString(entry->channel));
+    for (int i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
+        if (board_cfg_is_ota_channel(board_config, i)) {
+            cJSON_AddItemToArray(json, cJSON_CreateString(board_config.ota_channels[i].name));
+        }
     }
-
-    ota_channel_list_free(list);
 
     return json;
 }
 
 cJSON* http_json_firmware_channel(void)
 {
-    char channel[OTA_CHANNEL_SIZE];
+    char channel[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
     ota_get_channel(channel);
     return cJSON_CreateString(channel);
 }
@@ -821,7 +818,6 @@ cJSON* http_json_firmware_check_update(void)
         root = cJSON_CreateObject();
         cJSON_AddStringToObject(root, "available", version);
         cJSON_AddStringToObject(root, "current", app_desc->version);
-        cJSON_AddBoolToObject(root, "newer", true);
 
         free((void*)version);
     }

@@ -27,6 +27,11 @@
         if (condition) strncpy(config->prop, value, size - 1); \
         break;
 
+#define CASE_SET_SEQ_VALUE_STRDUP(level, prop, condition) \
+    case level:                                           \
+        if (condition) config->prop = strdup(value);      \
+        break;
+
 static const char* TAG = "board_config_parser";
 
 static uint8_t str_to_gpio(const char* value)
@@ -63,7 +68,8 @@ typedef enum {
     KEY_LED_ERROR_GPIO,
     KEY_LED_WIFI_GPIO,
     KEY_BUTTON_GPIO,
-    KEY_AC_RELAY_GPIO,
+    KEY_AC_RELAY_GPIO,  // deprecated
+    KEY_AC_RELAY_GPIOS,
     KEY_PILOT,
     KEY_PROXIMITY,
     KEY_SOCKET_LOCK,
@@ -93,48 +99,51 @@ typedef enum {
     KEY_RTS_GPIO,
     KEY_ONEWIRE,
     KEY_TEMPERATURE_SENSOR,
+    KEY_OTA_CHANNEL,
+    KEY_PATH,
     //
     KEY_MAX,
 } key_t;
 
 // string values of key_t, must match key_t order
-static const char* keys[] = {
-    "deviceName",
-    "ledChargingGpio",
-    "ledErrorGpio",
-    "ledWifiGpio",
-    "buttonGpio",
-    "acRelayGpio",
-    "pilot",
-    "proximity",
-    "socketLock",
-    "rcm",
-    "auxInputs",
-    "auxOutputs",
-    "auxAnalogInputs",
-    "gpio",
-    "name",
-    "adcChannel",
-    "levels",
-    "aGpio",
-    "bGpio",
-    "detectionGpio",
-    "detectionDelay",
-    "minBreakTime",
-    "testGpio",
-    "energyMeter",
-    "currentAdcChannels",
-    "voltageAdcChannels",
-    "currentScale",
-    "voltageScale",
-    "serials",
-    "type",
-    "rxdGpio",
-    "txdGpio",
-    "rtsGpio",
-    "onewire",
-    "temperatureSensor",
-};
+static const char* keys[] = { "deviceName",
+                              "ledChargingGpio",
+                              "ledErrorGpio",
+                              "ledWifiGpio",
+                              "buttonGpio",
+                              "acRelayGpio",  // deprecated
+                              "acRelayGpios",
+                              "pilot",
+                              "proximity",
+                              "socketLock",
+                              "rcm",
+                              "auxInputs",
+                              "auxOutputs",
+                              "auxAnalogInputs",
+                              "gpio",
+                              "name",
+                              "adcChannel",
+                              "levels",
+                              "aGpio",
+                              "bGpio",
+                              "detectionGpio",
+                              "detectionDelay",
+                              "minBreakTime",
+                              "testGpio",
+                              "energyMeter",
+                              "currentAdcChannels",
+                              "voltageAdcChannels",
+                              "currentScale",
+                              "voltageScale",
+                              "serials",
+                              "type",
+                              "rxdGpio",
+                              "txdGpio",
+                              "rtsGpio",
+                              "onewire",
+                              "temperatureSensor",
+                              "otaChannels",
+                              "path" };
 
 static key_t get_key(const char* key)
 {
@@ -152,7 +161,8 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         CASE_SET_VALUE(KEY_LED_ERROR_GPIO, led_error_gpio, str_to_gpio);
         CASE_SET_VALUE(KEY_LED_WIFI_GPIO, led_wifi_gpio, str_to_gpio);
         CASE_SET_VALUE(KEY_BUTTON_GPIO, button_gpio, str_to_gpio);
-        CASE_SET_VALUE(KEY_AC_RELAY_GPIO, ac_relay_gpio, str_to_gpio);
+        CASE_SET_VALUE(KEY_AC_RELAY_GPIO, ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L1], str_to_gpio);  // deprecated
+        CASE_SET_SEQ_VALUE(KEY_AC_RELAY_GPIOS, ac_relay_gpios[seq_idx[0]], atoi, seq_idx[0] < BOARD_CFG_AC_RELAY_GPIO_MAX);
     case KEY_PILOT:
         switch (key[1]) {
             CASE_SET_VALUE(KEY_GPIO, pilot_gpio, str_to_gpio);
@@ -242,6 +252,14 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
             return false;
         }
         break;
+    case KEY_OTA_CHANNEL:
+        switch (key[1]) {
+            CASE_SET_SEQ_VALUE_STR(KEY_NAME, ota_channels[seq_idx[0]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+            CASE_SET_SEQ_VALUE_STRDUP(KEY_PATH, ota_channels[seq_idx[0]].path, seq_idx[0] < BOARD_CFG_SERIAL_COUNT);
+        default:
+            return false;
+        }
+        break;
     default:
         return false;
     }
@@ -258,6 +276,8 @@ static void empty_config(board_cfg_t* config)
     config->pilot_gpio = -1;
     config->pilot_adc_channel = -1;
     config->proximity_adc_channel = -1;
+    config->ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L1] = -1;
+    config->ac_relay_gpios[BOARD_CFG_AC_RELAY_GPIO_L2_L3] = -1;
     config->socket_lock_a_gpio = -1;
     config->socket_lock_b_gpio = -1;
     config->socket_lock_detection_gpio = -1;
@@ -282,6 +302,10 @@ static void empty_config(board_cfg_t* config)
         config->serials[i].rxd_gpio = -1;
         config->serials[i].txd_gpio = -1;
         config->serials[i].rts_gpio = -1;
+    }
+    for (uint8_t i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
+        config->ota_channels[i].name[0] = '\0';
+        config->ota_channels[i].path = NULL;
     }
 }
 
