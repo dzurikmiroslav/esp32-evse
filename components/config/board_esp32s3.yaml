@@ -2,14 +2,16 @@
 
 deviceName: ESP32-S3 minimal EVSE
 
-buttonGpio: 0
+button:
+  gpio: 0
 
 pilot:
   gpio: 6
   adcChannel: 3
   levels: [2410, 2104, 1797, 1491, 265]
 
-acRelayGpios: [5]
+acRelay:
+  gpios: [5]
 
 serials:
   - type: uart
@@ -17,6 +19,11 @@ serials:
     rxdGpio: 44
     txdGpio: 43
 
-otaChannels:
-  - name: stable
-    path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s3.json
+ota:
+  channels:
+    - name: stable
+      path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s3.json
+    # - name: testing
+    #   path: https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32s3.json
+    # - name: bleeding edge
+    #   path: https://dzurikmiroslav.github.io/esp32-evse/ota/bleeding-edge/esp32s3.json

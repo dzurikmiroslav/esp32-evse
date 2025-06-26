@@ -2,11 +2,16 @@
 
 deviceName: ESP32-S2-DA EVSE
 
-ledChargingGpio: 36
-ledErrorGpio: 37
-ledWifiGpio: 35
+leds:
+  charging:
+    gpio: 36
+  error:
+    gpio: 37
+  wifi:
+    gpio: 35
 
-buttonGpio: 0
+button:
+  gpio: 0
 
 pilot:
   gpio: 33
@@ -17,11 +22,11 @@ proximity:
   adcChannel: 2
   levels: [1650, 820, 430]
 
-acRelayGpios: [21]
+acRelay:
+  gpios: [21]
 
 socketLock:
-  aGpio: 20
-  bGpio: 19
+  gpios: [20, 19]
   detectionGpio: 34
   detectionDelay: 1000
   minBreakTime: 1000
@@ -31,30 +36,32 @@ rcm:
   testGpio: 26
 
 energyMeter:
-  currentAdcChannels: [4, 5, 6]
-  currentScale: 0.090909091
-  voltageAdcChannels: [7, 8, 9]
-  voltageScale: 0.47
+  current:
+    adcChannels: [4, 5, 6]
+    scale: 0.090909091
+  voltage:
+    adcChannels: [7, 8, 9]
+    scale: 0.47
 
-auxInputs:
-  - name: IN1
-    gpio: 11
-  - name: IN2
-    gpio: 2
 
-auxOutputs:
-  - name: OUT1
-    gpio: 17
-  - name: OUT2
-    gpio: 16
-  - name: OUT3
-    gpio: 15
-  - name: OUT4
-    gpio: 14
-
-auxAnalogInputs:
-  - name: IN3
-    adcChannel: 0
+aux:
+  inputs:
+    - name: IN1
+      gpio: 11
+    - name: IN2
+      gpio: 2
+  outputs:
+    - name: OUT1
+      gpio: 17
+    - name: OUT2
+      gpio: 16
+    - name: OUT3
+      gpio: 15
+    - name: OUT4
+      gpio: 14
+  analogInputs:
+    - name: IN3
+      adcChannel: 0
 
 serials:
   - type: uart
@@ -71,6 +78,11 @@ onewire:
   gpio: 42
   temperatureSensor: true
 
-otaChannels:
-  - name: stable
-    path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s2.json
+ota:
+  channels:
+    - name: stable
+      path: https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32s2.json
+    # - name: testing
+    #   path: https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32s2.json
+    # - name: bleeding edge
+    #   path: https://dzurikmiroslav.github.io/esp32-evse/ota/bleeding-edge/esp32s2.json
