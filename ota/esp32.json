@@ -1,5 +1,0 @@
-{
-    "stable": "https://dzurikmiroslav.github.io/esp32-evse/ota/stable/esp32.json",
-    "testing": "https://dzurikmiroslav.github.io/esp32-evse/ota/testing/esp32.json",
-    "bleeding-edge": "https://dzurikmiroslav.github.io/esp32-evse/ota/bleeding-edge/esp32.json"
-}
