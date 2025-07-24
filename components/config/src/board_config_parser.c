@@ -266,8 +266,8 @@ static bool set_key_value(board_cfg_t* config, const key_t* key, const int* seq_
         switch (key[1]) {
         case KEY_CHANNELS:
             switch (key[2]) {
-                CASE_SET_SEQ_VALUE_STR(KEY_NAME, ota.channels[seq_idx[1]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[1] < BOARD_CFG_SERIAL_COUNT);
-                CASE_SET_SEQ_VALUE_STRDUP(KEY_PATH, ota.channels[seq_idx[1]].path, seq_idx[1] < BOARD_CFG_SERIAL_COUNT);
+                CASE_SET_SEQ_VALUE_STR(KEY_NAME, ota.channels[seq_idx[1]].name, BOARD_CFG_SERIAL_NAME_SIZE, seq_idx[1] < BOARD_CFG_OTA_CHANNEL_COUNT);
+                CASE_SET_SEQ_VALUE_STRDUP(KEY_PATH, ota.channels[seq_idx[1]].path, seq_idx[1] < BOARD_CFG_OTA_CHANNEL_COUNT);
                 CASE_DEFAULT();
             }
             break;

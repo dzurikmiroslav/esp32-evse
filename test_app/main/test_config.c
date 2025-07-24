@@ -109,10 +109,12 @@ TEST(config, minimal)
     TEST_ASSERT_EQUAL(-1, board_config.serials[1].txd_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.serials[1].rts_gpio);
 
+#if BOARD_CFG_SERIAL_COUNT > 2
     TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, board_config.serials[2].type);
     TEST_ASSERT_EQUAL(-1, board_config.serials[2].rxd_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.serials[2].txd_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.serials[2].rts_gpio);
+#endif /* BOARD_CFG_SERIAL_COUNT */
 
     TEST_ASSERT_EQUAL(-1, board_config.onewire.gpio);
     TEST_ASSERT_FALSE(board_config.onewire.temp_sensor);
@@ -201,10 +203,12 @@ TEST(config, custom)
     TEST_ASSERT_EQUAL(25, config.serials[1].txd_gpio);
     TEST_ASSERT_EQUAL(33, config.serials[1].rts_gpio);
 
+#if BOARD_CFG_SERIAL_COUNT > 2
     TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, config.serials[2].type);
     TEST_ASSERT_EQUAL(-1, config.serials[2].rxd_gpio);
     TEST_ASSERT_EQUAL(-1, config.serials[2].txd_gpio);
     TEST_ASSERT_EQUAL(-1, config.serials[2].rts_gpio);
+#endif /* BOARD_CFG_SERIAL_COUNT */
 
     TEST_ASSERT_EQUAL(16, config.onewire.gpio);
     TEST_ASSERT_TRUE(config.onewire.temp_sensor);
