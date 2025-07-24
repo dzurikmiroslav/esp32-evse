@@ -336,7 +336,7 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         evse_authorize();
         break;
     case MODBUS_REG_SOCKET_OUTLET:
-        if (value != 0 || value != 1) {
+        if (value > 1) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         if (evse_set_socket_outlet(value) != ESP_OK) {
@@ -344,7 +344,7 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         }
         break;
     case MODBUS_REG_RCM:
-        if (value != 0 || value != 1) {
+        if (value > 1) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         if (evse_set_rcm(value) != ESP_OK) {
@@ -357,7 +357,7 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         }
         break;
     case MODBUS_REG_REQ_AUTH:
-        if (value != 0 || value != 1) {
+        if (value > 1) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         evse_set_require_auth(value);
@@ -404,7 +404,7 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         }
         break;
     case MODBUS_REG_LOCK_DET_HI:
-        if (value != 0 || value != 1) {
+        if (value > 1) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         socket_lock_set_detection_high(value);
@@ -426,7 +426,7 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         }
         break;
     case MODBUS_REG_EMETER_THREE_PHASES:
-        if (value != 0 || value != 1) {
+        if (value > 1) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
         energy_meter_set_three_phases(value);
