@@ -1,0 +1,57 @@
+name: Publish OTA
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        description: 'Select channel'
+        required: true
+        default: bleeding-edge
+        options:
+          - bleeding-edge
+          - testing
+          - stable
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+    
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: tmp
+
+      - name: Write ota
+        run: |
+          for file in ota/${{ github.event.inputs.channel }}/*.json; do
+            cat $file | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee $file
+          done
+          mv tmp/ota-*/*-evse.ota.bin ota/${{ github.event.inputs.channel }}/
+
+      - name: Write web installer
+        if: ${{ github.event.inputs.channel == 'stable' }}
+        run: |
+          cat web-installer/manifest.json | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee web-installer/manifest.json
+          mv tmp/factory-*/*-evse.factory.bin web-installer/
+
+      - name: Clean artifacts
+        run: rm -rf tmp
+
+      - name: Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git status
+          git commit -m "Publish ${{ github.event.inputs.channel }} version ${{ needs.build.outputs.app_version }}"
+          git push

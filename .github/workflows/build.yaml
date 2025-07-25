@@ -7,9 +7,11 @@ on:
     branches:
       - '**'
   pull_request:
-  release:
-    types:
-      - created
+  workflow_call:
+    outputs:
+      app_version:
+        description: App version
+        value: ${{ jobs.build.outputs.app_version }}
 
 jobs:
   env:
@@ -19,15 +21,22 @@ jobs:
     name: Build for all platforms
     runs-on: ubuntu-latest
     needs: env
-
+    outputs:
+      app_version: ${{ steps.app_version.outputs.app_version }}
     strategy:
       matrix:
         platform: [esp32, esp32s2, esp32s3]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: App version
+        id: app_version
+        if: matrix.platform == 'esp32'
+        run: |
+          VERSION=$(git describe --always --tags --dirty)
+          echo "app_version=$VERSION" >> "$GITHUB_OUTPUT"
+      
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -45,15 +54,15 @@ jobs:
             0x8000 build/partition_table/partition-table.bin \
             0xd000 build/ota_data_initial.bin
 
-      - name: Rename file bin
+      - name: Rename file ota
         shell: bash
-        run: cp build/esp32-evse.bin ${{ matrix.platform }}-evse.bin
+        run: cp build/esp32-evse.bin ${{ matrix.platform }}-evse.ota.bin
       
-      - name: Upload artifact bin
+      - name: Upload artifact ota
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ matrix.platform }}
-          path: ${{ matrix.platform }}-evse.bin
+          name: ota-${{ matrix.platform }}
+          path: ${{ matrix.platform }}-evse.ota.bin
 
       - name: Upload artifact factory
         uses: actions/upload-artifact@v4
@@ -61,15 +70,15 @@ jobs:
           name: factory-${{ matrix.platform }}
           path: build/${{ matrix.platform }}-evse.factory.bin
 
-      - name: Upload release assets bin
+      - name: Upload release assets ota
         if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ matrix.platform }}-evse.bin
-          asset_name: ${{ matrix.platform }}-evse.bin
+          asset_path: ${{ matrix.platform }}-evse.ota.bin
+          asset_name: ${{ matrix.platform }}-evse.ota.bin
           asset_content_type: application/octet-stream
 
       - name: Upload release assets factory
