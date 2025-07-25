@@ -28,16 +28,16 @@ void rcm_init(void)
         gpio_config_t io_conf = { 0 };
 
         io_conf.mode = GPIO_MODE_OUTPUT;
-        io_conf.pin_bit_mask = BIT64(board_config.rcm.test_gpio);
+        io_conf.pin_bit_mask = BIT64(board_config.rcm_test_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
         io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pin_bit_mask = BIT64(board_config.rcm.gpio);
+        io_conf.pin_bit_mask = BIT64(board_config.rcm_gpio);
         io_conf.intr_type = GPIO_INTR_POSEDGE;
         io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
         io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         ESP_ERROR_CHECK(gpio_config(&io_conf));
-        ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.rcm.gpio, rcm_isr_handler, NULL));
+        ESP_ERROR_CHECK(gpio_isr_handler_add(board_config.rcm_gpio, rcm_isr_handler, NULL));
     }
 }
 
@@ -45,9 +45,9 @@ bool rcm_test(void)
 {
     xSemaphoreTake(triggered_sem, 0);
 
-    gpio_set_level(board_config.rcm.test_gpio, 1);
+    gpio_set_level(board_config.rcm_test_gpio, 1);
     bool success = xSemaphoreTake(triggered_sem, pdMS_TO_TICKS(500));
-    gpio_set_level(board_config.rcm.test_gpio, 0);
+    gpio_set_level(board_config.rcm_test_gpio, 0);
 
     return success;
 }
@@ -56,7 +56,7 @@ bool rcm_is_triggered(void)
 {
     if (xSemaphoreTake(triggered_sem, 0)) {
         vTaskDelay(pdMS_TO_TICKS(1));  // prevent from noise triggering
-        return gpio_get_level(board_config.rcm.gpio);
+        return gpio_get_level(board_config.rcm_gpio);
     }
     return false;
 }
