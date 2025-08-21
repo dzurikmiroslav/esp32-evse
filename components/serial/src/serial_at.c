@@ -1,6 +1,6 @@
 #include "serial_at.h"
 
-#include "at_cmds.h"
+#include "at.h"
 #include "esp_log.h"
 
 #define BUF_SIZE 256
@@ -24,13 +24,15 @@ static int write_char(char ch)
 
 static int read_char(char* ch)
 {
+    at_task_context_t* context = (at_task_context_t*)pvTaskGetThreadLocalStoragePointer(NULL, AT_TASK_CONTEXT_INDEX);
+
     int readed = uart_read_bytes(port, ch, 1, 1);
 
     if (readed > 0) {
         if (*ch == 13) {
             *ch = 10;
         }
-        if (at_echo) {
+        if (context->echo) {
             write_char(*ch);
         }
     }
@@ -38,16 +40,11 @@ static int read_char(char* ch)
     return readed;
 }
 
-static struct cat_io_interface iface = {
-    .read = read_char,
-    .write = write_char,
-};
-
 static void serial_at_task_func(void* param)
 {
     uint8_t buf[BUF_SIZE];
 
-    struct cat_command_group* cmd_desc[] = { &at_cmd_group };
+    struct cat_command_group* cmd_desc[] = AT_CMD_GROUPS;
 
     struct cat_descriptor desc = {
         .cmd_group = cmd_desc,
@@ -56,9 +53,17 @@ static void serial_at_task_func(void* param)
         .buf_size = sizeof(buf),
     };
 
+    static struct cat_io_interface iface = {
+        .read = read_char,
+        .write = write_char,
+    };
+
     struct cat_object at;
 
     cat_init(&at, &desc, &iface, NULL);
+
+    at_task_context_t task_context = AT_TASK_CONTEXT(&at);
+    vTaskSetThreadLocalStoragePointer(NULL, AT_TASK_CONTEXT_INDEX, &task_context);
 
     while (true) {
         while (cat_service(&at) != 0) {
@@ -108,7 +113,7 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
         }
     }
 
-    xTaskCreate(serial_at_task_func, "serial_at_task", 2 * 1024, NULL, 5, &serial_at_task);
+    xTaskCreate(serial_at_task_func, "serial_at_task", 4 * 1024, NULL, 5, &serial_at_task);
 }
 
 void serial_at_stop(void)
@@ -116,6 +121,11 @@ void serial_at_stop(void)
     ESP_LOGI(TAG, "Stopping");
 
     if (serial_at_task) {
+        vTaskSuspend(serial_at_task);
+
+        at_task_context_t* context = (at_task_context_t*)pvTaskGetThreadLocalStoragePointer(serial_at_task, AT_TASK_CONTEXT_INDEX);
+        at_task_context_clean(context);
+
         vTaskDelete(serial_at_task);
         serial_at_task = NULL;
     }
