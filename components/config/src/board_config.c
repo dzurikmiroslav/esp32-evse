@@ -36,11 +36,7 @@ void board_config_load(bool reset)
     fclose(file);
 
 #ifdef CONFIG_ESP_CONSOLE_UART
-    for (uint8_t i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
-        if (i == CONFIG_ESP_CONSOLE_UART) {
-            board_config.serials[i].type = BOARD_CFG_SERIAL_TYPE_NONE;
-        }
-    }
+    board_config.serials[CONFIG_ESP_CONSOLE_UART_NUM].type = BOARD_CFG_SERIAL_TYPE_NONE;
 #endif /*CONFIG_ESP_CONSOLE_UART*/
 
     ESP_ERROR_CHECK(ret);

@@ -682,7 +682,6 @@ cJSON* http_json_get_info(void)
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     cJSON_AddNumberToObject(json, "chipCores", chip_info.cores);
-    chip_info.revision = 301;
     cJSON_AddNumberToObject(json, "chipRevision", chip_info.revision / 100);
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);

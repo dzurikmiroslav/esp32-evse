@@ -5,6 +5,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/queue.h>
 
 #define WIFI_SSID_SIZE     32  // from wifi_config_t.sta.ssid
@@ -76,11 +77,18 @@ typedef SLIST_HEAD(wifi_scan_ap_list_s, wifi_scan_ap_entry_s) wifi_scan_ap_list_
 wifi_scan_ap_list_t* wifi_scan_aps(void);
 
 /**
- * @brief  Free AP list with all entries
+ * @brief Free AP list with all entries
  *
  * @param list
  */
 void wifi_scan_aps_free(wifi_scan_ap_list_t* list);
+
+/**
+ * @brief Fee AP list entry
+ *
+ * @param entry
+ */
+void wifi_scan_aps_entry_free(wifi_scan_ap_entry_t* entry);
 
 /**
  * @brief Get WiFi STA ssid, string length 32, stored in NVS
@@ -90,12 +98,11 @@ void wifi_scan_aps_free(wifi_scan_ap_list_t* list);
 void wifi_get_ssid(char* value);
 
 /**
- * @brief Test if WiFi STA ssi, stored in NVS
+ * @brief Get WiFi AP ssid, string length 32
  *
- * @return true
- * @return false
+ * @param value
  */
-bool wifi_has_ssid(void);
+void wifi_get_ap_ssid(char* value);
 
 /**
  * @brief Get WiFi STA password, string length 32, stored in NVS
@@ -103,6 +110,12 @@ bool wifi_has_ssid(void);
  * @param value
  */
 void wifi_get_password(char* value);
+
+/**
+ * @brief Get WiFi STA rssi
+ *
+ */
+int8_t wifi_get_rssi(void);
 
 /**
  * @brief Start WiFi AP mode

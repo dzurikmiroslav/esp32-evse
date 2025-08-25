@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "board_config.h"
+#include "serial_at.h"
 #include "serial_logger.h"
 #include "serial_modbus.h"
 #include "serial_nextion.h"
@@ -43,6 +44,9 @@ static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t 
     case SERIAL_MODE_SCRIPT:
         serial_script_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
         break;
+    case SERIAL_MODE_AT:
+        serial_at_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
+        break;
     default:
         break;
     }
@@ -62,6 +66,9 @@ static void serial_stop(serial_id_t id)
         break;
     case SERIAL_MODE_SCRIPT:
         serial_script_stop();
+        break;
+    case SERIAL_MODE_AT:
+        serial_at_stop();
         break;
     default:
         break;
@@ -236,6 +243,8 @@ const char* serial_mode_to_str(serial_mode_t mode)
         return "nextion";
     case SERIAL_MODE_SCRIPT:
         return "script";
+    case SERIAL_MODE_AT:
+        return "at";
     default:
         return "none";
     }
@@ -254,6 +263,9 @@ serial_mode_t serial_str_to_mode(const char* str)
     }
     if (!strcmp(str, "script")) {
         return SERIAL_MODE_SCRIPT;
+    }
+    if (!strcmp(str, "at")) {
+        return SERIAL_MODE_AT;
     }
     return SERIAL_MODE_NONE;
 }
