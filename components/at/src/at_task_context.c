@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "at.h"
 #include "wifi.h"
 
@@ -70,7 +68,7 @@ bool at_task_context_subscribe(at_task_context_t* context, const char* command_n
 
 bool at_task_context_unsubscribe(at_task_context_t* context, const char* command_name)
 {
-    if (strlen(command_name) == 0) {
+    if (command_name[0] == '\0') {
         // unsubscribe all
         while (!SLIST_EMPTY(context->subscribe_list)) {
             at_subscribe_entry_t* entry = SLIST_FIRST(context->subscribe_list);
