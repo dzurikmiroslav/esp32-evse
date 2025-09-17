@@ -298,7 +298,7 @@ void serial_logger_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
         .parity = parity,
         .stop_bits = stop_bit,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
+        .source_clk = UART_SCLK_DEFAULT,
     };
 
     esp_err_t err = uart_param_config(uart_num, &uart_config);
@@ -340,7 +340,10 @@ void serial_logger_stop(void)
     }
 
     if (port != -1) {
-        uart_driver_delete(port);
+        esp_err_t err = uart_driver_delete(port);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_driver_delete() returned 0x%x", err);
+        }
         port = -1;
     }
 }

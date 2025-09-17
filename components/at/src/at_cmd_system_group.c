@@ -8,6 +8,25 @@
 #include "temp_sensor.h"
 #include "vars.h"
 
+static void restart_func(void* arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    esp_restart();
+    vTaskDelete(NULL);
+}
+
+static void timeout_restart(void)
+{
+    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
+}
+
+static cat_return_state cmd_rst_run(const struct cat_command* cmd)
+{
+    timeout_restart();
+
+    return CAT_RETURN_STATE_OK;
+}
+
 static int vars_chip_chip_cores_revision_read(const struct cat_variable* var)
 {
     esp_chip_info_t chip_info;
@@ -42,7 +61,7 @@ static struct cat_variable vars_chip[] = {
     },
 };
 
-static int vars_heap_size_max_read(const struct cat_variable* var)
+static int vars_heap_read(const struct cat_variable* var)
 {
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
@@ -59,7 +78,7 @@ static struct cat_variable vars_heap[] = {
         .data = &var_u32_1,
         .data_size = sizeof(var_u32_1),
         .access = CAT_VAR_ACCESS_READ_ONLY,
-        .read = vars_heap_size_max_read,
+        .read = vars_heap_read,
     },
     {
         .type = CAT_VAR_UINT_DEC,
@@ -169,8 +188,7 @@ static int var_time_read(const struct cat_variable* var)
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-
-    var_u32_1 = tv.tv_sec;
+    var_u64_1 = tv.tv_sec;
 
     return 0;
 }
@@ -179,18 +197,17 @@ static int var_time_write(const struct cat_variable* var, const size_t write_siz
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    tv.tv_sec = var_u32_1;
+    tv.tv_sec = var_u64_1;
     settimeofday(&tv, NULL);
 
     return 0;
 }
 
-// TODO cat not support uint64, fix until 2038 year
 static struct cat_variable vars_time[] = {
     {
         .type = CAT_VAR_UINT_DEC,
-        .data = &var_u32_1,
-        .data_size = sizeof(var_u32_1),
+        .data = &var_u64_1,
+        .data_size = sizeof(var_u64_1),
         .access = CAT_VAR_ACCESS_READ_WRITE,
         .read = var_time_read,
         .write = var_time_write,
@@ -198,6 +215,10 @@ static struct cat_variable vars_time[] = {
 };
 
 static struct cat_command cmds[] = {
+    {
+        .name = "+RST",
+        .run = cmd_rst_run,
+    },
     {
         .name = "+CHIP",
         .var = vars_chip,

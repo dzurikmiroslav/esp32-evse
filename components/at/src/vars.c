@@ -13,10 +13,12 @@ uint16_t var_u16_1;
 
 int32_t var_i32_1;
 int32_t var_i32_2;
-int32_t var_i32_3;
 
 uint32_t var_u32_1;
 uint32_t var_u32_2;
+uint32_t var_u32_3;
+
+uint64_t var_u64_1;
 
 char var_str32_1[32];
 char var_str32_2[32];

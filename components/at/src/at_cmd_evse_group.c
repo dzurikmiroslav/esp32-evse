@@ -23,6 +23,8 @@ DEF_AT_VARS_RW_CHECK(vars_charging_current, CAT_VAR_UINT_DEC, var_u16_1, evse_ge
 
 DEF_AT_VARS_RW_CHECK(vars_default_charging_current, CAT_VAR_UINT_DEC, var_u16_1, evse_get_default_charging_current, evse_set_default_charging_current);
 
+DEF_AT_VARS_RW_CHECK(vars_max_charging_current, CAT_VAR_UINT_DEC, var_u8_1, evse_get_max_charging_current, evse_set_max_charging_current);
+
 DEF_AT_VARS_RW_NO_CHECK(vars_consumption_limit, CAT_VAR_UINT_DEC, var_u32_1, evse_get_consumption_limit, evse_set_consumption_limit);
 
 DEF_AT_VARS_RW_NO_CHECK(vars_charging_time_limit, CAT_VAR_UINT_DEC, var_u32_1, evse_get_charging_time_limit, evse_set_charging_time_limit);
@@ -35,7 +37,7 @@ DEF_AT_VARS_RW_NO_CHECK(vars_default_under_power_limit, CAT_VAR_UINT_DEC, var_u3
 
 DEF_AT_VARS_RW_NO_CHECK(vars_default_consumption_limit, CAT_VAR_UINT_DEC, var_u32_1, evse_get_default_consumption_limit, evse_set_default_consumption_limit);
 
-DEF_AT_VARS_RW_NO_CHECK(vars_socket_outlet, CAT_VAR_UINT_DEC, var_u8_1, evse_get_socket_outlet, evse_set_socket_outlet);
+DEF_AT_VARS_RW_CHECK(vars_socket_outlet, CAT_VAR_UINT_DEC, var_u8_1, evse_get_socket_outlet, evse_set_socket_outlet);
 
 static struct cat_command cmds[] = {
     {
@@ -80,6 +82,12 @@ static struct cat_command cmds[] = {
         .name = "+DEFCHCUR",
         .var = vars_default_charging_current,
         .var_num = sizeof(vars_default_charging_current) / sizeof(vars_default_charging_current[0]),
+        .need_all_vars = true,
+    },
+    {
+        .name = "+MAXCHCUR",
+        .var = vars_max_charging_current,
+        .var_num = sizeof(vars_max_charging_current) / sizeof(vars_max_charging_current[0]),
         .need_all_vars = true,
     },
     {

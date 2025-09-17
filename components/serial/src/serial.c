@@ -31,6 +31,13 @@ static serial_mode_t modes[SERIAL_ID_MAX];
 
 static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
 {
+    // from ESP-IDF 5.5 need set to uart_set_pin after all uart_driver_delete
+    if (board_config.serials[id].type != BOARD_CFG_SERIAL_TYPE_UART) {
+        ESP_ERROR_CHECK(uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    } else {
+        ESP_ERROR_CHECK(uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, board_config.serials[id].rts_gpio, UART_PIN_NO_CHANGE));
+    }
+
     switch (modes[id]) {
     case SERIAL_MODE_LOG:
         serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
@@ -81,12 +88,6 @@ void serial_init(void)
 
     for (serial_id_t id = SERIAL_ID_1; id < SERIAL_ID_MAX; id++) {
         if (board_config.serials[id].type != BOARD_CFG_SERIAL_TYPE_NONE) {
-            if (board_config.serials[id].type != BOARD_CFG_SERIAL_TYPE_UART) {
-                ESP_ERROR_CHECK(uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-            } else {
-                ESP_ERROR_CHECK(uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, board_config.serials[id].rts_gpio, UART_PIN_NO_CHANGE));
-            }
-
             uint8_t u8 = id == SERIAL_ID_1 ? SERIAL_MODE_LOG : SERIAL_MODE_NONE;  // SERIAL_ID_1 is default system log
             char key[12];
             sprintf(key, NVS_MODE, id);

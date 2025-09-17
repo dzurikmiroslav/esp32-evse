@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <string.h>
 #include <assert.h>
+#include <inttypes.h>   //Add support 64 bit decimal
 
 #define CAT_CMD_STATE_NOT_MATCH (0)
 #define CAT_CMD_STATE_PARTIAL_MATCH (1U)
@@ -1353,6 +1354,10 @@ static int validate_int_range(struct cat_object *self, int64_t val)
                         return -1;
                 *(int32_t *)(data) = val;
                 break;
+        //Add support 64 bit decimal
+        case 8:
+                *(int64_t *)(data) = val;
+                break;
         default:
                 self->write_size = 0;
                 return 0;
@@ -1386,6 +1391,10 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
                 if (val > UINT32_MAX)
                         return -1;
                 *(uint32_t *)(data) = val;
+                break;
+        //Add support UINT64
+        case 8:
+                *(uint64_t *)(data) = val;
                 break;
         default:
                 self->write_size = 0;
@@ -1490,7 +1499,8 @@ static cat_status parse_write_args(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-static int print_format_num(struct cat_object *self, char *fmt, uint32_t val, cat_fsm_type fsm)
+//Add support UINT64
+static int print_format_num(struct cat_object *self, char *fmt, uint64_t val, cat_fsm_type fsm)
 {
         int written;
         size_t len;
@@ -1508,9 +1518,10 @@ static int print_format_num(struct cat_object *self, char *fmt, uint32_t val, ca
         return 0;
 }
 
+//Add support 64 bit decimal
 static int format_int_decimal(struct cat_object *self, cat_fsm_type fsm)
 {
-        int32_t val;
+        int64_t val;
 
         assert(self != NULL);
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
@@ -1530,6 +1541,9 @@ static int format_int_decimal(struct cat_object *self, cat_fsm_type fsm)
         case 4:
                 val = *(int32_t *)data;
                 break;
+        case 8:
+                val = *(int64_t *)data;
+                break;
         default:
                 return -1;
         }
@@ -1537,15 +1551,16 @@ static int format_int_decimal(struct cat_object *self, cat_fsm_type fsm)
         if (var->access == CAT_VAR_ACCESS_WRITE_ONLY)
                 val = 0;
 
-        if (print_format_num(self, "%d", val, fsm) != 0)
+        if (print_format_num(self, "%"PRId64, val, fsm) != 0)
                 return -1;
 
         return 0;
 }
 
+//Add support 64 bit decimal
 static int format_uint_decimal(struct cat_object *self, cat_fsm_type fsm)
 {
-        uint32_t val;
+        uint64_t val;
 
         assert(self != NULL);
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
@@ -1565,6 +1580,9 @@ static int format_uint_decimal(struct cat_object *self, cat_fsm_type fsm)
         case 4:
                 val = *(uint32_t *)data;
                 break;
+        case 8:
+                val = *(uint64_t *)data;
+                break;
         default:
                 return -1;
         }
@@ -1572,7 +1590,7 @@ static int format_uint_decimal(struct cat_object *self, cat_fsm_type fsm)
         if (var->access == CAT_VAR_ACCESS_WRITE_ONLY)
                 val = 0;
 
-        if (print_format_num(self, "%u", val, fsm) != 0)
+        if (print_format_num(self, "%"PRIu64, val, fsm) != 0)
                 return -1;
 
         return 0;
@@ -1748,6 +1766,10 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                 case 4:
                         strcpy(var_type, "INT32");
                         break;
+                //Add support 64 bit decimal
+                case 8:
+                        strcpy(var_type, "INT64");
+                        break;
                 default:
                         return -1;
                 }
@@ -1762,6 +1784,10 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                         break;
                 case 4:
                         strcpy(var_type, "UINT32");
+                        break;
+                //Add support 64 bit decimal
+                case 8: 
+                        strcpy(var_type, "UINT64");
                         break;
                 default:
                         return -1;

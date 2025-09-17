@@ -205,8 +205,8 @@ static struct cat_variable vars_scan_ap[] = {
     },
     {
         .type = CAT_VAR_INT_DEC,
-        .data = &var_i32_1,
-        .data_size = sizeof(var_i32_1),
+        .data = &var_i8_1,
+        .data_size = sizeof(var_i8_1),
     },
 };
 
@@ -217,7 +217,7 @@ static void pop_wifi_ap_scan_result(at_task_context_t* context)
 
         strcpy(var_str32_1, item->ssid);
         var_u8_1 = item->auth;
-        var_i32_1 = item->rssi;
+        var_i8_1 = item->rssi;
 
         SLIST_REMOVE_HEAD(context->wifi_scan_ap_list, entries);
 

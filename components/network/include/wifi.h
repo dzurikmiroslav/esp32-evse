@@ -56,7 +56,7 @@ bool wifi_is_enabled(void);
  */
 typedef struct wifi_scan_ap_entry_s {
     char* ssid;
-    int rssi;
+    int8_t rssi;
     bool auth;
 
     SLIST_ENTRY(wifi_scan_ap_entry_s) entries;

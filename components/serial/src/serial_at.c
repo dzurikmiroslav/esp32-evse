@@ -53,21 +53,22 @@ static void serial_at_task_func(void* param)
         .buf_size = sizeof(buf),
     };
 
-    static struct cat_io_interface iface = {
+    struct cat_io_interface iface = {
         .read = read_char,
         .write = write_char,
     };
 
     struct cat_object at;
-
     cat_init(&at, &desc, &iface, NULL);
 
-    at_task_context_t task_context = AT_TASK_CONTEXT(&at);
+    at_task_context_t task_context;
+    at_task_context_init(&task_context, &at);
     vTaskSetThreadLocalStoragePointer(NULL, AT_TASK_CONTEXT_INDEX, &task_context);
 
     while (true) {
         while (cat_service(&at) != 0) {
         };
+        at_handle_subscription(&task_context);
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -84,7 +85,7 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
         .stop_bits = stop_bit,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .rx_flow_ctrl_thresh = 122,
-        .source_clk = UART_SCLK_APB,
+        .source_clk = UART_SCLK_DEFAULT,
     };
 
     esp_err_t err = uart_param_config(uart_num, &uart_config);
@@ -131,7 +132,10 @@ void serial_at_stop(void)
     }
 
     if (port != -1) {
-        uart_driver_delete(port);
+        esp_err_t err = uart_driver_delete(port);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_driver_delete() returned 0x%x", err);
+        }
         port = -1;
     }
 }
