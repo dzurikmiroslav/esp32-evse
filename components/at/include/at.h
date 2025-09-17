@@ -1,8 +1,11 @@
 #ifndef AT_H_
 #define AT_H_
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/queue.h>
 
 #include "cat.h"
 #include "wifi.h"
@@ -14,22 +17,44 @@
 
 #define AT_TASK_CONTEXT_INDEX 1
 
-#define AT_TASK_CONTEXT(at_ptr)                                \
-    {                                                          \
-        .at = at_ptr, .echo = true, .wifi_scan_ap_list = NULL, \
-    }
+/**
+ * @brief AT subscribe read command entry
+ *
+ */
+typedef struct at_subscribe_entry_s {
+    const struct cat_command* command;
+    uint32_t period;
+    TickType_t last_tick;
+    SLIST_ENTRY(at_subscribe_entry_s) entries;
+} at_subscribe_entry_t;
 
+/**
+ * @brief AT subscribe read command list
+ *
+ * @return typedef
+ */
+typedef SLIST_HEAD(at_subscribe_list_t, at_subscribe_entry_s) at_subscribe_list_t;
+
+/**
+ * @brief AT command context
+ *
+ */
 typedef struct {
     struct cat_object* at;
     bool echo;
     wifi_scan_ap_list_t* wifi_scan_ap_list;
+    at_subscribe_list_t* subscribe_list;
     uint8_t serial_index;
     uint8_t aux_input_index;
     uint8_t aux_output_index;
     uint8_t aux_analog_input_index;
 } at_task_context_t;
 
+void at_task_context_init(at_task_context_t* context, struct cat_object* at;);
+
 void at_task_context_clean(at_task_context_t* context);
+
+void at_handle_subscription(at_task_context_t* context);
 
 extern struct cat_command_group at_cmd_basic_group;
 extern struct cat_command_group at_cmd_system_group;

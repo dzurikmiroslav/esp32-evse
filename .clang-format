@@ -30,4 +30,4 @@ BinPackParameters: false
 SeparateDefinitionBlocks: Always
 IndentCaseLabels: false
 Cpp11BracedListStyle: false
-ForEachMacros: [cJSON_ArrayForEach, LIST_FOREACH, SLIST_FOREACH]
+ForEachMacros: [cJSON_ArrayForEach, LIST_FOREACH, SLIST_FOREACH, SLIST_FOREACH_SAFE]

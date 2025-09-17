@@ -10,20 +10,9 @@ static int vars_serial_read(const struct cat_variable* var, const struct cat_com
 
     var_u8_1 = serial_get_mode(id);
     var_i32_1 = serial_get_baud_rate(id);
-    var_u8_2 = 5 + serial_get_data_bits(id);
-    var_u8_3 = 1 + serial_get_stop_bits(id);
-
-    switch (serial_get_parity(id)) {
-    case UART_PARITY_DISABLE:
-        var_u8_4 = 0;
-        break;
-    case UART_PARITY_ODD:
-        var_u8_4 = 1;
-        break;
-    case UART_PARITY_EVEN:
-        var_u8_4 = 2;
-        break;
-    }
+    var_u8_2 = serial_get_data_bits(id);
+    var_u8_3 = serial_get_stop_bits(id);
+    var_u8_4 = serial_get_parity(id);
 
     return 0;
 }
@@ -33,20 +22,9 @@ static cat_return_state vars_serial_write(const struct cat_command* cmd, const u
     serial_id_t id = cmd->name[strlen(cmd->name)] - '0';
     serial_mode_t mode = var_u8_1;
     int baud_rate = var_i32_1;
-    uart_word_length_t data_bits = var_u8_2 - 5;
-    uart_stop_bits_t stop_bits = var_u8_3 - 1;
-    uart_parity_t parity;
-    switch (var_u8_4) {
-    case 1:
-        parity = UART_PARITY_ODD;
-        break;
-    case 2:
-        parity = UART_PARITY_EVEN;
-        break;
-    default:
-        parity = UART_PARITY_DISABLE;
-        break;
-    }
+    uart_word_length_t data_bits = var_u8_2;
+    uart_stop_bits_t stop_bits = var_u8_3;
+    uart_parity_t parity = var_u8_4;
 
     return serial_set_config(id, mode, baud_rate, data_bits, stop_bits, parity) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
 }

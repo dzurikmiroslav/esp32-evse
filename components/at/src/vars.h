@@ -78,10 +78,12 @@ extern uint16_t var_u16_1;
 
 extern int32_t var_i32_1;
 extern int32_t var_i32_2;
-extern int32_t var_i32_3;
 
 extern uint32_t var_u32_1;
 extern uint32_t var_u32_2;
+extern uint32_t var_u32_3;
+
+extern uint64_t var_u64_1;
 
 extern char var_str32_1[32];
 extern char var_str32_2[32];
