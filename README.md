@@ -13,11 +13,12 @@ J1772 EVSE firmware for ESP32 based devices.
  - Responsive web-interface
  - OTA update
  - Integrated energy meter
- - [REST](https://github.com/dzurikmiroslav/esp32-evse/wiki/Rest) API
+ - REST API
  - WebDAV
  - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
  - [Lua scripting](https://github.com/dzurikmiroslav/esp32-evse/wiki/Lua)
  - [Nextion HMI](https://github.com/dzurikmiroslav/esp32-evse/wiki/Nextion)
+ - [AT commands](https://github.com/dzurikmiroslav/esp32-evse/wiki/AT-commands)
  - Scheduler
 
 ### Web installer
@@ -51,7 +52,8 @@ pilot:
   adcChannel: 7
   levels: [2410, 2104, 1797, 1491, 265]
 
-acRelayGpio: 32
+acRelay:
+  gpios: [32]
 ```
 
 ### Web interface
