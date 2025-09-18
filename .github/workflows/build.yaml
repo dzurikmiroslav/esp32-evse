@@ -70,24 +70,24 @@ jobs:
           name: factory-${{ matrix.platform }}
           path: build/${{ matrix.platform }}-evse.factory.bin
 
-      - name: Upload release assets ota
-        if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ matrix.platform }}-evse.ota.bin
-          asset_name: ${{ matrix.platform }}-evse.ota.bin
-          asset_content_type: application/octet-stream
+      # - name: Upload release assets ota
+      #   if: github.event_name == 'release'
+      #   uses: actions/upload-release-asset@v1.0.1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }}
+      #     asset_path: ${{ matrix.platform }}-evse.ota.bin
+      #     asset_name: ${{ matrix.platform }}-evse.ota.bin
+      #     asset_content_type: application/octet-stream
 
-      - name: Upload release assets factory
-        if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/${{ matrix.platform }}-evse.factory.bin
-          asset_name: ${{ matrix.platform }}-evse.factory.bin
-          asset_content_type: application/octet-stream
+      # - name: Upload release assets factory
+      #   if: github.event_name == 'release'
+      #   uses: actions/upload-release-asset@v1.0.1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }}
+      #     asset_path: build/${{ matrix.platform }}-evse.factory.bin
+      #     asset_name: ${{ matrix.platform }}-evse.factory.bin
+      #     asset_content_type: application/octet-stream
