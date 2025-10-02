@@ -1,11 +1,12 @@
 #include "at.h"
-#include "wifi.h"
+#include "esp_log.h"
 
 void at_task_context_init(at_task_context_t* context, struct cat_object* at)
 {
     context->at = at;
     context->echo = false;
     context->wifi_scan_ap_list = NULL;
+    context->has_input_char = false;
 
     context->subscribe_list = (at_subscribe_list_t*)malloc(sizeof(at_subscribe_list_t));
     SLIST_INIT(context->subscribe_list);
@@ -37,6 +38,10 @@ void at_handle_subscription(at_task_context_t* context)
         if ((now - entry->last_tick) >= pdMS_TO_TICKS(entry->period)) {
             cat_trigger_unsolicited_read(context->at, entry->command);
             entry->last_tick = now;
+
+            // this prevents overflow of unsolicited buffer
+            while (cat_service(context->at) != 0) {
+            };
         }
     }
 }

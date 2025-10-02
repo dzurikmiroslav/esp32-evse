@@ -1,5 +1,6 @@
 #include <esp_chip_info.h>
 #include <esp_ota_ops.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <string.h>
 #include <sys/time.h>
@@ -214,6 +215,23 @@ static struct cat_variable vars_time[] = {
     },
 };
 
+static int var_uptime_read(const struct cat_variable* var)
+{
+    var_u32_1 = esp_timer_get_time() / 1000000;
+
+    return 0;
+}
+
+static struct cat_variable vars_uptime[] = {
+    {
+        .type = CAT_VAR_UINT_DEC,
+        .data = &var_u32_1,
+        .data_size = sizeof(var_u32_1),
+        .access = CAT_VAR_ACCESS_READ_ONLY,
+        .read = var_uptime_read,
+    },
+};
+
 static struct cat_command cmds[] = {
     {
         .name = "+RST",
@@ -253,6 +271,11 @@ static struct cat_command cmds[] = {
         .name = "+TIME",
         .var = vars_time,
         .var_num = sizeof(vars_time) / sizeof(vars_time[0]),
+    },
+    {
+        .name = "+UPTIME",
+        .var = vars_uptime,
+        .var_num = sizeof(vars_uptime) / sizeof(vars_uptime[0]),
     },
 };
 

@@ -7,18 +7,15 @@
 
 static const char* TAG = "serial_at";
 
+static const char* READY_MSG = "RDY\n";
+
 static uart_port_t port = -1;
 
 static TaskHandle_t serial_at_task = NULL;
 
 static int write_char(char ch)
 {
-    if (ch == 10) {
-        uart_write_bytes(port, "\r\n", 2);
-    } else {
-        uart_write_bytes(port, &ch, 1);
-    }
-
+    uart_write_bytes(port, &ch, 1);
     return 1;
 }
 
@@ -26,15 +23,21 @@ static int read_char(char* ch)
 {
     at_task_context_t* context = (at_task_context_t*)pvTaskGetThreadLocalStoragePointer(NULL, AT_TASK_CONTEXT_INDEX);
 
-    int readed = uart_read_bytes(port, ch, 1, 1);
+    int readed;
+    if (context->has_input_char) {
+        *ch = context->input_char;
+        context->has_input_char = false;
+        readed = 1;
+    } else {
+        readed = uart_read_bytes(port, ch, 1, 0);
+    }
 
-    if (readed > 0) {
-        if (*ch == 13) {
-            *ch = 10;
-        }
-        if (context->echo) {
-            write_char(*ch);
-        }
+    if (*ch == '\r') {
+        *ch = '\n';
+    }
+
+    if (readed > 0 && context->echo) {
+        write_char(*ch);
     }
 
     return readed;
@@ -43,7 +46,6 @@ static int read_char(char* ch)
 static void serial_at_task_func(void* param)
 {
     uint8_t buf[BUF_SIZE];
-
     struct cat_command_group* cmd_desc[] = AT_CMD_GROUPS;
 
     struct cat_descriptor desc = {
@@ -65,12 +67,15 @@ static void serial_at_task_func(void* param)
     at_task_context_init(&task_context, &at);
     vTaskSetThreadLocalStoragePointer(NULL, AT_TASK_CONTEXT_INDEX, &task_context);
 
+    uart_write_bytes(port, READY_MSG, sizeof(READY_MSG));
+
     while (true) {
+        task_context.has_input_char = uart_read_bytes(port, &task_context.input_char, 1, pdMS_TO_TICKS(100)) > 0;
+
         while (cat_service(&at) != 0) {
         };
-        at_handle_subscription(&task_context);
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        at_handle_subscription(&task_context);
     }
 }
 
@@ -94,7 +99,7 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
         return;
     }
 
-    err = uart_driver_install(uart_num, BUF_SIZE, 0, 0, NULL, 0);
+    err = uart_driver_install(uart_num, BUF_SIZE, BUF_SIZE, 0, NULL, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_driver_install() returned 0x%x", err);
         return;
