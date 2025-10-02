@@ -4,6 +4,8 @@
 
 DEF_AT_VARS_RO(vars_state, CAT_VAR_UINT_DEC, var_u8_1, evse_get_state);
 
+DEF_AT_VARS_RO(vars_error, CAT_VAR_UINT_DEC, var_u32_1, evse_get_error);
+
 DEF_AT_VARS_RW_NO_CHECK(vars_enabled, CAT_VAR_UINT_DEC, var_u8_1, evse_is_enabled, evse_set_enabled);
 
 DEF_AT_VARS_RW_NO_CHECK(vars_available, CAT_VAR_UINT_DEC, var_u8_1, evse_is_available, evse_set_available);
@@ -35,6 +37,8 @@ DEF_AT_VARS_RW_NO_CHECK(vars_under_power_limit, CAT_VAR_UINT_DEC, var_u32_1, evs
 
 DEF_AT_VARS_RW_NO_CHECK(vars_default_under_power_limit, CAT_VAR_UINT_DEC, var_u32_1, evse_get_default_under_power_limit, evse_set_default_under_power_limit);
 
+DEF_AT_VARS_RO(vars_limit_reached, CAT_VAR_UINT_DEC, var_u8_1, evse_is_limit_reached);
+
 DEF_AT_VARS_RW_NO_CHECK(vars_default_consumption_limit, CAT_VAR_UINT_DEC, var_u32_1, evse_get_default_consumption_limit, evse_set_default_consumption_limit);
 
 DEF_AT_VARS_RW_CHECK(vars_socket_outlet, CAT_VAR_UINT_DEC, var_u8_1, evse_get_socket_outlet, evse_set_socket_outlet);
@@ -44,6 +48,11 @@ static struct cat_command cmds[] = {
         .name = "+STATE",
         .var = vars_state,
         .var_num = sizeof(vars_state) / sizeof(vars_state[0]),
+    },
+    {
+        .name = "+ERROR",
+        .var = vars_error,
+        .var_num = sizeof(vars_error) / sizeof(vars_error[0]),
     },
     {
         .name = "+ENABLE",
@@ -125,6 +134,11 @@ static struct cat_command cmds[] = {
         .var = vars_default_under_power_limit,
         .var_num = sizeof(vars_default_under_power_limit) / sizeof(vars_default_under_power_limit[0]),
         .need_all_vars = true,
+    },
+    {
+        .name = "+LIMREACH",
+        .var = vars_limit_reached,
+        .var_num = sizeof(vars_limit_reached) / sizeof(vars_limit_reached[0]),
     },
     {
         .name = "+SOCKETOUTLET",

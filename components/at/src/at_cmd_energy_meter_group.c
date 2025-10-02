@@ -19,7 +19,6 @@ DEF_AT_VARS_RO(vars_consumption, CAT_VAR_UINT_DEC, var_u32_1, energy_meter_get_c
 static int var_total_consumption_read(const struct cat_variable* var)
 {
     var_u64_1 = energy_meter_get_total_consumption();
-    var_u64_1 = 0;
 
     return 0;
 }

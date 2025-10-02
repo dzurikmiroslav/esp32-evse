@@ -48,9 +48,11 @@ typedef struct {
     uint8_t aux_input_index;
     uint8_t aux_output_index;
     uint8_t aux_analog_input_index;
+    char input_char;
+    bool has_input_char : 1;
 } at_task_context_t;
 
-void at_task_context_init(at_task_context_t* context, struct cat_object* at;);
+void at_task_context_init(at_task_context_t* context, struct cat_object* at);
 
 void at_task_context_clean(at_task_context_t* context);
 
