@@ -32,10 +32,6 @@ static int read_char(char* ch)
         readed = uart_read_bytes(port, ch, 1, 0);
     }
 
-    if (*ch == '\r') {
-        *ch = '\n';
-    }
-
     if (readed > 0 && context->echo) {
         write_char(*ch);
     }
