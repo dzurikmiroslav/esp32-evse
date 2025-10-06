@@ -3,11 +3,10 @@
 #include "at.h"
 #include "esp_log.h"
 
-#define BUF_SIZE 256
+#define BUF_SIZE  256
+#define READY_MSG "\n\nRDY\n"
 
 static const char* TAG = "serial_at";
-
-static const char* READY_MSG = "RDY\n";
 
 static uart_port_t port = -1;
 
