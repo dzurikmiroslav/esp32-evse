@@ -41,12 +41,15 @@ typedef enum {
     URI_STATE,
     URI_CONFIG_EVSE,
     URI_CONFIG_WIFI,
+    URI_CONFIG_DISCOVERY,
     URI_CONFIG_SERIAL,
     URI_CONFIG_MODBUS,
     URI_CONFIG_SCRIPT,
     URI_CONFIG_SCHEDULER,
     URI_CONFIG,
     URI_WIFI_SCAN,
+    URI_WIFI_STATE_AP,
+    URI_WIFI_STATE,
     URI_SCRIPT_OUTPUT,
     URI_SCRIPT_RELOAD,
     URI_SCRIPT_COMPONENTS_ID,
@@ -81,12 +84,15 @@ static const char* uris[] = {
     "/state",
     "/config/evse",
     "/config/wifi",
+    "/config/discovery",
     "/config/serial",
     "/config/modbus",
     "/config/script",
     "/config/scheduler",
     "/config",
     "/wifi/scan",
+    "/wifi/state/ap",
+    "/wifi/state",
     "/script/output",
     "/script/reload",
     "/script/components/",
@@ -536,6 +542,8 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_get_config_evse());
         case URI_CONFIG_WIFI:
             return handle_json_response(req, http_json_get_config_wifi());
+        case URI_CONFIG_DISCOVERY:
+            return handle_json_response(req, http_json_get_config_discovery());
         case URI_CONFIG_SERIAL:
             return handle_json_response(req, http_json_get_config_serial());
         case URI_CONFIG_MODBUS:
@@ -548,6 +556,8 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_get_config());
         case URI_WIFI_SCAN:
             return handle_json_response(req, http_json_get_wifi_scan());
+        case URI_WIFI_STATE:
+            return handle_json_response(req, http_json_get_wifi_state());
         case URI_SCRIPT_OUTPUT:
             return handle_script_output(req);
         case URI_SCRIPT_COMPONENTS:
@@ -604,6 +614,10 @@ static esp_err_t post_handler(httpd_req_t* req)
             return handle_json_request(req, http_json_set_config_evse);
         case URI_CONFIG_WIFI:
             return handle_json_request(req, http_json_set_config_wifi);
+        case URI_CONFIG_DISCOVERY:
+            return handle_json_request(req, http_json_set_config_discovery);
+        case URI_WIFI_STATE_AP:
+            return handle_json_request(req, http_json_set_wifi_state_ap);
         case URI_CONFIG_SERIAL:
             return handle_json_request(req, http_json_set_config_serial);
         case URI_CONFIG_MODBUS:

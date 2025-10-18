@@ -17,6 +17,14 @@ esp_err_t http_json_set_config_wifi(cJSON* json);
 
 cJSON* http_json_get_wifi_scan(void);
 
+cJSON* http_json_get_wifi_state(void);
+
+esp_err_t http_json_set_wifi_state_ap(cJSON* json);
+
+cJSON* http_json_get_config_discovery(void);
+
+esp_err_t http_json_set_config_discovery(cJSON* json);
+
 cJSON* http_json_get_config_serial(void);
 
 esp_err_t http_json_set_config_serial(cJSON* json);

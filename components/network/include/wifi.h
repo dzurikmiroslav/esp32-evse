@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#define WIFI_SSID_SIZE     32  // from wifi_config_t.sta.ssid
-#define WIFI_PASSWORD_SIZE 64  // from wifi_config_t.sta.password
+#define WIFI_SSID_SIZE     32
+#define WIFI_PASSWORD_SIZE 64
 
 #define WIFI_AP_CONNECTED_BIT     BIT0
 #define WIFI_AP_DISCONNECTED_BIT  BIT1
@@ -144,5 +144,15 @@ void wifi_get_ip(bool ap, char* str);
  * @param str at least char[17]
  */
 void wifi_get_mac(bool ap, char* str);
+
+bool wifi_is_static_enabled(void);
+
+void wifi_get_static_ip(char* str);
+
+void wifi_get_static_gateway(char* str);
+
+void wifi_get_static_netmask(char* str);
+
+esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask);
 
 #endif /* WIFI_H_ */
