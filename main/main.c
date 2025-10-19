@@ -18,6 +18,7 @@
 #include "led.h"
 #include "logger.h"
 #include "modbus.h"
+#include "network.h"
 #include "peripherals.h"
 #include "protocols.h"
 #include "script.h"
@@ -236,7 +237,7 @@ void app_main(void)
 
     board_config_load(init_count > 5);
 
-    wifi_init();
+    network_init();
     peripherals_init();
     modbus_init();
     serial_init();

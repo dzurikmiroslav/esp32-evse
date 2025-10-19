@@ -12,6 +12,7 @@
 #include "sdkconfig.h"
 
 #include "board_config.h"
+#include "discovery.h"
 #include "energy_meter.h"
 #include "evse.h"
 #include "http.h"
@@ -36,11 +37,15 @@
     } while (0)
 
 typedef struct {
-    bool enabled;
-    bool ssid_blank;
+    bool enabled : 1;
+    bool ssid_blank : 1;
     char ssid[32];
-    bool password_blank;
+    bool password_blank : 1;
     char password[64];
+    bool static_enabled : 1;
+    char static_ip[16];
+    char static_gateway[16];
+    char static_netmask[16];
 } wifi_set_config_arg_t;
 
 cJSON* http_json_get_config(void)
@@ -49,6 +54,7 @@ cJSON* http_json_get_config(void)
 
     cJSON_AddItemToObject(json, "evse", http_json_get_config_evse());
     cJSON_AddItemToObject(json, "wifi", http_json_get_config_wifi());
+    cJSON_AddItemToObject(json, "discovery", http_json_get_config_discovery());
     cJSON_AddItemToObject(json, "serial", http_json_get_config_serial());
     cJSON_AddItemToObject(json, "modbus", http_json_get_config_modbus());
     cJSON_AddItemToObject(json, "script", http_json_get_config_script());
@@ -168,6 +174,14 @@ cJSON* http_json_get_config_wifi(void)
     wifi_get_ssid(str);
     cJSON_AddStringToObject(json, "ssid", str);
 
+    cJSON_AddBoolToObject(json, "staticEnabled", wifi_is_static_enabled());
+    wifi_get_static_ip(str);
+    cJSON_AddStringToObject(json, "staticIp", str);
+    wifi_get_static_gateway(str);
+    cJSON_AddStringToObject(json, "staticGateway", str);
+    wifi_get_static_netmask(str);
+    cJSON_AddStringToObject(json, "staticNetmask", str);
+
     return json;
 }
 
@@ -176,13 +190,17 @@ static void wifi_set_config_func(void* arg)
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)arg;
+
+    wifi_set_static_config(config->static_enabled, config->static_ip, config->static_gateway, config->static_netmask);
     wifi_set_config(config->enabled, config->ssid_blank ? NULL : config->ssid, config->password_blank ? NULL : config->password);
+
     free((void*)config);
 
     vTaskDelete(NULL);
 }
 
-static esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const char* password)
+static esp_err_t timeout_wifi_set_config(
+    bool enabled, const char* ssid, const char* password, bool static_enabled, const char* static_ip, const char* static_gateway, const char* static_netmask)
 {
     if (enabled) {
         if (ssid == NULL || strlen(ssid) == 0) {
@@ -196,17 +214,39 @@ static esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const c
 
     wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)malloc(sizeof(wifi_set_config_arg_t));
     config->enabled = enabled;
+
     if (ssid == NULL || ssid[0] == '\0') {
         config->ssid_blank = true;
     } else {
         config->ssid_blank = false;
         strcpy(config->ssid, ssid);
     }
+
     if (password == NULL || password[0] == '\0') {
         config->password_blank = true;
     } else {
         config->password_blank = false;
         strcpy(config->password, password);
+    }
+
+    config->static_enabled = static_enabled;
+
+    if (static_ip != NULL) {
+        strcpy(config->static_ip, static_ip);
+    } else {
+        config->static_ip[0] = '\0';
+    }
+
+    if (static_gateway != NULL) {
+        strcpy(config->static_gateway, static_gateway);
+    } else {
+        config->static_gateway[0] = '\0';
+    }
+
+    if (static_netmask != NULL) {
+        strcpy(config->static_netmask, static_netmask);
+    } else {
+        config->static_netmask[0] = '\0';
     }
 
     xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*)config, 10, NULL);
@@ -219,8 +259,12 @@ esp_err_t http_json_set_config_wifi(cJSON* json)
     bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
     char* ssid = cJSON_GetStringValue(cJSON_GetObjectItem(json, "ssid"));
     char* password = cJSON_GetStringValue(cJSON_GetObjectItem(json, "password"));
+    bool static_enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "staticEnabled"));
+    char* static_ip = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticIp"));
+    char* static_gateway = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticGateway"));
+    char* static_netmask = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticNetmask"));
 
-    return timeout_wifi_set_config(enabled, ssid, password);
+    return timeout_wifi_set_config(enabled, ssid, password, static_enabled, static_ip, static_gateway, static_netmask);
 }
 
 cJSON* http_json_get_wifi_scan(void)
@@ -241,6 +285,95 @@ cJSON* http_json_get_wifi_scan(void)
     wifi_scan_aps_free(list);
 
     return json;
+}
+
+cJSON* http_json_get_wifi_state(void)
+{
+    cJSON* json = cJSON_CreateObject();
+
+    char str[32];
+
+    wifi_get_ip(false, str);
+    cJSON_AddStringToObject(json, "ip", str);
+
+    wifi_get_mac(false, str);
+    cJSON_AddStringToObject(json, "mac", str);
+
+    cJSON_AddNumberToObject(json, "rssi", wifi_get_rssi());
+
+    wifi_get_ip(true, str);
+    cJSON_AddStringToObject(json, "apIp", str);
+
+    wifi_get_mac(true, str);
+    cJSON_AddStringToObject(json, "apMac", str);
+
+    cJSON_AddBoolToObject(json, "apEnabled", (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) > 0);
+
+    wifi_get_ap_ssid(str);
+    cJSON_AddStringToObject(json, "apSsid", str);
+
+    return json;
+}
+
+static void wifi_set_ap_func(void* arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    bool ap = (bool)arg;
+
+    if (ap) {
+        wifi_ap_start();
+    } else {
+        wifi_ap_stop();
+    }
+
+    vTaskDelete(NULL);
+}
+
+static void timeout_wifi_set_ap(bool ap)
+{
+    xTaskCreate(wifi_set_ap_func, "wifi_set_ap", 4 * 1024, (void*)ap, 10, NULL);
+}
+
+esp_err_t http_json_set_wifi_state_ap(cJSON* json)
+{
+    if (cJSON_IsBool(json)) {
+        timeout_wifi_set_ap(cJSON_IsTrue(json));
+        return ESP_OK;
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+cJSON* http_json_get_config_discovery(void)
+{
+    cJSON* json = cJSON_CreateObject();
+
+    char str[DISCOVERY_NAME_SIZE];
+
+    discovery_get_hostname(str);
+    cJSON_AddStringToObject(json, "hostname", str);
+
+    discovery_get_instance_name(str);
+    cJSON_AddStringToObject(json, "instanceName", str);
+
+    return json;
+}
+
+esp_err_t http_json_set_config_discovery(cJSON* json)
+{
+    int written = 0;
+
+    if (cJSON_IsString(cJSON_GetObjectItem(json, "hostname"))) {
+        RETURN_ON_ERROR(discovery_set_hostname(cJSON_GetStringValue(cJSON_GetObjectItem(json, "hostname"))));
+        written++;
+    }
+
+    if (cJSON_IsString(cJSON_GetObjectItem(json, "instanceName"))) {
+        RETURN_ON_ERROR(discovery_set_instance_name(cJSON_GetStringValue(cJSON_GetObjectItem(json, "instanceName"))));
+        written++;
+    }
+
+    return written > 0 ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 
 cJSON* http_json_get_config_serial(void)
@@ -848,7 +981,7 @@ esp_err_t http_json_set_credentials(cJSON* root)
 
 cJSON* http_json_get_nextion_info(void)
 {
-    cJSON* json = cJSON_CreateNull();
+    cJSON* json;
 
     serial_nextion_info_t info;
     if (serial_nextion_get_info(&info) == ESP_OK) {
