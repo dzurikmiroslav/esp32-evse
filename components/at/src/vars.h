@@ -87,5 +87,6 @@ extern uint64_t var_u64_1;
 
 extern char var_str32_1[32];
 extern char var_str32_2[32];
+extern char var_str32_3[32];
 
 #endif /* VARS_H_ */

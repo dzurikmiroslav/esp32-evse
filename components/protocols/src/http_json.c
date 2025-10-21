@@ -820,15 +820,6 @@ cJSON* http_json_get_info(void)
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
     cJSON_AddNumberToObject(json, "heapSize", heap_info.total_allocated_bytes);
     cJSON_AddNumberToObject(json, "maxHeapSize", heap_info.total_free_bytes + heap_info.total_allocated_bytes);
-    char str[24];
-    wifi_get_mac(false, str);
-    cJSON_AddStringToObject(json, "mac", str);
-    wifi_get_ip(false, str);
-    cJSON_AddStringToObject(json, "ip", str);
-    wifi_get_mac(true, str);
-    cJSON_AddStringToObject(json, "macAp", str);
-    wifi_get_ip(true, str);
-    cJSON_AddStringToObject(json, "ipAp", str);
     cJSON_AddNumberToObject(json, "temperatureSensorCount", temp_sensor_get_count());
     cJSON_AddNumberToObject(json, "temperatureLow", temp_sensor_get_low() / 100.0);
     cJSON_AddNumberToObject(json, "temperatureHigh", temp_sensor_get_high() / 100.0);

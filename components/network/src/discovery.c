@@ -31,6 +31,8 @@ void discovery_init(void)
 
     discovery_get_instance_name(name);
     mdns_instance_name_set(name);
+
+    ESP_ERROR_CHECK(mdns_service_add(name, "_http", "_tcp", 80, NULL, 0));
 }
 
 esp_err_t discovery_set_hostname(const char* value)

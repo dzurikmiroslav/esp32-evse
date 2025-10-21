@@ -22,3 +22,4 @@ uint64_t var_u64_1;
 
 char var_str32_1[32];
 char var_str32_2[32];
+char var_str32_3[32];
