@@ -378,12 +378,6 @@ static struct cat_command cmds[] = {
         .write = vars_sta_config_write,
     },
     {
-        .name = "+WIFISTASTATCFG",
-        .var = vars_sta_static_config,
-        .var_num = sizeof(vars_sta_static_config) / sizeof(vars_sta_static_config[0]),
-        .write = vars_sta_static_config_write,
-    },
-    {
         .name = "+WIFIAPCFG",
         .var = vars_ap_config,
         .var_num = sizeof(vars_ap_config) / sizeof(vars_ap_config[0]),
@@ -398,6 +392,12 @@ static struct cat_command cmds[] = {
         .name = "+WIFIAPCONN",
         .var = vars_ap_connection,
         .var_num = sizeof(vars_ap_connection) / sizeof(vars_ap_connection[0]),
+    },
+    {
+        .name = "+WIFISTASTATIC",
+        .var = vars_sta_static_config,
+        .var_num = sizeof(vars_sta_static_config) / sizeof(vars_sta_static_config[0]),
+        .write = vars_sta_static_config_write,
     },
     {
         .name = "+WIFISTAIP",
