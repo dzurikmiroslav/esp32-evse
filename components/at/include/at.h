@@ -10,9 +10,9 @@
 #include "cat.h"
 #include "wifi.h"
 
-#define AT_CMD_GROUPS                                                                                                                                                   \
-    {                                                                                                                                                                   \
-        &at_cmd_basic_group, &at_cmd_system_group, &at_cmd_evse_group, &at_cmd_energy_meter_group, &at_cmd_wifi_group, &at_cmd_serial_group, &at_cmd_board_config_group \
+#define AT_CMD_GROUPS                                                                                                                                                      \
+    {                                                                                                                                                                      \
+        &at_cmd_basic_group, &at_cmd_system_group, &at_cmd_evse_group, &at_cmd_energy_meter_group, &at_cmd_network_group, &at_cmd_serial_group, &at_cmd_board_config_group \
     }
 
 #define AT_TASK_CONTEXT_INDEX 1
@@ -63,7 +63,7 @@ extern struct cat_command_group at_cmd_system_group;
 extern struct cat_command_group at_cmd_evse_group;
 extern struct cat_command_group at_cmd_energy_meter_group;
 extern struct cat_command_group at_cmd_serial_group;
-extern struct cat_command_group at_cmd_wifi_group;
+extern struct cat_command_group at_cmd_network_group;
 extern struct cat_command_group at_cmd_board_config_group;
 
 #endif /* AT_H_ */

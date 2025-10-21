@@ -4,6 +4,7 @@
 
 #include "at.h"
 #include "cat.h"
+#include "discovery.h"
 #include "vars.h"
 #include "wifi.h"
 
@@ -51,6 +52,64 @@ static cat_return_state vars_sta_config_write(const struct cat_command* cmd, con
     }
 
     return wifi_set_config(enabled, ssid, password) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
+}
+
+static int vars_sta_static_config_read(const struct cat_variable* var)
+{
+    var_u8_1 = wifi_is_static_enabled();
+    wifi_get_static_ip(var_str32_1);
+    wifi_get_static_gateway(var_str32_2);
+    wifi_get_static_netmask(var_str32_3);
+
+    return 0;
+}
+
+static struct cat_variable vars_sta_static_config[] = {
+    {
+        .type = CAT_VAR_UINT_DEC,
+        .data = &var_u8_1,
+        .data_size = sizeof(var_u8_1),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+        .read = vars_sta_static_config_read,
+    },
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_1,
+        .data_size = sizeof(var_str32_1),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+    },
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_2,
+        .data_size = sizeof(var_str32_2),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+    },
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_3,
+        .data_size = sizeof(var_str32_3),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+    },
+};
+
+static cat_return_state vars_sta_static_config_write(const struct cat_command* cmd, const uint8_t* data, const size_t data_size, const size_t args_num)
+{
+    bool enabled = var_u8_1 > 0;
+    const char* ip = NULL;
+    const char* gateway = NULL;
+    const char* netmask = NULL;
+
+    if (args_num > 1) {
+        ip = var_str32_1;
+    }
+    if (args_num > 2) {
+        gateway = var_str32_2;
+    }
+    if (args_num > 3) {
+        netmask = var_str32_3;
+    }
+
+    return wifi_set_static_config(enabled, ip, gateway, netmask) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
 }
 
 static int vars_ap_config_read(const struct cat_variable* var)
@@ -265,12 +324,64 @@ static cat_return_state cmd_ap_scan_run(const struct cat_command* cmd)
     return CAT_RETURN_STATE_HOLD;
 }
 
+static int var_hostname_read(const struct cat_variable* var)
+{
+    discovery_get_hostname(var_str32_1);
+
+    return 0;
+}
+
+static int var_hostname_write(const struct cat_variable* var, const size_t write_size)
+{
+    return discovery_set_hostname(var_str32_1) != ESP_OK;
+}
+
+static struct cat_variable vars_hostname[] = {
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_1,
+        .data_size = sizeof(var_str32_1),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+        .read = var_hostname_read,
+        .write = var_hostname_write,
+    },
+};
+
+static int var_instance_name_read(const struct cat_variable* var)
+{
+    discovery_get_instance_name(var_str32_1);
+
+    return 0;
+}
+
+static int var_instance_name_write(const struct cat_variable* var, const size_t write_size)
+{
+    return discovery_set_instance_name(var_str32_1) != ESP_OK;
+}
+
+static struct cat_variable vars_instance_name[] = {
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_1,
+        .data_size = sizeof(var_str32_1),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+        .read = var_instance_name_read,
+        .write = var_instance_name_write,
+    },
+};
+
 static struct cat_command cmds[] = {
     {
         .name = "+WIFISTACFG",
         .var = vars_sta_config,
         .var_num = sizeof(vars_sta_config) / sizeof(vars_sta_config[0]),
         .write = vars_sta_config_write,
+    },
+    {
+        .name = "+WIFISTASTATCFG",
+        .var = vars_sta_static_config,
+        .var_num = sizeof(vars_sta_static_config) / sizeof(vars_sta_static_config[0]),
+        .write = vars_sta_static_config_write,
     },
     {
         .name = "+WIFIAPCFG",
@@ -292,33 +403,39 @@ static struct cat_command cmds[] = {
         .name = "+WIFISTAIP",
         .var = vars_sta_ip,
         .var_num = sizeof(vars_sta_ip) / sizeof(vars_sta_ip[0]),
-        .need_all_vars = true,
     },
     {
         .name = "+WIFISTAMAC",
         .var = vars_sta_mac,
         .var_num = sizeof(vars_sta_mac) / sizeof(vars_sta_mac[0]),
-        .need_all_vars = true,
     },
     {
         .name = "+WIFIAPIP",
         .var = vars_ap_ip,
         .var_num = sizeof(vars_ap_ip) / sizeof(vars_ap_ip[0]),
-        .need_all_vars = true,
     },
     {
         .name = "+WIFIAPMAC",
         .var = vars_ap_mac,
         .var_num = sizeof(vars_ap_mac) / sizeof(vars_ap_mac[0]),
-        .need_all_vars = true,
     },
     {
         .name = "+WIFIAPSCAN",
         .run = cmd_ap_scan_run,
     },
+    {
+        .name = "+HOSTNAME",
+        .var = vars_hostname,
+        .var_num = sizeof(vars_hostname) / sizeof(vars_hostname[0]),
+    },
+    {
+        .name = "+INSTNAME",
+        .var = vars_instance_name,
+        .var_num = sizeof(vars_instance_name) / sizeof(vars_instance_name[0]),
+    },
 };
 
-struct cat_command_group at_cmd_wifi_group = {
+struct cat_command_group at_cmd_network_group = {
     .cmd = cmds,
     .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
 };

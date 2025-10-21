@@ -42,7 +42,7 @@ static void sta_try_connect(void)
     if (!(mode_bits & WIFI_STA_SCAN_BIT) && mode_bits & WIFI_STA_MODE_BIT) {
         esp_err_t err = esp_wifi_connect();
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "esp_wifi_connect returned 0x%x", err);
+            ESP_LOGE(TAG, "Connect failed (%s)", esp_err_to_name(err));
         }
     }
 }
@@ -95,7 +95,7 @@ static esp_err_t wifi_restart(void)
 
     esp_err_t err = esp_wifi_stop();
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_wifi_stop returned 0x%x", err);
+        ESP_LOGE(TAG, "Stop failed (%s)", esp_err_to_name(err));
         return err;
     }
 
@@ -112,7 +112,7 @@ static esp_err_t wifi_restart(void)
 
     err = esp_wifi_set_mode(mode);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_wifi_set_mode returned 0x%x", err);
+        ESP_LOGE(TAG, "Set mode failed (%s)", esp_err_to_name(err));
         return err;
     }
 
@@ -136,7 +136,7 @@ static esp_err_t wifi_restart(void)
 
         err = esp_wifi_set_config(ESP_IF_WIFI_STA, &sta_config);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "esp_wifi_set_config returned 0x%x", err);
+            ESP_LOGE(TAG, "Set config failed (%s)", esp_err_to_name(err));
             return err;
         }
     }
@@ -154,7 +154,7 @@ static esp_err_t wifi_restart(void)
 
         err = esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "esp_wifi_set_config returned 0x%x", err);
+            ESP_LOGE(TAG, "Set config failed (%s)", esp_err_to_name(err));
             return err;
         }
     }
@@ -162,7 +162,7 @@ static esp_err_t wifi_restart(void)
     if (mode != WIFI_MODE_NULL) {
         err = esp_wifi_start();
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "esp_wifi_start returned 0x%x", err);
+            ESP_LOGE(TAG, "Start failed (%s)", esp_err_to_name(err));
             return err;
         }
     }
@@ -482,7 +482,7 @@ esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gatew
         }
     } else {
         size = sizeof(esp_ip4_addr_t);
-        nvs_get_blob(nvs, NVS_STATIC_NETMASK, &ip_info.gw, &size);
+        nvs_get_blob(nvs, NVS_STATIC_NETMASK, &ip_info.netmask, &size);
     }
 
     esp_netif_dhcp_status_t dhcp_status;
