@@ -145,7 +145,7 @@ void serial_modbus_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
 
     uart_set_always_rx_timeout(uart_num, true);
 
-    xTaskCreate(serial_modbus_task_func, "serial_modbus_task", 2 * 1024, NULL, 5, &serial_modbus_task);
+    xTaskCreate(serial_modbus_task_func, "srl_modbus", 2 * 1024, NULL, 5, &serial_modbus_task);
 }
 
 void serial_modbus_stop(void)

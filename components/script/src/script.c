@@ -177,7 +177,7 @@ void script_start(void)
 {
     if (!script_task) {
         ESP_LOGI(TAG, "Starting script");
-        xTaskCreate(script_task_func, "script_task", 6 * 1024, NULL, 5, &script_task);
+        xTaskCreate(script_task_func, "script", 6 * 1024, NULL, 5, &script_task);
     }
 }
 

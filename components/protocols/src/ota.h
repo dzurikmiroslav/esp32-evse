@@ -12,6 +12,4 @@ void ota_set_channel(const char* value);
 
 esp_err_t ota_get_available(char** version, char** path);
 
-void schedule_restart(void);
-
 #endif /* OTA_H */

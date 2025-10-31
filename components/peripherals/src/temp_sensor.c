@@ -68,7 +68,7 @@ void temp_sensor_init(void)
         sensor_count = MIN(found, MAX_SENSORS);
 
         if (sensor_count > 0) {
-            xTaskCreate(temp_sensor_task_func, "temp_sensor_task", 2 * 1024, NULL, 5, NULL);
+            xTaskCreate(temp_sensor_task_func, "temp_sensor", 2 * 1024, NULL, 5, NULL);
         }
     }
 }

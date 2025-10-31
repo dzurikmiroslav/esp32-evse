@@ -3,8 +3,6 @@
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <esp_timer.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <math.h>
 #include <nvs.h>
 #include <string.h>
@@ -13,6 +11,7 @@
 
 #include "energy_meter.h"
 #include "evse.h"
+#include "schedule_restart.h"
 #include "socket_lock.h"
 #include "temp_sensor.h"
 
@@ -82,18 +81,6 @@ static const char* TAG = "modbus";
 static nvs_handle nvs;
 
 static uint8_t unit_id = 1;
-
-static void restart_func(void* arg)
-{
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    esp_restart();
-    vTaskDelete(NULL);
-}
-
-static void timeout_restart(void)
-{
-    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
-}
 
 void modbus_init(void)
 {
@@ -435,7 +422,7 @@ static bool write_holding_register(uint16_t addr, uint8_t* buffer, uint16_t left
         if (value != 1) {
             return MODBUS_EX_ILLEGAL_DATA_VALUE;
         }
-        timeout_restart();
+        schedule_restart();
         break;
     default:
         return MODBUS_EX_ILLEGAL_DATA_ADDRESS;

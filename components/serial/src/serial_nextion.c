@@ -614,7 +614,7 @@ void serial_nextion_start(uart_port_t uart_num, uint32_t _baud_rate, uart_word_l
 
     mutex = xSemaphoreCreateMutex();
 
-    xTaskCreate(serial_nextion_task_func, "serial_nextion_task", 4 * 1024, NULL, 5, &serial_nextion_task);
+    xTaskCreate(serial_nextion_task_func, "sr_nextion", 4 * 1024, NULL, 5, &serial_nextion_task);
 }
 
 void serial_nextion_stop(void)
@@ -803,5 +803,5 @@ void serial_nextion_upload_end(void)
 
     xSemaphoreGive(mutex);
 
-    xTaskCreate(serial_nextion_task_func, "serial_nextion_task", 4 * 1024, NULL, 5, &serial_nextion_task);
+    xTaskCreate(serial_nextion_task_func, "srl_nextion_upl", 4 * 1024, NULL, 5, &serial_nextion_task);
 }

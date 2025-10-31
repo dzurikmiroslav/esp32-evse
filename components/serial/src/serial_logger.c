@@ -327,7 +327,7 @@ void serial_logger_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_len
         }
     }
 
-    xTaskCreate(serial_logger_task_func, "serial_logger_task", 4 * 1024, NULL, 5, &serial_logger_task);
+    xTaskCreate(serial_logger_task_func, "srl_logger", 2 * 1024, NULL, 5, &serial_logger_task);
 }
 
 void serial_logger_stop(void)
