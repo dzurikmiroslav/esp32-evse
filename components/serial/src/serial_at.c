@@ -114,7 +114,7 @@ void serial_at_start(uart_port_t uart_num, uint32_t baud_rate, uart_word_length_
         }
     }
 
-    xTaskCreate(serial_at_task_func, "serial_at_task", 4 * 1024, NULL, 5, &serial_at_task);
+    xTaskCreate(serial_at_task_func, "srl_at", 4 * 1024, NULL, 5, &serial_at_task);
 }
 
 void serial_at_stop(void)

@@ -147,7 +147,7 @@ void socket_lock_init(void)
         io_conf.pin_bit_mask = BIT64(board_config.socket_lock.detection_gpio);
         ESP_ERROR_CHECK(gpio_config(&io_conf));
 
-        xTaskCreate(socket_lock_task_func, "socket_lock_task", 2 * 1024, NULL, 10, &socket_lock_task);
+        xTaskCreate(socket_lock_task_func, "socket_lock", 2 * 1024, NULL, 10, &socket_lock_task);
     }
 }
 

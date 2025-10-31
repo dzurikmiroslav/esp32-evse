@@ -197,6 +197,41 @@ static void update_leds(void)
     }
 }
 
+#ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
+/**
+ * @brief Print all running tasks high water mark
+ *
+ * @param interval
+ */
+void print_task_hwm(uint16_t interval)
+{
+    static TickType_t previous_tick = 0;
+
+    TickType_t now = xTaskGetTickCount();
+
+    if ((now - previous_tick) > pdMS_TO_TICKS(interval)) {
+        previous_tick = now;
+
+        UBaseType_t task_count = uxTaskGetNumberOfTasks();
+        TaskStatus_t* task_stats = (TaskStatus_t*)malloc(task_count * sizeof(TaskStatus_t));
+        if (!task_stats) {
+            ESP_LOGE(TAG, "Failed to allocate memory");
+            return;
+        }
+
+        task_count = uxTaskGetSystemState(task_stats, task_count, NULL);
+
+        ESP_LOGI(TAG, "Task count: %d", task_count);
+        for (UBaseType_t x = 0; x < task_count; x++) {
+            ESP_LOGI(TAG, "Task [%s] hwm: %u", task_stats[x].pcTaskName, task_stats[x].usStackHighWaterMark);
+        }
+        ESP_LOGI(TAG, "------------------");
+
+        free((void*)task_stats);
+    }
+}
+#endif /* CONFIG_FREERTOS_USE_TRACE_FACILITY */
+
 void app_main(void)
 {
     logger_init();
@@ -248,13 +283,17 @@ void app_main(void)
 
     init_count--;
 
-    xTaskCreate(wifi_event_task_func, "wifi_event_task", 4 * 1024, NULL, 5, NULL);
-    xTaskCreate(user_input_task_func, "user_input_task", 2 * 1024, NULL, 5, &user_input_task);
+    xTaskCreate(wifi_event_task_func, "wifi_event", 2 * 1024, NULL, 5, NULL);
+    xTaskCreate(user_input_task_func, "user_input", 2 * 1024, NULL, 5, &user_input_task);
 
     while (true) {
         evse_process();
         update_leds();
 
         vTaskDelay(pdMS_TO_TICKS(50));
+
+#ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
+        print_task_hwm(10000);
+#endif /* CONFIG_FREERTOS_USE_TRACE_FACILITY */
     }
 }

@@ -6,4 +6,4 @@ idf_component_register(SRC_DIRS "src"
                     PRIV_INCLUDE_DIRS "src"
                     EMBED_FILES "${embed_files}"
                     PRIV_REQUIRES nvs_flash esp_http_server esp_wifi esp_timer esp_https_ota driver app_update json vfs littlefs mbedtls
-                    REQUIRES config network modbus script serial logger)
+                    REQUIRES config restart network modbus script serial logger)

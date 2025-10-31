@@ -7,12 +7,11 @@
 #include <esp_https_ota.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
 
 #include "board_config.h"
+#include "schedule_restart.h"
 
 #define NVS_NAMESPACE "ota"
 #define NVS_CHANNEL   "channel"
@@ -24,18 +23,6 @@ static nvs_handle_t nvs;
 void ota_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
-}
-
-static void restart_func(void* arg)
-{
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    esp_restart();
-    vTaskDelete(NULL);
-}
-
-void schedule_restart(void)
-{
-    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
 }
 
 static void http_client_cleanup(esp_http_client_handle_t client)

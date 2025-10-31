@@ -17,6 +17,7 @@
 #include "http_json.h"
 #include "logger.h"
 #include "ota.h"
+#include "schedule_restart.h"
 #include "script.h"
 #include "serial_nextion.h"
 

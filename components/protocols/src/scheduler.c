@@ -184,7 +184,7 @@ void scheduler_init(void)
 
     mutex = xSemaphoreCreateMutex();
 
-    xTaskCreate(scheduler_task_func, "scheduler_task", 2 * 1024, NULL, 1, &scheduler_task);
+    xTaskCreate(scheduler_task_func, "scheduler", 2 * 1024, NULL, 1, &scheduler_task);
 }
 
 void scheduler_execute_schedules(void)

@@ -6,24 +6,13 @@
 #include <sys/time.h>
 
 #include "cat.h"
+#include "schedule_restart.h"
 #include "temp_sensor.h"
 #include "vars.h"
 
-static void restart_func(void* arg)
-{
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    esp_restart();
-    vTaskDelete(NULL);
-}
-
-static void timeout_restart(void)
-{
-    xTaskCreate(restart_func, "restart_task", 2 * 1024, NULL, 10, NULL);
-}
-
 static cat_return_state cmd_rst_run(const struct cat_command* cmd)
 {
-    timeout_restart();
+    schedule_restart();
 
     return CAT_RETURN_STATE_OK;
 }
