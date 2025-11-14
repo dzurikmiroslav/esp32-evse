@@ -733,7 +733,7 @@ void evse_authorize(void)
 
 bool evse_is_pending_auth(void)
 {
-    return evse_state_is_session(state) && !authorized;
+    return error == 0 && evse_state_is_session(state) && !authorized;
 }
 
 bool evse_is_enabled(void)
