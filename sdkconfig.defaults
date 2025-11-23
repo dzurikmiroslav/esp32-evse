@@ -32,28 +32,3 @@ CONFIG_LOG_TIMESTAMP_SOURCE_SYSTEM=y
 # Kernel
 #
 CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS=2
-
-#
-# mbedTLS, some memory optimizations
-#
-# CONFIG_MBEDTLS_SSL_KEEP_PEER_CERTIFICATE is not set
-# CONFIG_MBEDTLS_PKCS7_C is not set
-# CONFIG_MBEDTLS_ERROR_STRINGS is not set
-CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
-CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
-CONFIG_MBEDTLS_DYNAMIC_FREE_CA_CERT=y
-
-#
-# mDNS, some memory optimizations
-#
-CONFIG_MDNS_TASK_STACK_SIZE=3072
-
-#
-# ESP Timer (High Resolution Timer), some memory optimizations
-#
-CONFIG_ESP_TIMER_TASK_STACK_SIZE=2048
-
-#
-# LWIP, some memory optimizations
-# 
-# CONFIG_LWIP_IPV6 is not set

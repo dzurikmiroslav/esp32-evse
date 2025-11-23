@@ -801,6 +801,20 @@ esp_err_t http_json_set_state_under_power_limit(cJSON* json)
     return ESP_ERR_INVALID_ARG;
 }
 
+cJSON* http_json_get_info_heap(void)
+{
+    cJSON* json = cJSON_CreateObject();
+
+    multi_heap_info_t heap_info;
+    heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
+    cJSON_AddNumberToObject(json, "allocated", heap_info.total_allocated_bytes);
+    cJSON_AddNumberToObject(json, "free", heap_info.total_free_bytes);
+    cJSON_AddNumberToObject(json, "largestFreeBlock", heap_info.largest_free_block);
+    cJSON_AddNumberToObject(json, "minFree", heap_info.minimum_free_bytes);
+
+    return json;
+}
+
 cJSON* http_json_get_info(void)
 {
     cJSON* json = cJSON_CreateObject();
@@ -816,10 +830,9 @@ cJSON* http_json_get_info(void)
     esp_chip_info(&chip_info);
     cJSON_AddNumberToObject(json, "chipCores", chip_info.cores);
     cJSON_AddNumberToObject(json, "chipRevision", chip_info.revision / 100);
-    multi_heap_info_t heap_info;
-    heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
-    cJSON_AddNumberToObject(json, "heapSize", heap_info.total_allocated_bytes);
-    cJSON_AddNumberToObject(json, "maxHeapSize", heap_info.total_free_bytes + heap_info.total_allocated_bytes);
+
+    cJSON_AddItemToObject(json, "heap", http_json_get_info_heap());
+
     cJSON_AddNumberToObject(json, "temperatureSensorCount", temp_sensor_get_count());
     cJSON_AddNumberToObject(json, "temperatureLow", temp_sensor_get_low() / 100.0);
     cJSON_AddNumberToObject(json, "temperatureHigh", temp_sensor_get_high() / 100.0);
