@@ -122,6 +122,10 @@ static esp_err_t wifi_restart(void)
         wifi_config_t sta_config = {
             .sta =
                 {
+                    .btm_enabled = 1,
+                    .rm_enabled = 1,
+                    .mbo_enabled = 1,
+                    .ft_enabled = 1,
                     .pmf_cfg =
                         {
                             .capable = true,
