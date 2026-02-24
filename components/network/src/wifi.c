@@ -323,7 +323,7 @@ static void neighbor_report_recv_handler(void* arg, esp_event_base_t event_base,
     }
     uint8_t report_len = neighbor_report_event->report_len;
     /* dump report info */
-    ESP_LOGD(TAG, "rrm: neighbor report len=%d", report_len);
+    ESP_LOGI(TAG, "RMM neighbor report length %d", report_len);
     ESP_LOG_BUFFER_HEXDUMP(TAG, pos, report_len, ESP_LOG_DEBUG);
 
     /* create neighbor list */
