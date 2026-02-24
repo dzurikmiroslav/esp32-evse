@@ -44,7 +44,7 @@
 #define MAX_LCI_CIVIC_LEN 256 * 2 + 1
 #define MAX_NEIGHBOR_LEN  512
 
-#define NEIGHBOR_REPORT_TIME (5 * 60 * 100)  // 5min
+#define NEIGHBOR_REPORT_TIME (5 * 1 * 1000)  // TODO 5min
 
 _Static_assert(sizeof(((wifi_config_t*)0)->sta.ssid) == WIFI_SSID_SIZE, "Wrong SSID size");
 _Static_assert(sizeof(((wifi_config_t*)0)->sta.password) == WIFI_PASSWORD_SIZE, "Wrong password size");
