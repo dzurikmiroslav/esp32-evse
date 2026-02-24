@@ -10,7 +10,7 @@
 #include <esp_wnm.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
-#include <freertos/task.h>
+#include <freertos/timers.h>
 #include <nvs.h>
 #include <string.h>
 #include <sys/param.h>
@@ -44,6 +44,8 @@
 #define MAX_LCI_CIVIC_LEN 256 * 2 + 1
 #define MAX_NEIGHBOR_LEN  512
 
+#define NEIGHBOR_REPORT_TIME (5 * 60 * 100)  // 5min
+
 _Static_assert(sizeof(((wifi_config_t*)0)->sta.ssid) == WIFI_SSID_SIZE, "Wrong SSID size");
 _Static_assert(sizeof(((wifi_config_t*)0)->sta.password) == WIFI_PASSWORD_SIZE, "Wrong password size");
 
@@ -55,7 +57,7 @@ static esp_netif_t* sta_netif;
 
 static esp_netif_t* ap_netif;
 
-static bool neighbor_report_active = false;
+static TimerHandle_t neighbor_report_timer = NULL;
 
 EventGroupHandle_t wifi_event_group;
 
@@ -75,6 +77,13 @@ static void sta_try_connect(void)
     }
 }
 
+static void neighbor_report_callback(TimerHandle_t xTimer)
+{
+    if (esp_rrm_send_neighbor_report_request() < 0) {
+        ESP_LOGI(TAG, "Failed to send neighbor report request");
+    }
+}
+
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT) {
@@ -88,8 +97,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         if (event_id == WIFI_EVENT_STA_CONNECTED) {
             if (esp_rrm_is_rrm_supported_connection()) {
                 ESP_LOGI(TAG, "RRM supported");
-                esp_rrm_send_neighbor_report_request();
-                neighbor_report_active = true;
             } else {
                 ESP_LOGI(TAG, "RRM not supported");
             }
@@ -98,7 +105,14 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             } else {
                 ESP_LOGI(TAG, "BTM not supported");
             }
+
+            // TODO move in esp_rrm_is_rrm_supported_connection
+            if (neighbor_report_timer == NULL) {
+                neighbor_report_timer = xTimerCreate("wifi_neighbor_report", pdMS_TO_TICKS(NEIGHBOR_REPORT_TIME), pdTRUE, NULL, neighbor_report_callback);
+                xTimerStart(neighbor_report_timer, portMAX_DELAY);
+            }
         }
+
         if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
             ESP_LOGI(TAG, "AP STA disconnected");
             wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*)event_data;
@@ -112,16 +126,17 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 ESP_LOGI(TAG, "Station roaming, do nothing");
             } else {
                 ESP_LOGI(TAG, "STA disconnected");
-                neighbor_report_active = false;
+
+                xTimerStop(neighbor_report_timer, 0);
+                neighbor_report_timer = NULL;
+
                 xEventGroupClearBits(wifi_event_group, WIFI_STA_CONNECTED_BIT);
                 xEventGroupSetBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT);
-                neighbor_report_active = false;
                 sta_try_connect();
             }
         }
         if (event_id == WIFI_EVENT_STA_START) {
             ESP_LOGI(TAG, "STA start");
-            neighbor_report_active = false;
             sta_try_connect();
         }
     } else if (event_base == IP_EVENT) {
@@ -294,15 +309,10 @@ cleanup:
 
 static void neighbor_report_recv_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-    if (!neighbor_report_active) {
-        ESP_LOGV(TAG, "Neighbor report received but not triggered by us");
-        return;
-    }
     if (!event_data) {
         ESP_LOGE(TAG, "No event data received for neighbor report");
         return;
     }
-    neighbor_report_active = false;
     uint8_t cand_list = 0;
     wifi_event_neighbor_report_t* neighbor_report_event = (wifi_event_neighbor_report_t*)event_data;
     uint8_t* pos = (uint8_t*)neighbor_report_event->report;

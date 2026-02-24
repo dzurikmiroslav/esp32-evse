@@ -4,7 +4,6 @@
 #include <driver/ledc.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <freertos/timers.h>
 
 #include "board_config.h"
@@ -94,7 +93,7 @@ void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
             if (led->timer == NULL) {
                 led->timer = xTimerCreate("led_timer", pdMS_TO_TICKS(ontime), pdFALSE, (void*)led, timer_callback);
             }
-            xTimerStart(led->timer, BLOCK_TIME);
+            xTimerStart(led->timer, portMAX_DELAY);
         }
     }
 }
