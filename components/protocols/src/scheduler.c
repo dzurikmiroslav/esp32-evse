@@ -76,8 +76,6 @@ static uint32_t ms_to_next_hour(void)
     uint32_t elapsed = (timeinfo.tm_min * 60) + timeinfo.tm_sec;
     uint32_t to_next_hour = 3600 - elapsed;
 
-     ESP_LOGW(TAG, "sec_to_next_hour sync %d", to_next_hour );
-
     return to_next_hour * 1000UL;
 }
 
@@ -125,7 +123,7 @@ static void check_triggers(void)
     struct tm timeinfo = { 0 };
     localtime_r(&now, &timeinfo);
 
-    ESP_LOGI(TAG, "Check triggers %02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
+    ESP_LOGD(TAG, "Check triggers %02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
 
     for (uint8_t i = 0; i < schedule_count; i++) {
         uint32_t day = schedules[i].days.order[timeinfo.tm_wday];
