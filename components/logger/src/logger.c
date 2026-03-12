@@ -15,7 +15,7 @@ static SemaphoreHandle_t mutex;
 
 static uint8_t log_buffer_data[LOG_BUFFER_SIZE];
 
-static output_buffer_t *buffer;
+static output_buffer_t* buffer;
 
 EventGroupHandle_t logger_event_group = NULL;
 
