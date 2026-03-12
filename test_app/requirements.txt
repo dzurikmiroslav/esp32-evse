@@ -1,6 +1,6 @@
 bitarray==2.9.2
 bitstring==4.1.4
-cffi==1.16.0
+cffi==2.0.0
 colorama==0.4.6
 cryptography==46.0.5
 ecdsa==0.18.0
