@@ -13,7 +13,9 @@
 
 static SemaphoreHandle_t mutex;
 
-static output_buffer_t* buffer = NULL;
+static uint8_t log_buffer_data[LOG_BUFFER_SIZE];
+
+static output_buffer_t *buffer;
 
 EventGroupHandle_t logger_event_group = NULL;
 
@@ -22,7 +24,7 @@ void logger_init(void)
     mutex = xSemaphoreCreateMutex();
     logger_event_group = xEventGroupCreate();
 
-    buffer = output_buffer_create(LOG_BUFFER_SIZE);
+    buffer = output_buffer_create_static(LOG_BUFFER_SIZE, log_buffer_data);
 }
 
 uint16_t logger_count(void)

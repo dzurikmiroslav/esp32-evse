@@ -6,6 +6,7 @@
 #include <esp_timer.h>
 #include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/timers.h>
 #include <string.h>
 #include <sys/time.h>
 
@@ -185,18 +186,16 @@ cJSON* http_json_get_config_wifi(void)
     return json;
 }
 
-static void wifi_set_config_func(void* arg)
+static void wifi_set_config_timer_callback(TimerHandle_t timer)
 {
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)arg;
+    wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)pvTimerGetTimerID(timer);
 
     wifi_set_static_config(config->static_enabled, config->static_ip, config->static_gateway, config->static_netmask);
     wifi_set_config(config->enabled, config->ssid_blank ? NULL : config->ssid, config->password_blank ? NULL : config->password);
 
     free((void*)config);
 
-    vTaskDelete(NULL);
+    xTimerDelete(timer, 0);
 }
 
 static esp_err_t timeout_wifi_set_config(
@@ -249,7 +248,8 @@ static esp_err_t timeout_wifi_set_config(
         config->static_netmask[0] = '\0';
     }
 
-    xTaskCreate(wifi_set_config_func, "wifi_set_config", 4 * 1024, (void*)config, 10, NULL);
+    TimerHandle_t timer = xTimerCreate("wifi_set_config", pdMS_TO_TICKS(1000), pdFALSE, (void*)config, wifi_set_config_timer_callback);
+    xTimerStart(timer, 0);
 
     return ESP_OK;
 }
@@ -315,11 +315,9 @@ cJSON* http_json_get_wifi_state(void)
     return json;
 }
 
-static void wifi_set_ap_func(void* arg)
+static void wifi_set_ap_timer_callback(TimerHandle_t timer)
 {
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    bool ap = (bool)arg;
+    bool ap = (bool)pvTimerGetTimerID(timer);
 
     if (ap) {
         wifi_ap_start();
@@ -327,12 +325,13 @@ static void wifi_set_ap_func(void* arg)
         wifi_ap_stop();
     }
 
-    vTaskDelete(NULL);
+    xTimerDelete(timer, 0);
 }
 
 static void timeout_wifi_set_ap(bool ap)
 {
-    xTaskCreate(wifi_set_ap_func, "wifi_set_ap", 4 * 1024, (void*)ap, 10, NULL);
+    TimerHandle_t timer = xTimerCreate("wifi_set_ap", pdMS_TO_TICKS(1000), pdFALSE, (void*)ap, wifi_set_ap_timer_callback);
+    xTimerStart(timer, 0);
 }
 
 esp_err_t http_json_set_wifi_state_ap(cJSON* json)

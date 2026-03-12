@@ -52,6 +52,10 @@ static bool auto_reload = false;
 
 static void script_task_func(void* param)
 {
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
+    xSemaphoreGive(output_mutex);
+
     lua_writestring(LUA_COPYRIGHT, strlen(LUA_COPYRIGHT));
     lua_writeline();
 
@@ -137,6 +141,11 @@ static void script_task_func(void* param)
     lua_close(L);
     L = NULL;
 
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    output_buffer_delete(output_buffer);
+    output_buffer = NULL;
+    xSemaphoreGive(output_mutex);
+
     if (shutdown_sem) {
         xSemaphoreGive(shutdown_sem);
     }
@@ -191,7 +200,6 @@ void script_init(void)
     }
 
     output_mutex = xSemaphoreCreateMutex();
-    output_buffer = output_buffer_create(OUTPUT_BUFFER_SIZE);
     script_mutex = xSemaphoreCreateMutex();
 
     if (script_is_enabled()) {
@@ -210,14 +218,17 @@ void script_output_append_buf(const char* str, uint16_t len)
 
 uint16_t script_output_count(void)
 {
-    return output_buffer->count;
+    xSemaphoreTake(output_mutex, portMAX_DELAY);
+    uint16_t count = output_buffer ? output_buffer->count : 0;
+    xSemaphoreGive(output_mutex);
+
+    return count;
 }
 
 bool script_output_read(uint16_t* index, char** str, uint16_t* len)
 {
     xSemaphoreTake(output_mutex, portMAX_DELAY);
-
-    bool has_next = output_buffer_read(output_buffer, index, str, len);
+    bool has_next = output_buffer ? output_buffer_read(output_buffer, index, str, len) : false;
     xSemaphoreGive(output_mutex);
 
     return has_next;

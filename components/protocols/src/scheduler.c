@@ -4,6 +4,9 @@
 #include <esp_log.h>
 #include <esp_netif_sntp.h>
 #include <esp_sntp.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/timers.h>
 #include <nvs.h>
 #include <time.h>
 
@@ -26,7 +29,7 @@ static nvs_handle nvs;
 
 static SemaphoreHandle_t mutex;
 
-static TaskHandle_t scheduler_task = NULL;
+static TimerHandle_t timer = NULL;
 
 static char ntp_server[64];  // if renew_servers_after_new_IP = false, will be used static string reference
 
@@ -62,6 +65,20 @@ void ntp_sync_cb(struct timeval* tv)
 {
     ESP_LOGD(TAG, "NTP sync");
     scheduler_execute_schedules();
+}
+
+static uint32_t ms_to_next_hour(void)
+{
+    time_t now = time(NULL);
+    struct tm timeinfo = { 0 };
+    localtime_r(&now, &timeinfo);
+
+    uint32_t elapsed = (timeinfo.tm_min * 60) + timeinfo.tm_sec;
+    uint32_t to_next_hour = 3600 - elapsed;
+
+     ESP_LOGW(TAG, "sec_to_next_hour sync %d", to_next_hour );
+
+    return to_next_hour * 1000UL;
 }
 
 static void on_action(scheduler_action_t action)
@@ -102,43 +119,40 @@ static void off_action(scheduler_action_t action)
     }
 }
 
-static void scheduler_task_func(void* param)
+static void check_triggers(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(1000));  // wait to init evse
+    time_t now = time(NULL);
+    struct tm timeinfo = { 0 };
+    localtime_r(&now, &timeinfo);
 
-    while (true) {
-        xSemaphoreTake(mutex, portMAX_DELAY);
+    ESP_LOGI(TAG, "Check triggers %02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
 
-        time_t now = time(NULL);
-        struct tm timeinfo = { 0 };
-        localtime_r(&now, &timeinfo);
-
-        for (uint8_t i = 0; i < schedule_count; i++) {
-            uint32_t day = schedules[i].days.order[timeinfo.tm_wday];
-            if (day & (1 << timeinfo.tm_hour)) {
-                if (schedules_state[i] != STATE_ON) {
-                    ESP_LOGI(TAG, "Trigger %s scheduler %d", "on", i);
-                    on_action(schedules[i].action);
-                    schedules_state[i] = STATE_ON;
-                }
-            } else {
-                if (schedules_state[i] != STATE_OFF) {
-                    ESP_LOGI(TAG, "Trigger %s scheduler %d", "off", i);
-                    off_action(schedules[i].action);
-                    schedules_state[i] = STATE_OFF;
-                }
+    for (uint8_t i = 0; i < schedule_count; i++) {
+        uint32_t day = schedules[i].days.order[timeinfo.tm_wday];
+        if (day & (1 << timeinfo.tm_hour)) {
+            if (schedules_state[i] != STATE_ON) {
+                ESP_LOGI(TAG, "Trigger %s scheduler %d", "on", i);
+                on_action(schedules[i].action);
+                schedules_state[i] = STATE_ON;
+            }
+        } else {
+            if (schedules_state[i] != STATE_OFF) {
+                ESP_LOGI(TAG, "Trigger %s scheduler %d", "off", i);
+                off_action(schedules[i].action);
+                schedules_state[i] = STATE_OFF;
             }
         }
-
-        timeinfo.tm_sec = 0;
-        timeinfo.tm_min = 0;
-        time_t next = mktime(&timeinfo);
-        next += 3600;
-
-        xSemaphoreGive(mutex);
-
-        ulTaskNotifyTakeIndexed(0, pdTRUE, pdMS_TO_TICKS((next - now) * 1000));
     }
+}
+
+static void timer_callback(TimerHandle_t _timer)
+{
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    check_triggers();
+    xSemaphoreGive(mutex);
+
+    xTimerChangePeriod(timer, pdMS_TO_TICKS(ms_to_next_hour()), 0);
+    xTimerStart(timer, 0);
 }
 
 void scheduler_init(void)
@@ -184,12 +198,13 @@ void scheduler_init(void)
 
     mutex = xSemaphoreCreateMutex();
 
-    xTaskCreate(scheduler_task_func, "scheduler", 2 * 1024, NULL, 1, &scheduler_task);
+    timer = xTimerCreate("scheduler", pdMS_TO_TICKS(1000), pdFALSE, NULL, timer_callback);
+    xTimerStart(timer, 0);
 }
 
 void scheduler_execute_schedules(void)
 {
-    xTaskNotifyGive(scheduler_task);
+    xTimerChangePeriod(timer, 1, 0);
 }
 
 uint8_t scheduler_get_schedule_count(void)
@@ -216,7 +231,7 @@ void scheduler_set_schedule_config(const scheduler_schedule_t* _schedules, uint8
         memcpy((void*)schedules, _schedules, size);
         nvs_set_blob(nvs, NVS_SCHEDULES, (void*)schedules, size);
 
-        xTaskNotifyGive(scheduler_task);
+        check_triggers();
     } else {
         free((void*)schedules_state);
         free((void*)schedules);

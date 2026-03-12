@@ -2,16 +2,17 @@
 
 #include <esp_system.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#include <freertos/timers.h>
 
-static void restart_func(void* arg)
+static void reastart_timer_callback(TimerHandle_t timer)
 {
-    vTaskDelay(pdMS_TO_TICKS(5000));
     esp_restart();
-    vTaskDelete(NULL);
+
+    xTimerDelete(timer, 0);
 }
 
 void schedule_restart(void)
 {
-    xTaskCreate(restart_func, "restart", 2 * 1024, NULL, 10, NULL);
+    TimerHandle_t timer = xTimerCreate("restart", pdMS_TO_TICKS(5000), pdFALSE, NULL, reastart_timer_callback);
+    xTimerStart(timer, 0);
 }

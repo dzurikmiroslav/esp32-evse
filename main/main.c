@@ -5,6 +5,7 @@
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
 #include <freertos/task.h>
 #include <nvs_flash.h>
 #include <stdbool.h>
@@ -28,12 +29,28 @@
 #define AP_CONNECTION_TIMEOUT 60000  // 60sec
 #define RESET_HOLD_TIME       10000  // 10sec
 
-#define PRESS_BIT    BIT0
-#define RELEASED_BIT BIT1
+#define BUTTON_PRESSED_BIT  BIT0
+#define BUTTON_RELEASED_BIT BIT1
 
 static const char* TAG = "app_main";
 
-static TaskHandle_t user_input_task;
+typedef enum {
+    WIFI_STATE_IDLE,
+    WIFI_STATE_AP_CONNECTING,
+    WIFI_STATE_AP_CONNECTED,
+    WIFI_STATE_STA_CONNECTING,
+    WIFI_STATE_STA_CONNECTED,
+} wifi_state_t;
+
+static wifi_state_t wifi_state = WIFI_STATE_IDLE;
+
+static TickType_t wifi_ap_connect_start = 0;
+
+static EventGroupHandle_t button_event_group;
+
+static bool button_pressed = false;
+
+static TickType_t button_press_tick = 0;
 
 static evse_state_t led_state = -1;
 
@@ -50,64 +67,85 @@ static void reset_and_reboot(void)
     esp_restart();
 }
 
-static void wifi_event_task_func(void* param)
+static void wifi_event_process(void)
 {
-    EventBits_t mode_bits;
+    EventBits_t bits = xEventGroupGetBits(wifi_event_group);
 
-    while (true) {
+    switch (wifi_state) {
+    case WIFI_STATE_IDLE:
         led_set_off(LED_ID_WIFI);
-        mode_bits = xEventGroupWaitBits(wifi_event_group, WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
-        if (mode_bits & WIFI_AP_MODE_BIT) {
+        if (bits & WIFI_AP_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 100, 900);
-
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_AP_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) & WIFI_AP_CONNECTED_BIT) {
-                led_set_state(LED_ID_WIFI, 1900, 100);
-                do {
-                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_AP_DISCONNECTED_BIT));
-            } else {
-                if (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) {
-                    wifi_ap_stop();
-                }
-            }
-        } else if (mode_bits & WIFI_STA_MODE_BIT) {
+            wifi_ap_connect_start = xTaskGetTickCount();
+            wifi_state = WIFI_STATE_AP_CONNECTING;
+        } else if (bits & WIFI_STA_MODE_BIT) {
             led_set_state(LED_ID_WIFI, 500, 500);
-
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT | WIFI_AP_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_CONNECTED_BIT) {
-                led_set_on(LED_ID_WIFI);
-                do {
-                } while (!(xEventGroupWaitBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT, pdFALSE, pdFALSE, portMAX_DELAY) & WIFI_STA_DISCONNECTED_BIT));
-            }
+            wifi_state = WIFI_STATE_STA_CONNECTING;
         }
+        break;
+
+    case WIFI_STATE_AP_CONNECTING:
+        if (!(bits & WIFI_AP_MODE_BIT)) {
+            wifi_state = WIFI_STATE_IDLE;
+        } else if (bits & WIFI_AP_CONNECTED_BIT) {
+            led_set_state(LED_ID_WIFI, 1900, 100);
+            wifi_state = WIFI_STATE_AP_CONNECTED;
+        } else if ((xTaskGetTickCount() - wifi_ap_connect_start) >= pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) {
+            if (bits & WIFI_AP_MODE_BIT) {
+                wifi_ap_stop();
+            }
+            wifi_state = WIFI_STATE_IDLE;
+        }
+        break;
+
+    case WIFI_STATE_AP_CONNECTED:
+        if (bits & WIFI_AP_DISCONNECTED_BIT) {
+            wifi_state = WIFI_STATE_IDLE;
+        }
+        break;
+
+    case WIFI_STATE_STA_CONNECTING:
+        if (bits & WIFI_AP_MODE_BIT) {
+            wifi_state = WIFI_STATE_IDLE;
+        } else if (bits & WIFI_STA_CONNECTED_BIT) {
+            led_set_on(LED_ID_WIFI);
+            wifi_state = WIFI_STATE_STA_CONNECTED;
+        }
+        break;
+
+    case WIFI_STATE_STA_CONNECTED:
+        if ((bits & WIFI_STA_DISCONNECTED_BIT) || (bits & WIFI_AP_MODE_BIT)) {
+            wifi_state = WIFI_STATE_IDLE;
+        }
+        break;
     }
 }
 
-static void user_input_task_func(void* param)
+static void button_process(void)
 {
-    uint32_t notification;
+    EventBits_t bits = xEventGroupWaitBits(button_event_group, BUTTON_PRESSED_BIT | BUTTON_RELEASED_BIT, pdTRUE, pdFALSE, 0);
 
-    bool pressed = false;
-    TickType_t press_tick = 0;
+    if (bits & BUTTON_PRESSED_BIT) {
+        button_press_tick = xTaskGetTickCount();
+        button_pressed = true;
+    }
 
-    while (true) {
-        if (xTaskNotifyWait(0x00, 0xff, &notification, portMAX_DELAY)) {
-            if (notification & PRESS_BIT) {
-                press_tick = xTaskGetTickCount();
-                pressed = true;
-            }
-            if (notification & RELEASED_BIT) {
-                if (pressed) {  // sometimes after connect debug UART emit RELEASED_BIT without preceding PRESS_BIT
-                    if (xTaskGetTickCount() - press_tick >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
-                        evse_set_available(false);
-                        reset_and_reboot();
-                    } else {
-                        if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {
-                            wifi_ap_start();
-                        }
-                    }
+    if (bits & BUTTON_RELEASED_BIT) {
+        if (button_pressed) {
+            TickType_t duration = xTaskGetTickCount() - button_press_tick;
+
+            if (duration >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
+                // long press
+                evse_set_available(false);
+                reset_and_reboot();
+            } else {
+                // short press
+                if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {
+                    wifi_ap_start();
                 }
-                pressed = false;
             }
         }
+        button_pressed = false;
     }
 }
 
@@ -116,9 +154,9 @@ static void IRAM_ATTR button_isr_handler(void* arg)
     BaseType_t higher_task_woken = pdFALSE;
 
     if (gpio_get_level(board_config.button.gpio)) {
-        xTaskNotifyFromISR(user_input_task, RELEASED_BIT, eSetBits, &higher_task_woken);
+        xEventGroupSetBitsFromISR(button_event_group, BUTTON_RELEASED_BIT, &higher_task_woken);
     } else {
-        xTaskNotifyFromISR(user_input_task, PRESS_BIT, eSetBits, &higher_task_woken);
+        xEventGroupSetBitsFromISR(button_event_group, BUTTON_PRESSED_BIT, &higher_task_woken);
     }
 
     if (higher_task_woken) {
@@ -128,6 +166,8 @@ static void IRAM_ATTR button_isr_handler(void* arg)
 
 static void button_init(void)
 {
+    button_event_group = xEventGroupCreate();
+
     gpio_config_t conf = {
         .pin_bit_mask = BIT64(board_config.button.gpio),
         .mode = GPIO_MODE_INPUT,
@@ -283,11 +323,10 @@ void app_main(void)
 
     init_count--;
 
-    xTaskCreate(wifi_event_task_func, "wifi_event", 2 * 1024, NULL, 5, NULL);
-    xTaskCreate(user_input_task_func, "user_input", 2 * 1024, NULL, 5, &user_input_task);
-
     while (true) {
         evse_process();
+        button_process();
+        wifi_event_process();
         update_leds();
 
         vTaskDelay(pdMS_TO_TICKS(50));

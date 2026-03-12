@@ -3,7 +3,7 @@
 #include <driver/gpio.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#include <freertos/timers.h>
 #include <sys/param.h>
 
 #include "board_config.h"
@@ -25,29 +25,26 @@ static int16_t high_temp = 0;
 
 static uint8_t measure_err_count = 0;
 
-static void temp_sensor_task_func(void* param)
+static void temp_sensor_timer_callback(TimerHandle_t timer)
 {
-    while (true) {
-        int16_t temps[MAX_SENSORS];
+    int16_t temps[MAX_SENSORS];
 
-        esp_err_t err = ds18x20_measure_and_read_multi(board_config.onewire.gpio, sensor_addrs, sensor_count, temps);
-        if (err == ESP_OK) {
-            int16_t low = INT16_MAX;
-            int16_t high = INT16_MIN;
+    esp_err_t err = ds18x20_measure_and_read_multi(board_config.onewire.gpio, sensor_addrs, sensor_count, temps);
+    if (err == ESP_OK) {
+        int16_t low = INT16_MAX;
+        int16_t high = INT16_MIN;
 
-            for (int i = 0; i < sensor_count; i++) {
-                low = MIN(low, temps[i]);
-                high = MAX(high, temps[i]);
-            }
-
-            low_temp = low;
-            high_temp = high;
-            measure_err_count = 0;
-        } else {
-            ESP_LOGW(TAG, "Measure error %d (%s)", err, esp_err_to_name(err));
-            measure_err_count++;
+        for (int i = 0; i < sensor_count; i++) {
+            low = MIN(low, temps[i]);
+            high = MAX(high, temps[i]);
         }
-        vTaskDelay(pdMS_TO_TICKS(MEASURE_PERIOD));
+
+        low_temp = low;
+        high_temp = high;
+        measure_err_count = 0;
+    } else {
+        ESP_LOGW(TAG, "Measure error %d (%s)", err, esp_err_to_name(err));
+        measure_err_count++;
     }
 }
 
@@ -68,7 +65,9 @@ void temp_sensor_init(void)
         sensor_count = MIN(found, MAX_SENSORS);
 
         if (sensor_count > 0) {
-            xTaskCreate(temp_sensor_task_func, "temp_sensor", 2 * 1024, NULL, 5, NULL);
+            TimerHandle_t timer = xTimerCreate("temp_sensor", pdMS_TO_TICKS(MEASURE_PERIOD), pdTRUE, NULL, temp_sensor_timer_callback);
+            temp_sensor_timer_callback(timer);
+            xTimerStart(timer, 0);
         }
     }
 }

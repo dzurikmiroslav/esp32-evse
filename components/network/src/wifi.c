@@ -12,7 +12,8 @@
 #include <string.h>
 #include <sys/param.h>
 
-#define AP_SSID "evse-%02x%02x%02x"
+#define AP_SSID    "evse-%02x%02x%02x"
+#define AP_CHANNEL 11
 
 #define NVS_NAMESPACE      "wifi"
 #define NVS_ENABLED        "enabled"
@@ -148,6 +149,7 @@ static esp_err_t wifi_restart(void)
                 {
                     .max_connection = 1,
                     .authmode = WIFI_AUTH_OPEN,
+                    .channel = AP_CHANNEL,
                 },
         };
         wifi_get_ap_ssid((char*)ap_config.ap.ssid);

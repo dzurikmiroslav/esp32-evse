@@ -6,6 +6,7 @@ output_buffer_t* output_buffer_create(uint16_t size)
 {
     output_buffer_t* buffer = (output_buffer_t*)malloc(sizeof(output_buffer_t));
 
+    buffer->is_static = false;
     buffer->size = size;
     buffer->count = 0;
     buffer->data = (uint8_t*)malloc(sizeof(uint8_t) * size);
@@ -14,9 +15,22 @@ output_buffer_t* output_buffer_create(uint16_t size)
     return buffer;
 }
 
+output_buffer_t* output_buffer_create_static(uint16_t size, uint8_t* buf)
+{
+    output_buffer_t* buffer = (output_buffer_t*)malloc(sizeof(output_buffer_t));
+
+    buffer->is_static = true;
+    buffer->size = size;
+    buffer->count = 0;
+    buffer->data = buf;
+    buffer->append = buffer->data;
+
+    return buffer;
+}
+
 void output_buffer_delete(output_buffer_t* buffer)
 {
-    free((void*)buffer->data);
+    if (!buffer->is_static) free((void*)buffer->data);
     free((void*)buffer);
 }
 

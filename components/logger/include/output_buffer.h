@@ -9,9 +9,12 @@ typedef struct {
     uint16_t count;
     uint8_t* data;
     uint8_t* append;
+    bool is_static : 1;
 } output_buffer_t;
 
 output_buffer_t* output_buffer_create(uint16_t size);
+
+output_buffer_t* output_buffer_create_static(uint16_t size, uint8_t* buf);
 
 void output_buffer_delete(output_buffer_t* buffer);
 
