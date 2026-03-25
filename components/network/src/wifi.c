@@ -6,7 +6,6 @@
 #include <esp_netif.h>
 #include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
 #include <freertos/task.h>
 #include <nvs.h>
 #include <string.h>
@@ -55,7 +54,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             ESP_LOGI(TAG, "AP STA connected");
             wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*)event_data;
             ESP_LOGI(TAG, "WiFi AP " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
-            xEventGroupClearBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT);
             xEventGroupSetBits(wifi_event_group, WIFI_AP_CONNECTED_BIT);
         }
         if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
@@ -63,12 +61,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*)event_data;
             ESP_LOGI(TAG, "WiFi AP " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
             xEventGroupClearBits(wifi_event_group, WIFI_AP_CONNECTED_BIT);
-            xEventGroupSetBits(wifi_event_group, WIFI_AP_DISCONNECTED_BIT);
         }
         if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
             ESP_LOGI(TAG, "STA disconnected");
             xEventGroupClearBits(wifi_event_group, WIFI_STA_CONNECTED_BIT);
-            xEventGroupSetBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT);
             sta_try_connect();
         }
         if (event_id == WIFI_EVENT_STA_START) {
@@ -84,22 +80,13 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
                 ESP_LOGI(TAG, "WiFi STA got ip6: " IPV6STR, IPV62STR(event->ip6_info.ip));
             }
-            xEventGroupClearBits(wifi_event_group, WIFI_STA_DISCONNECTED_BIT);
             xEventGroupSetBits(wifi_event_group, WIFI_STA_CONNECTED_BIT);
         }
     }
 }
 
-static esp_err_t wifi_restart(void)
+static esp_err_t apply_mode_config(void)
 {
-    xEventGroupClearBits(wifi_event_group, WIFI_AP_CONNECTED_BIT | WIFI_STA_CONNECTED_BIT);
-
-    esp_err_t err = esp_wifi_stop();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Stop failed (%s)", esp_err_to_name(err));
-        return err;
-    }
-
     EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
 
     wifi_mode_t mode;
@@ -111,7 +98,7 @@ static esp_err_t wifi_restart(void)
         mode = WIFI_MODE_NULL;
     }
 
-    err = esp_wifi_set_mode(mode);
+    esp_err_t err = esp_wifi_set_mode(mode);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Set mode failed (%s)", esp_err_to_name(err));
         return err;
@@ -119,6 +106,9 @@ static esp_err_t wifi_restart(void)
 
     // STA config
     if (mode_bits & (WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT)) {
+        wifi_config_t prev_sta_config = { 0 };
+        esp_wifi_get_config(ESP_IF_WIFI_STA, &prev_sta_config);
+
         // STA config is needed also in AP mode for scanning
         wifi_config_t sta_config = {
             .sta =
@@ -133,12 +123,25 @@ static esp_err_t wifi_restart(void)
         if (mode_bits & WIFI_STA_MODE_BIT) {
             wifi_get_ssid((char*)sta_config.sta.ssid);
             wifi_get_password((char*)sta_config.sta.password);
+
+            if (!(mode_bits & WIFI_STA_CONNECTED_BIT)) {
+                // if connecting, disconnect
+                esp_wifi_disconnect();
+            }
         }
 
         err = esp_wifi_set_config(ESP_IF_WIFI_STA, &sta_config);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Set config failed (%s)", esp_err_to_name(err));
             return err;
+        }
+
+        if (mode_bits & WIFI_STA_MODE_BIT) {
+            if (strcmp((char*)prev_sta_config.sta.ssid, (char*)sta_config.sta.ssid) != 0) {
+                // changed SSID, disconnect and connect to new
+                esp_wifi_disconnect();
+            }
+            esp_wifi_connect();
         }
     }
 
@@ -157,14 +160,6 @@ static esp_err_t wifi_restart(void)
         err = esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Set config failed (%s)", esp_err_to_name(err));
-            return err;
-        }
-    }
-
-    if (mode != WIFI_MODE_NULL) {
-        err = esp_wifi_start();
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Start failed (%s)", esp_err_to_name(err));
             return err;
         }
     }
@@ -208,10 +203,13 @@ void wifi_init(void)
         ESP_ERROR_CHECK(esp_netif_set_ip_info(sta_netif, &ip_info));
     }
 
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
     if (wifi_is_enabled()) {
         xEventGroupSetBits(wifi_event_group, WIFI_STA_MODE_BIT);
     }
-    wifi_restart();
+    apply_mode_config();
 }
 
 esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
@@ -251,15 +249,14 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
     } else {
         xEventGroupClearBits(wifi_event_group, WIFI_STA_MODE_BIT);
     }
-
-    return wifi_restart();
+    return apply_mode_config();
 }
 
 wifi_scan_ap_list_t* wifi_scan_aps(void)
 {
     EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
     bool stopped = !(mode_bits & WIFI_AP_MODE_BIT || mode_bits & WIFI_STA_MODE_BIT);
-    bool sta_connecting = mode_bits & WIFI_STA_MODE_BIT && mode_bits & WIFI_STA_DISCONNECTED_BIT;
+    bool sta_connecting = mode_bits & WIFI_STA_MODE_BIT && !(mode_bits & WIFI_STA_CONNECTED_BIT);
 
     xEventGroupSetBits(wifi_event_group, WIFI_STA_SCAN_BIT);
 
@@ -383,7 +380,7 @@ void wifi_ap_start(void)
     ESP_LOGI(TAG, "Starting AP");
 
     xEventGroupSetBits(wifi_event_group, WIFI_AP_MODE_BIT);
-    wifi_restart();
+    apply_mode_config();
 }
 
 void wifi_ap_stop(void)
@@ -391,7 +388,7 @@ void wifi_ap_stop(void)
     ESP_LOGI(TAG, "Stopping AP");
 
     xEventGroupClearBits(wifi_event_group, WIFI_AP_MODE_BIT);
-    wifi_restart();
+    apply_mode_config();
 }
 
 bool wifi_is_ap(void)

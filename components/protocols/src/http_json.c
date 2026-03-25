@@ -307,7 +307,7 @@ cJSON* http_json_get_wifi_state(void)
     wifi_get_mac(true, str);
     cJSON_AddStringToObject(json, "apMac", str);
 
-    cJSON_AddBoolToObject(json, "apEnabled", (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) > 0);
+    cJSON_AddBoolToObject(json, "apEnabled", wifi_is_ap_enabled());
 
     wifi_get_ap_ssid(str);
     cJSON_AddStringToObject(json, "apSsid", str);

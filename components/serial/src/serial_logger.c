@@ -125,7 +125,7 @@ static void improv_send_device_url(uint8_t cmd)
 
 static void improv_handle_rpc_current_state(void)
 {
-    if (xEventGroupGetBits(wifi_event_group) & WIFI_STA_CONNECTED_BIT) {
+    if (wifi_is_sta_connected()) {
         improv_send_state(IMPROV_STATE_PROVISIONED);
         improv_send_device_url(IMPROV_CMD_CURRENT_STATE);
     } else {
@@ -215,7 +215,7 @@ static void improv_handle_rpc_wifi_settings(uint8_t* data, uint8_t data_len)
         strncpy(password, (char*)&data[4 + ssid_len], MIN(password_len, WIFI_PASSWORD_SIZE));
 
         if (wifi_set_config(true, ssid, password) == ESP_OK) {
-            if (xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(10000)) & WIFI_STA_CONNECTED_BIT) {
+            if (wifi_sta_wait_connect(pdMS_TO_TICKS(10000))) {
                 improv_send_state(IMPROV_STATE_PROVISIONED);
                 improv_send_device_url(IMPROV_CMD_WIFI_SETTINGS);
             } else {

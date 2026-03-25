@@ -69,29 +69,27 @@ static void reset_and_reboot(void)
 
 static void wifi_event_process(void)
 {
-    EventBits_t bits = xEventGroupGetBits(wifi_event_group);
-
     switch (wifi_state) {
     case WIFI_STATE_IDLE:
         led_set_off(LED_ID_WIFI);
-        if (bits & WIFI_AP_MODE_BIT) {
+        if (wifi_is_ap_enabled()) {
             led_set_state(LED_ID_WIFI, 100, 900);
             wifi_ap_connect_start = xTaskGetTickCount();
             wifi_state = WIFI_STATE_AP_CONNECTING;
-        } else if (bits & WIFI_STA_MODE_BIT) {
+        } else if (wifi_is_sta_enabled()) {
             led_set_state(LED_ID_WIFI, 500, 500);
             wifi_state = WIFI_STATE_STA_CONNECTING;
         }
         break;
 
     case WIFI_STATE_AP_CONNECTING:
-        if (!(bits & WIFI_AP_MODE_BIT)) {
+        if (!(wifi_is_ap_enabled())) {
             wifi_state = WIFI_STATE_IDLE;
-        } else if (bits & WIFI_AP_CONNECTED_BIT) {
+        } else if (wifi_is_ap_connected()) {
             led_set_state(LED_ID_WIFI, 1900, 100);
             wifi_state = WIFI_STATE_AP_CONNECTED;
         } else if ((xTaskGetTickCount() - wifi_ap_connect_start) >= pdMS_TO_TICKS(AP_CONNECTION_TIMEOUT)) {
-            if (bits & WIFI_AP_MODE_BIT) {
+            if (wifi_is_ap_enabled()) {
                 wifi_ap_stop();
             }
             wifi_state = WIFI_STATE_IDLE;
@@ -99,22 +97,22 @@ static void wifi_event_process(void)
         break;
 
     case WIFI_STATE_AP_CONNECTED:
-        if (bits & WIFI_AP_DISCONNECTED_BIT) {
+        if (!wifi_is_ap_connected()) {
             wifi_state = WIFI_STATE_IDLE;
         }
         break;
 
     case WIFI_STATE_STA_CONNECTING:
-        if (bits & WIFI_AP_MODE_BIT) {
+        if (wifi_is_ap_enabled()) {
             wifi_state = WIFI_STATE_IDLE;
-        } else if (bits & WIFI_STA_CONNECTED_BIT) {
+        } else if (wifi_is_sta_connected()) {
             led_set_on(LED_ID_WIFI);
             wifi_state = WIFI_STATE_STA_CONNECTED;
         }
         break;
 
     case WIFI_STATE_STA_CONNECTED:
-        if ((bits & WIFI_STA_DISCONNECTED_BIT) || (bits & WIFI_AP_MODE_BIT)) {
+        if ((!wifi_is_sta_connected()) || (wifi_is_ap_enabled())) {
             wifi_state = WIFI_STATE_IDLE;
         }
         break;
@@ -126,12 +124,14 @@ static void button_process(void)
     EventBits_t bits = xEventGroupWaitBits(button_event_group, BUTTON_PRESSED_BIT | BUTTON_RELEASED_BIT, pdTRUE, pdFALSE, 0);
 
     if (bits & BUTTON_PRESSED_BIT) {
+        // ESP_LOGI(TAG, "BTN pressed");
         button_press_tick = xTaskGetTickCount();
         button_pressed = true;
     }
 
     if (bits & BUTTON_RELEASED_BIT) {
         if (button_pressed) {
+            // ESP_LOGI(TAG, "BTN released");
             TickType_t duration = xTaskGetTickCount() - button_press_tick;
 
             if (duration >= pdMS_TO_TICKS(RESET_HOLD_TIME)) {
@@ -140,7 +140,7 @@ static void button_process(void)
                 reset_and_reboot();
             } else {
                 // short press
-                if (!(xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT)) {
+                if (!wifi_is_ap_enabled()) {
                     wifi_ap_start();
                 }
             }
@@ -254,18 +254,25 @@ void print_task_hwm(uint16_t interval)
 
         UBaseType_t task_count = uxTaskGetNumberOfTasks();
         TaskStatus_t* task_stats = (TaskStatus_t*)malloc(task_count * sizeof(TaskStatus_t));
+        uint32_t total_run_time;
+
         if (!task_stats) {
             ESP_LOGE(TAG, "Failed to allocate memory");
             return;
         }
 
-        task_count = uxTaskGetSystemState(task_stats, task_count, NULL);
+        task_count = uxTaskGetSystemState(task_stats, task_count, &total_run_time);
+        total_run_time /= 100UL;
 
         ESP_LOGI(TAG, "Task count: %d", task_count);
         for (UBaseType_t x = 0; x < task_count; x++) {
-            ESP_LOGI(TAG, "Task [%s] hwm: %u", task_stats[x].pcTaskName, task_stats[x].usStackHighWaterMark);
+            uint32_t perc = 0;
+            if (total_run_time) {
+                perc = task_stats[x].ulRunTimeCounter / total_run_time;
+            }
+            ESP_LOGI(TAG, "Task [%-16s] hwm: %u\ttime: %u\%\t", task_stats[x].pcTaskName, task_stats[x].usStackHighWaterMark, perc);
         }
-        ESP_LOGI(TAG, "------------------");
+        ESP_LOGI(TAG, "----------------------------------------");
 
         free((void*)task_stats);
     }

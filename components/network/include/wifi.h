@@ -11,17 +11,20 @@
 #define WIFI_SSID_SIZE     32
 #define WIFI_PASSWORD_SIZE 64
 
-#define WIFI_AP_CONNECTED_BIT     BIT0
-#define WIFI_AP_DISCONNECTED_BIT  BIT1
-#define WIFI_STA_CONNECTED_BIT    BIT2
-#define WIFI_STA_DISCONNECTED_BIT BIT3
-#define WIFI_AP_MODE_BIT          BIT4
-#define WIFI_STA_MODE_BIT         BIT5
-#define WIFI_STA_SCAN_BIT         BIT6
+#define WIFI_AP_CONNECTED_BIT  BIT0
+#define WIFI_STA_CONNECTED_BIT BIT1
+#define WIFI_AP_MODE_BIT       BIT2
+#define WIFI_STA_MODE_BIT      BIT3
+#define WIFI_STA_SCAN_BIT      BIT4
+
+#define wifi_is_ap_enabled()        ((xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) != 0)
+#define wifi_is_ap_connected()      ((xEventGroupGetBits(wifi_event_group) & WIFI_AP_CONNECTED_BIT) != 0)
+#define wifi_is_sta_enabled()       ((xEventGroupGetBits(wifi_event_group) & WIFI_STA_MODE_BIT) != 0)
+#define wifi_is_sta_connected()     ((xEventGroupGetBits(wifi_event_group) & WIFI_STA_CONNECTED_BIT) != 0)
+#define wifi_sta_wait_connect(time) ((xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, (time)) & WIFI_STA_CONNECTED_BIT) != 0)
 
 /**
- * @brief WiFi event group WIFI_AP_CONNECTED_BIT | WIFI_AP_DISCONNECTED_BIT | WIFI_STA_CONNECTED_BIT | WIFI_STA_DISCONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT |
- * WIFI_STA_SCAN_BIT
+ * @brief WiFi event group WIFI_AP_CONNECTED_BIT | WIFI_STA_CONNECTED_BIT | WIFI_AP_MODE_BIT | WIFI_STA_MODE_BIT | WIFI_STA_SCAN_BIT
  *
  */
 extern EventGroupHandle_t wifi_event_group;

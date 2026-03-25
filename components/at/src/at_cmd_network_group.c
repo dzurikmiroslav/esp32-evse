@@ -114,7 +114,7 @@ static cat_return_state vars_sta_static_config_write(const struct cat_command* c
 
 static int vars_ap_config_read(const struct cat_variable* var)
 {
-    var_u8_1 = (xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) > 0 ? 1 : 0;
+    var_u8_1 = wifi_is_ap_enabled();
     wifi_get_ap_ssid(var_str32_1);
 
     return 0;
@@ -149,7 +149,7 @@ static struct cat_variable vars_ap_config[] = {
 
 static int vars_sta_connection_read(const struct cat_variable* var)
 {
-    var_u8_1 = (xEventGroupGetBits(wifi_event_group) & WIFI_STA_CONNECTED_BIT) > 0 ? 1 : 0;
+    var_u8_1 = wifi_is_sta_connected();
     var_i8_1 = wifi_get_rssi();
 
     return 0;
@@ -168,7 +168,7 @@ static struct cat_variable vars_sta_connection[] = {
 
 static int var_ap_connection_connected_read(const struct cat_variable* var)
 {
-    var_u8_1 = (xEventGroupGetBits(wifi_event_group) & WIFI_AP_CONNECTED_BIT) > 0 ? 1 : 0;
+    var_u8_1 = wifi_is_ap_connected();
 
     return 0;
 }
