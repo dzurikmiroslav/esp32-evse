@@ -300,25 +300,25 @@ static void empty_config(board_cfg_t* config)
     config->rcm.test_gpio = -1;
     config->onewire.gpio = -1;
 
-    for (uint8_t i = 0; i < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX; i++) {
+    for (int i = 0; i < BOARD_CFG_ENERGY_METER_ADC_CHANNEL_MAX; i++) {
         config->energy_meter.cur_adc_channel[i] = -1;
         config->energy_meter.vlt_adc_channel[i] = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
+    for (int i = 0; i < BOARD_CFG_AUX_INPUT_COUNT; i++) {
         config->aux.inputs[i].gpio = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
+    for (int i = 0; i < BOARD_CFG_AUX_OUTPUT_COUNT; i++) {
         config->aux.outputs[i].gpio = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
+    for (int i = 0; i < BOARD_CFG_AUX_ANALOG_INPUT_COUNT; i++) {
         config->aux.analog_inputs[i].adc_channel = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
+    for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
         config->serials[i].rxd_gpio = -1;
         config->serials[i].txd_gpio = -1;
         config->serials[i].rts_gpio = -1;
     }
-    for (uint8_t i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
+    for (int i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
         config->ota.channels[i].name[0] = '\0';
         config->ota.channels[i].path = NULL;
     }

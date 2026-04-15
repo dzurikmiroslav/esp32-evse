@@ -54,7 +54,7 @@ static const uint8_t IMPROV_HEADER[] = { 'I', 'M', 'P', 'R', 'O', 'V', 0x01 };
 static void improv_append_checksum(uint8_t* data, uint16_t data_len)
 {
     uint8_t checksum = 0x00;
-    for (uint16_t i = 0; i < data_len; i++) {
+    for (int i = 0; i < data_len; i++) {
         checksum += data[i];
     }
 
@@ -264,7 +264,7 @@ static void serial_logger_task_func(void* param)
 
                 if (8 + data_len + 1 <= len) {
                     uint8_t checksum = 0x00;
-                    for (uint8_t i = 0; i < 9 + data_len; i++) {
+                    for (int i = 0; i < 9 + data_len; i++) {
                         checksum += buf[i];
                     }
 

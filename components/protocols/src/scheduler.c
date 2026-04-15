@@ -125,7 +125,7 @@ static void check_triggers(void)
 
     ESP_LOGD(TAG, "Check triggers %02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
 
-    for (uint8_t i = 0; i < schedule_count; i++) {
+    for (int i = 0; i < schedule_count; i++) {
         uint32_t day = schedules[i].days.order[timeinfo.tm_wday];
         if (day & (1 << timeinfo.tm_hour)) {
             if (schedules_state[i] != STATE_ON) {

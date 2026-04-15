@@ -37,6 +37,8 @@
         }                                  \
     } while (0)
 
+ESP_STATIC_ASSERT(CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH >= 4096, "Need FreeRTOS timer task stack depth at least 4096");  // for wifi_set_config_timer_callback
+
 typedef struct {
     bool enabled : 1;
     bool ssid_blank : 1;
@@ -570,7 +572,7 @@ cJSON* http_json_get_config_scheduler(void)
     cJSON* schedules_json = cJSON_CreateArray();
     uint8_t schedule_count = scheduler_get_schedule_count();
     scheduler_schedule_t* schedules = scheduler_get_schedules();
-    for (uint8_t i = 0; i < schedule_count; i++) {
+    for (int i = 0; i < schedule_count; i++) {
         cJSON* schedule_json = cJSON_CreateObject();
         cJSON_AddStringToObject(schedule_json, "action", scheduler_action_to_str(schedules[i].action));
 

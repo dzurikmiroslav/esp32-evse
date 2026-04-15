@@ -1,6 +1,8 @@
 #include "at.h"
 #include "esp_log.h"
 
+ESP_STATIC_ASSERT(CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS >= 2, "Need FreeRTOS thread local storage pointers at least 2");
+
 void at_task_context_init(at_task_context_t* context, struct cat_object* at)
 {
     context->at = at;
