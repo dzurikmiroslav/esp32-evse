@@ -2,6 +2,7 @@
 
 #include <cJSON.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "lauxlib.h"
 #include "lua.h"

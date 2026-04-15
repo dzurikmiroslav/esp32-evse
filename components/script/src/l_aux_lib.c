@@ -1,10 +1,5 @@
 #include "l_aux_lib.h"
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <math.h>
-#include <string.h>
-
 #include "aux_io.h"
 #include "lauxlib.h"
 #include "lua.h"

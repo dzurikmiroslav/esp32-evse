@@ -1,9 +1,5 @@
 #include "l_energy_meter_lib.h"
 
-#include <esp_log.h>
-#include <math.h>
-#include <string.h>
-
 #include "energy_meter.h"
 #include "lauxlib.h"
 #include "lua.h"

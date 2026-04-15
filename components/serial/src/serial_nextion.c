@@ -707,7 +707,7 @@ esp_err_t serial_nextion_get_info(serial_nextion_info_t* info)
 
 static char upload_read_response(void)
 {
-    for (uint8_t i = 0; i < 50; i++) {  // 50 * 100 ms
+    for (int i = 0; i < 50; i++) {  // 50 * 100 ms
         char res;
         int len = uart_read_bytes(port, &res, sizeof(char), pdMS_TO_TICKS(100));
         if (len > 0) {
@@ -720,7 +720,7 @@ static char upload_read_response(void)
 
 static size_t upload_read_skip_to(void)
 {
-    for (uint8_t i = 0; i < 50; i++) {  // 50 * 100 ms
+    for (int i = 0; i < 50; i++) {  // 50 * 100 ms
         char buf[10];
         int len = uart_read_bytes(port, buf, sizeof(buf), pdMS_TO_TICKS(100));
         if (len >= 4) {

@@ -13,7 +13,8 @@
 #define PILOT_PWM_DUTY_RES   LEDC_TIMER_10_BIT
 #define PILOT_PWM_MAX_DUTY   1023
 
-#define PILOT_SAMPLES 64
+#define PILOT_SAMPLES       250  // during 1000us pilot period, should be divisible
+#define PILOT_HI_LO_SAMPLES 3
 
 static const char* TAG = "pilot";
 
@@ -79,20 +80,47 @@ void pilot_set_amps(uint16_t amps)
 
 void pilot_measure(pilot_voltage_t* up_voltage, bool* down_voltage_n12)
 {
-    int high = 0;
-    int low = 3300;
+    int high_samples[PILOT_HI_LO_SAMPLES];
+    int low_samples[PILOT_HI_LO_SAMPLES];
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < PILOT_HI_LO_SAMPLES; i++) {
+        high_samples[i] = 0;
+        low_samples[i] = 3300;
+    }
+
+    for (int i = 0; i < PILOT_SAMPLES; i++) {
         int adc_reading;
         adc_oneshot_read(adc_handle, board_config.pilot.adc_channel, &adc_reading);
 
-        if (adc_reading > high) {
-            high = adc_reading;
-        } else if (adc_reading < low) {
-            low = adc_reading;
+        for (int j = 0; j < PILOT_HI_LO_SAMPLES; j++) {
+            if (adc_reading > high_samples[j]) {
+                for (int m = PILOT_HI_LO_SAMPLES - 1; m > j; m--) high_samples[m] = high_samples[m - 1];
+                high_samples[j] = adc_reading;
+                break;
+            }
         }
-        ets_delay_us(100);
+
+        for (int j = 0; j < PILOT_HI_LO_SAMPLES; j++) {
+            if (adc_reading < low_samples[j]) {
+                for (int m = PILOT_HI_LO_SAMPLES - 1; m > j; m--) low_samples[m] = low_samples[m - 1];
+                low_samples[j] = adc_reading;
+                break;
+            }
+        }
+
+        ets_delay_us(1000 / PILOT_SAMPLES);  // 1000us pilot period
     }
+
+    int high = 0;
+    int low = 0;
+
+    for (int i = 0; i < PILOT_HI_LO_SAMPLES; i++) {
+        high += high_samples[i];
+        low += low_samples[i];
+    }
+
+    high /= PILOT_HI_LO_SAMPLES;
+    low /= PILOT_HI_LO_SAMPLES;
 
     adc_cali_raw_to_voltage(adc_cali_handle, high, &high);
     adc_cali_raw_to_voltage(adc_cali_handle, low, &low);

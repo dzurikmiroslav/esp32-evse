@@ -13,13 +13,8 @@
 
 #define WIFI_AP_CONNECTED_BIT  BIT0
 #define WIFI_STA_CONNECTED_BIT BIT1
-#define WIFI_AP_MODE_BIT       BIT2
-#define WIFI_STA_MODE_BIT      BIT3
-#define WIFI_STA_SCAN_BIT      BIT4
 
-#define wifi_is_ap_enabled()        ((xEventGroupGetBits(wifi_event_group) & WIFI_AP_MODE_BIT) != 0)
 #define wifi_is_ap_connected()      ((xEventGroupGetBits(wifi_event_group) & WIFI_AP_CONNECTED_BIT) != 0)
-#define wifi_is_sta_enabled()       ((xEventGroupGetBits(wifi_event_group) & WIFI_STA_MODE_BIT) != 0)
 #define wifi_is_sta_connected()     ((xEventGroupGetBits(wifi_event_group) & WIFI_STA_CONNECTED_BIT) != 0)
 #define wifi_sta_wait_connect(time) ((xEventGroupWaitBits(wifi_event_group, WIFI_STA_CONNECTED_BIT, pdFALSE, pdFALSE, (time)) & WIFI_STA_CONNECTED_BIT) != 0)
 
@@ -157,5 +152,9 @@ void wifi_get_static_gateway(char* str);
 void wifi_get_static_netmask(char* str);
 
 esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask);
+
+bool wifi_is_ap_enabled(void);
+
+bool wifi_is_sta_enabled(void);
 
 #endif /* WIFI_H_ */

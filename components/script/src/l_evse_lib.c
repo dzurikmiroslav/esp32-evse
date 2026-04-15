@@ -1,8 +1,6 @@
 #include "l_evse_lib.h"
 
-#include <esp_log.h>
 #include <math.h>
-#include <string.h>
 
 #include "energy_meter.h"  //TODO remove
 #include "evse.h"

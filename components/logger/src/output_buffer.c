@@ -1,6 +1,7 @@
 #include "output_buffer.h"
 
 #include <memory.h>
+#include <stdlib.h>
 
 output_buffer_t* output_buffer_create(uint16_t size)
 {

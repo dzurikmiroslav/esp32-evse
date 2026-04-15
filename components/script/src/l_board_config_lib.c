@@ -1,10 +1,5 @@
 #include "l_board_config_lib.h"
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <math.h>
-#include <string.h>
-
 #include "board_config.h"
 #include "lauxlib.h"
 #include "lua.h"
