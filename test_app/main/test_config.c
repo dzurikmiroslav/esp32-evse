@@ -1,4 +1,4 @@
-#include <soc/uart_channel.h>
+#include <soc/uart_pins.h>
 #include <sys/stat.h>
 #include <unity.h>
 #include <unity_fixture.h>
