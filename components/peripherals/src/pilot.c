@@ -108,7 +108,7 @@ void pilot_measure(pilot_voltage_t* up_voltage, bool* down_voltage_n12)
             }
         }
 
-        ets_delay_us(1000 / PILOT_SAMPLES); //1000us pilot period
+        ets_delay_us(1000 / PILOT_SAMPLES);  // 1000us pilot period
     }
 
     int high = 0;

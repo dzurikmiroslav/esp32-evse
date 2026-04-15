@@ -2,3 +2,4 @@
 dependencies:
   joltwallet/littlefs: "~=1.14.4"
   espressif/mdns: "^1.8.2"
+  espressif/cjson: "^1.7.19"
