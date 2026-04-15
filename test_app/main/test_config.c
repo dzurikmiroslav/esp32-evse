@@ -100,8 +100,8 @@ TEST(config, minimal)
 
     TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, board_config.serials[0].type);  // because CONFIG_ESP_CONSOLE_UART
     TEST_ASSERT_EQUAL_STRING("UART via USB", board_config.serials[0].name);
-    TEST_ASSERT_EQUAL(UART_NUM_0_RXD_DIRECT_GPIO_NUM, board_config.serials[0].rxd_gpio);
-    TEST_ASSERT_EQUAL(UART_NUM_0_TXD_DIRECT_GPIO_NUM, board_config.serials[0].txd_gpio);
+    TEST_ASSERT_EQUAL(U0RXD_GPIO_NUM, board_config.serials[0].rxd_gpio);
+    TEST_ASSERT_EQUAL(U0TXD_GPIO_NUM, board_config.serials[0].txd_gpio);
     TEST_ASSERT_EQUAL(-1, board_config.serials[0].rts_gpio);
 
     TEST_ASSERT_EQUAL(BOARD_CFG_SERIAL_TYPE_NONE, board_config.serials[1].type);
