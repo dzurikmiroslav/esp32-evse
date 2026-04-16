@@ -11,7 +11,7 @@ iniconfig==2.0.0
 intelhex==2.3.0
 packaging==23.2
 pexpect==4.9.0
-pluggy==1.3.0
+pluggy==1.5.0
 ptyprocess==0.7.0
 pycparser==2.21
 pyelftools==0.30
