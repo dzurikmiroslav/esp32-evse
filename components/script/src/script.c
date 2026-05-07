@@ -286,10 +286,6 @@ void script_file_changed(const char* path)
     }
 }
 
-void script_serial_changed(void) {
-
-}
-
 script_component_param_type_t script_str_to_component_param_type(const char* str)
 {
     if (!strcmp(str, "string")) {

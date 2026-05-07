@@ -8,7 +8,7 @@ static int vars_serial_read(const struct cat_variable* var, const struct cat_com
 {
     serial_id_t id = cmd->name[strlen(cmd->name)] - '0';
 
-    strcpy(var_str32_1,  serial_get_mode(id));
+    strcpy(var_str32_1, serial_get_mode(id));
     var_i32_1 = serial_get_baud_rate(id);
     var_u8_2 = serial_get_data_bits(id);
     var_u8_3 = serial_get_stop_bits(id);
