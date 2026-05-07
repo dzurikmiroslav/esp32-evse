@@ -1,7 +1,5 @@
 #include "vars.h"
 
-#include <stdint.h>
-
 int8_t var_i8_1;
 
 uint8_t var_u8_1;

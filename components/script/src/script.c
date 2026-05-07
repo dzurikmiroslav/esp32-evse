@@ -132,7 +132,7 @@ static void script_task_func(void* param)
 
         int top = lua_gettop(L);
         if (top != 0) {
-            ESP_LOGW(TAG, "top is %d, %d", top, lua_type(L, top));
+            ESP_LOGW(TAG, "Top is %d, %d", top, lua_type(L, top));
         }
 
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -284,6 +284,10 @@ void script_file_changed(const char* path)
     if (auto_reload && (path_has_suffix(path, ".lua") || path_has_suffix(path, ".luac"))) {
         script_reload();
     }
+}
+
+void script_serial_changed(void) {
+
 }
 
 script_component_param_type_t script_str_to_component_param_type(const char* str)

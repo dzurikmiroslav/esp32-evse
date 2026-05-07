@@ -261,8 +261,6 @@ esp_err_t wifi_set_config(bool enabled, const char* ssid, const char* password)
 
 wifi_scan_ap_list_t* wifi_scan_aps(void)
 {
-    EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
-
     if (!ap_enabled && !sta_enabled) {
         // need to start STA
         wifi_config_t sta_config = {

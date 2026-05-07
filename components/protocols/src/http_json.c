@@ -384,7 +384,7 @@ cJSON* http_json_get_config_serial(void)
     for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
         if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
             cJSON* serial_json = cJSON_CreateObject();
-            cJSON_AddStringToObject(serial_json, "mode", serial_mode_to_str(serial_get_mode(i)));
+            cJSON_AddStringToObject(serial_json, "mode", serial_get_mode(i));
             cJSON_AddNumberToObject(serial_json, "baudRate", serial_get_baud_rate(i));
             cJSON_AddStringToObject(serial_json, "dataBits", serial_data_bits_to_str(serial_get_data_bits(i)));
             cJSON_AddStringToObject(serial_json, "stopBits", serial_stop_bits_to_str(serial_get_stop_bits(i)));
@@ -398,15 +398,13 @@ cJSON* http_json_get_config_serial(void)
 
 esp_err_t http_json_set_config_serial(cJSON* json)
 {
-    serial_reset_config();
-
     cJSON* serial_json = json->child;
 
     for (int i = 0; i < BOARD_CFG_SERIAL_COUNT; i++) {
         if (board_config.serials[i].type != BOARD_CFG_SERIAL_TYPE_NONE) {
             if (!serial_json) return ESP_ERR_INVALID_SIZE;
 
-            serial_mode_t mode = serial_str_to_mode(cJSON_GetObjectItem(serial_json, "mode")->valuestring);
+            const char* mode = cJSON_GetObjectItem(serial_json, "mode")->valuestring;
             int baud_rate = cJSON_GetNumberValue(cJSON_GetObjectItem(serial_json, "baudRate"));
             uart_word_length_t data_bits = serial_str_to_data_bits(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "dataBits")));
             uart_word_length_t stop_bits = serial_str_to_stop_bits(cJSON_GetStringValue(cJSON_GetObjectItem(serial_json, "stopBits")));

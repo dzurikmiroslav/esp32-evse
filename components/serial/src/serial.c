@@ -2,16 +2,20 @@
 
 #include <driver/gpio.h>
 #include <driver/uart.h>
+#include <driver/uart_vfs.h>
 #include <esp_log.h>
+#include <fcntl.h>
 #include <nvs.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "at_task.h"
 #include "board_config.h"
-#include "serial_at.h"
-#include "serial_logger.h"
-#include "serial_modbus.h"
+#include "logger_task.h"
+#include "modbus_rtu_task.h"
+#include "nextion_task.h"
+#include "serial_mode.h"
 #include "serial_nextion.h"
-#include "serial_script.h"
 
 #define BAUD_RATE_MIN 300
 #define BAUD_RATE_MAX 1000000
@@ -27,59 +31,161 @@ static const char* TAG = "serial";
 
 static nvs_handle_t nvs;
 
-static serial_mode_t modes[SERIAL_ID_MAX];
+serial_mode_conf_t serial_mode_configs[] = {
+    {
+        .name = SERIAL_MODE_LOG_NAME,
+        .start = logger_task_start,
+        .stop = logger_task_stop,
+        .rx_buffer_size = LOGGER_TASK_RX_BUFFER_SIZE,
+        .tx_buffer_size = LOGGER_TASK_TX_BUFFER_SIZE,
+    },
+    {
+        .name = SERIAL_MODE_AT_NAME,
+        .start = at_task_start,
+        .stop = at_task_stop,
+        .rx_buffer_size = AT_TASK_RX_BUFFER_SIZE,
+        .tx_buffer_size = AT_TASK_TX_BUFFER_SIZE,
+    },
+    {
+        .name = SERIAL_MODE_NEXTION_NAME,
+        .start = nextion_task_start,
+        .stop = nextion_task_stop,
+        .rx_buffer_size = NEXTION_TASK_RX_BUFFER_SIZE,
+        .tx_buffer_size = NEXTION_TASK_TX_BUFFER_SIZE,
+    },
+    {
+        .name = SERIAL_MODE_MODBUS_NAME,
+        .start = modbus_rtu_task_start,
+        .stop = modbus_rtu_task_stop,
+        .rx_buffer_size = MODBUS_RTU_TASK_RX_BUFFER_SIZE,
+        .tx_buffer_size = MODBUS_RTU_TASK_TX_BUFFER_SIZE,
+    },
+    {
+        .name = SERIAL_MODE_SCRIPT_NAME,
+        .start = NULL,
+        .stop = NULL,
+        .rx_buffer_size = 256,
+        .tx_buffer_size = 0,
+    },
+};
 
-static void serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
+serial_task_t serial_tasks[SERIAL_ID_MAX];
+
+int serial_port_find(const char* mode_name)
 {
+    for (int i = 0; i < SERIAL_ID_MAX; i++) {
+        if (serial_tasks[i].mode && strcmp(mode_name, serial_tasks[i].mode->name) == 0) return i;
+    }
+
+    return -1;
+}
+
+int serial_fd_find(const char* mode_name)
+{
+    for (int i = 0; i < SERIAL_ID_MAX; i++) {
+        if (serial_tasks[i].mode && strcmp(mode_name, serial_tasks[i].mode->name) == 0) return serial_tasks[i].fd;
+    }
+
+    return -1;
+}
+
+static serial_mode_conf_t* mode_config_find(const char* name)
+{
+    if (!name) return NULL;
+
+    for (int i = 0; i < sizeof(serial_mode_configs) / sizeof(serial_mode_conf_t); i++) {
+        if (strcmp(name, serial_mode_configs[i].name) == 0) return &serial_mode_configs[i];
+    }
+
+    return NULL;
+}
+
+static esp_err_t serial_start(serial_id_t id, uint32_t baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
+{
+    esp_err_t err;
     // from ESP-IDF 5.5 need set to uart_set_pin after all uart_driver_delete
     if (board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_UART) {
-        ESP_ERROR_CHECK(uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+        err = uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     } else {
-        ESP_ERROR_CHECK(uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, board_config.serials[id].rts_gpio, UART_PIN_NO_CHANGE));
+        err = uart_set_pin(id, board_config.serials[id].txd_gpio, board_config.serials[id].rxd_gpio, board_config.serials[id].rts_gpio, UART_PIN_NO_CHANGE);
     }
 
-    switch (modes[id]) {
-    case SERIAL_MODE_LOG:
-        serial_logger_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
-        break;
-    case SERIAL_MODE_MODBUS:
-        serial_modbus_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
-        break;
-    case SERIAL_MODE_NEXTION:
-        serial_nextion_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
-        break;
-    case SERIAL_MODE_SCRIPT:
-        serial_script_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
-        break;
-    case SERIAL_MODE_AT:
-        serial_at_start(id, baud_rate, data_bits, stop_bits, parity, board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485);
-        break;
-    default:
-        break;
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "uart_set_pin() returned 0x%x", err);
+        return err;
     }
+
+    if (serial_tasks[id].mode) {
+        uart_config_t uart_config = {
+            .baud_rate = baud_rate,
+            .data_bits = data_bits,
+            .parity = parity,
+            .stop_bits = stop_bits,
+            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+            .rx_flow_ctrl_thresh = 122,
+            .source_clk = UART_SCLK_DEFAULT,
+        };
+
+        err = uart_param_config(id, &uart_config);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_param_config() returned 0x%x", err);
+            return err;
+        }
+
+        err = uart_driver_install(id, serial_tasks[id].mode->rx_buffer_size, serial_tasks[id].mode->tx_buffer_size, 0, NULL, 0);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_driver_install() returned 0x%x", err);
+            return err;
+        }
+
+        if (board_config.serials[id].type == BOARD_CFG_SERIAL_TYPE_RS485) {
+            err = uart_set_mode(id, UART_MODE_RS485_HALF_DUPLEX);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "uart_set_mode() returned 0x%x", err);
+                return err;
+            }
+            err = uart_set_rx_timeout(id, 3);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "uart_set_rx_timeout() returned 0x%x", err);
+                return err;
+            }
+        }
+
+        char file_name[16];
+        sprintf(file_name, "/dev/uart/%d", id);
+
+        serial_tasks[id].fd = open(file_name, O_RDWR | O_NONBLOCK);
+        if (serial_tasks[id].fd == -1) {
+            ESP_LOGE(TAG, "Cant open file %s", file_name);
+            return ESP_ERR_NOT_FOUND;
+        }
+
+        if (serial_tasks[id].mode->start) {
+            serial_tasks[id].task = serial_tasks[id].mode->start(serial_tasks[id].fd);
+        } else {
+            serial_tasks[id].task = NULL;
+        }
+    }
+
+    return ESP_OK;
 }
 
 static void serial_stop(serial_id_t id)
 {
-    if (modes[id] != SERIAL_MODE_NONE) {
-        switch (modes[id]) {
-        case SERIAL_MODE_LOG:
-            serial_logger_stop();
-            break;
-        case SERIAL_MODE_MODBUS:
-            serial_modbus_stop();
-            break;
-        case SERIAL_MODE_NEXTION:
-            serial_nextion_stop();
-            break;
-        case SERIAL_MODE_SCRIPT:
-            serial_script_stop();
-            break;
-        case SERIAL_MODE_AT:
-            serial_at_stop();
-            break;
-        default:
-            break;
+    if (serial_tasks[id].mode) {
+        if (serial_tasks[id].task) {
+            serial_tasks[id].mode->stop(serial_tasks[id].task);
+            serial_tasks[id].task = NULL;
+        }
+
+        if (serial_tasks[id].fd != -1) {
+            close(serial_tasks[id].fd);
+            serial_tasks[id].fd = -1;
+        }
+
+        esp_err_t err = uart_driver_delete(id);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "uart_driver_delete() returned 0x%x", err);
         }
 
         // make sure the gpio are in virgin state, before any driver installation
@@ -91,29 +197,40 @@ static void serial_stop(serial_id_t id)
 
 void serial_init(void)
 {
+    uart_vfs_dev_register();
+
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
     for (serial_id_t id = SERIAL_ID_1; id < SERIAL_ID_MAX; id++) {
         if (board_config.serials[id].type != BOARD_CFG_SERIAL_TYPE_NONE) {
-            uint8_t u8 = id == SERIAL_ID_1 ? SERIAL_MODE_LOG : SERIAL_MODE_NONE;  // SERIAL_ID_1 is default system log
+            //  uart_vfs_dev_use_nonblocking(id);
+            uart_vfs_dev_use_driver(id);
+            uart_vfs_dev_port_set_rx_line_endings(id, ESP_LINE_ENDINGS_LF);
+            uart_vfs_dev_port_set_tx_line_endings(id, ESP_LINE_ENDINGS_LF);
+
             char key[12];
             sprintf(key, NVS_MODE, id);
-            nvs_get_u8(nvs, key, &u8);
-            modes[id] = u8;
+
+            size_t mode_name_len = SEIAL_MODE_NAME_SIZE;
+            char mode_name[SEIAL_MODE_NAME_SIZE];
+            mode_name[0] = '\0';
+
+            nvs_get_str(nvs, key, mode_name, &mode_name_len);
+            serial_tasks[id].mode = mode_config_find(mode_name);
 
             int baud_rate = serial_get_baud_rate(id);
             uart_word_length_t data_bits = serial_get_data_bits(id);
             uart_stop_bits_t stop_bits = serial_get_stop_bits(id);
             uart_parity_t parity = serial_get_parity(id);
 
-            serial_start(id, baud_rate, data_bits, stop_bits, parity);
+            ESP_ERROR_CHECK(serial_start(id, baud_rate, data_bits, stop_bits, parity));
         }
     }
 }
 
-serial_mode_t serial_get_mode(serial_id_t id)
+const char* serial_get_mode(serial_id_t id)
 {
-    return modes[id];
+    return serial_tasks[id].mode ? serial_tasks[id].mode->name : "none";
 }
 
 int serial_get_baud_rate(serial_id_t id)
@@ -152,22 +269,7 @@ uart_parity_t serial_get_parity(serial_id_t id)
     return value;
 }
 
-void serial_reset_config(void)
-{
-    for (serial_id_t i = 0; i < SERIAL_ID_MAX; i++) {
-        serial_stop(i);
-
-        modes[i] = SERIAL_MODE_NONE;
-
-        char key[12];
-        sprintf(key, NVS_MODE, i);
-        nvs_set_u8(nvs, key, modes[i]);
-    }
-
-    nvs_commit(nvs);
-}
-
-esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
+esp_err_t serial_set_config(serial_id_t id, const char* mode, int baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity)
 {
     if (id < 0 || id >= SERIAL_ID_MAX) {
         ESP_LOGE(TAG, "Serial id out of range");
@@ -179,19 +281,7 @@ esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, u
         return ESP_ERR_NOT_SUPPORTED;
     }
 
-    if (mode < 0 || mode >= SERIAL_MODE_MAX) {
-        ESP_LOGE(TAG, "Mode out of range");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (mode != SERIAL_MODE_NONE) {
-        for (serial_id_t i = 0; i < SERIAL_ID_MAX; i++) {
-            if (i != id && modes[i] == mode) {
-                ESP_LOGE(TAG, "Mode already used on other serial");
-                return ESP_ERR_INVALID_ARG;
-            }
-        }
-    }
+    serial_mode_conf_t* mode_config = mode_config_find(mode);
 
     if (baud_rate < BAUD_RATE_MIN || baud_rate > BAUD_RATE_MAX) {
         ESP_LOGE(TAG, "Baud rate out of range");
@@ -215,7 +305,7 @@ esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, u
 
     char key[12];
     sprintf(key, NVS_MODE, id);
-    nvs_set_u8(nvs, key, mode);
+    nvs_set_str(nvs, key, mode_config ? mode_config->name : "none");
 
     sprintf(key, NVS_BAUD_RATE, id);
     nvs_set_i32(nvs, key, baud_rate);
@@ -233,49 +323,9 @@ esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, u
 
     serial_stop(id);
 
-    modes[id] = mode;
+    serial_tasks[id].mode = mode_config;
 
-    serial_start(id, baud_rate, data_bits, stop_bits, parity);
-
-    return ESP_OK;
-}
-
-const char* serial_mode_to_str(serial_mode_t mode)
-{
-    switch (mode) {
-    case SERIAL_MODE_LOG:
-        return "log";
-    case SERIAL_MODE_MODBUS:
-        return "modbus";
-    case SERIAL_MODE_NEXTION:
-        return "nextion";
-    case SERIAL_MODE_SCRIPT:
-        return "script";
-    case SERIAL_MODE_AT:
-        return "at";
-    default:
-        return "none";
-    }
-}
-
-serial_mode_t serial_str_to_mode(const char* str)
-{
-    if (!strcmp(str, "log")) {
-        return SERIAL_MODE_LOG;
-    }
-    if (!strcmp(str, "modbus")) {
-        return SERIAL_MODE_MODBUS;
-    }
-    if (!strcmp(str, "nextion")) {
-        return SERIAL_MODE_NEXTION;
-    }
-    if (!strcmp(str, "script")) {
-        return SERIAL_MODE_SCRIPT;
-    }
-    if (!strcmp(str, "at")) {
-        return SERIAL_MODE_AT;
-    }
-    return SERIAL_MODE_NONE;
+    return serial_start(id, baud_rate, data_bits, stop_bits, parity);
 }
 
 const char* serial_data_bits_to_str(uart_word_length_t bits)

@@ -1,18 +1,9 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#define LOGGER_SERIAL_BIT BIT0
-
-/**
- * @brief Logger event group LOGGER_SERIAL_BIT
- *
- */
-extern EventGroupHandle_t logger_event_group;
 
 /**
  * @brief Initialize logger

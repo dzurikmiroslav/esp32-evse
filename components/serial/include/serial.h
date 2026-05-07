@@ -18,20 +18,6 @@ typedef enum {
 } serial_id_t;
 
 /**
- * @brief Serial modes
- *
- */
-typedef enum {
-    SERIAL_MODE_NONE,
-    SERIAL_MODE_LOG,
-    SERIAL_MODE_MODBUS,
-    SERIAL_MODE_NEXTION,
-    SERIAL_MODE_SCRIPT,
-    SERIAL_MODE_AT,
-    SERIAL_MODE_MAX
-} serial_mode_t;
-
-/**
  * @brief Initialize serial
  *
  */
@@ -41,9 +27,9 @@ void serial_init(void);
  * @brief Get serial mode
  *
  * @param id serial id
- * @return serial_mode_t
+ * @return const char*
  */
-serial_mode_t serial_get_mode(serial_id_t id);
+const char* serial_get_mode(serial_id_t id);
 
 /**
  * @brief Get baud rate
@@ -78,12 +64,6 @@ uart_stop_bits_t serial_get_stop_bits(serial_id_t id);
 uart_parity_t serial_get_parity(serial_id_t id);
 
 /**
- * @brief Reseal all serials config, before calling serial_set_config
- *
- */
-void serial_reset_config(void);
-
-/**
  * @brief Set serial config
  *
  * @param id
@@ -95,23 +75,7 @@ void serial_reset_config(void);
  * @return esp_err_t
  */
 
-esp_err_t serial_set_config(serial_id_t id, serial_mode_t mode, int baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity);
-
-/**
- * @brief Format to string value
- *
- * @param mode
- * @return const char*
- */
-const char* serial_mode_to_str(serial_mode_t mode);
-
-/**
- * @brief Parse from string value
- *
- * @param str
- * @return serial_mode_t
- */
-serial_mode_t serial_str_to_mode(const char* str);
+esp_err_t serial_set_config(serial_id_t id, const char* mode, int baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity);
 
 /**
  * @brief Format to string value
