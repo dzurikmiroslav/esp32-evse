@@ -26,6 +26,4 @@ void nextion_task_pause(TaskHandle_t task);
 
 void nextion_task_resume(TaskHandle_t task);
 
-int nextion_task_get_fd(TaskHandle_t task);
-
 #endif /* NEXTION_TASK_H_ */

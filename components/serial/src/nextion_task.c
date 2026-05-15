@@ -15,7 +15,8 @@
 #include "temp_sensor.h"
 #include "wifi.h"
 
-#define NEXTION_TASK_CONTEXT_INDEX 1
+#define NEXTION_TASK_CONTEXT_INDEX    1
+#define NEXTION_TASK_SHUTDOWN_TIMEOUT 500
 
 #define BUF_SIZE 256
 
@@ -170,8 +171,6 @@ static void tx_str(int fd, const char* cmd)
 {
     write(fd, cmd, strlen(cmd));
     write(fd, DELIMITER, sizeof(DELIMITER));
-    // uart_write_bytes(port, cmd, strlen(cmd));
-    // uart_write_bytes(port, DELIMITER, 3);
 }
 
 static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
@@ -577,11 +576,14 @@ TaskHandle_t nextion_task_start(int fd)
 
 void nextion_task_stop(TaskHandle_t task)
 {
+    task_context_t* context = (task_context_t*)pvTaskGetThreadLocalStoragePointer(task, NEXTION_TASK_CONTEXT_INDEX);
+
+    if (!xSemaphoreTake(context->mutex, pdMS_TO_TICKS(NEXTION_TASK_SHUTDOWN_TIMEOUT))) {
+        ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
+    }
     vTaskSuspend(task);
 
-    task_context_t* context = (task_context_t*)pvTaskGetThreadLocalStoragePointer(task, NEXTION_TASK_CONTEXT_INDEX);
     vSemaphoreDelete(context->mutex);
-
     vTaskDelete(task);
 }
 
@@ -597,11 +599,4 @@ void nextion_task_resume(TaskHandle_t task)
     task_context_t* context = (task_context_t*)pvTaskGetThreadLocalStoragePointer(task, NEXTION_TASK_CONTEXT_INDEX);
 
     xSemaphoreGive(context->mutex);
-}
-
-int nextion_task_get_fd(TaskHandle_t task)
-{
-    task_context_t* context = (task_context_t*)pvTaskGetThreadLocalStoragePointer(task, NEXTION_TASK_CONTEXT_INDEX);
-
-    return context->fd;
 }
