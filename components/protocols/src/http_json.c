@@ -18,7 +18,6 @@
 #include "evse.h"
 #include "http.h"
 #include "modbus.h"
-#include "modbus_tcp.h"
 #include "ota.h"
 #include "proximity.h"
 #include "scheduler.h"
@@ -425,7 +424,7 @@ cJSON* http_json_get_config_modbus(void)
 {
     cJSON* json = cJSON_CreateObject();
 
-    cJSON_AddBoolToObject(json, "tcpEnabled", modbus_tcp_is_enabled());
+    cJSON_AddBoolToObject(json, "tcpEnabled", modbus_is_tcp_enabled());
     cJSON_AddNumberToObject(json, "unitId", modbus_get_unit_id());
 
     return json;
@@ -436,7 +435,7 @@ esp_err_t http_json_set_config_modbus(cJSON* json)
     bool tcp_enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "tcpEnabled"));
     uint8_t unit_id = cJSON_GetObjectItem(json, "unitId")->valuedouble;
 
-    modbus_tcp_set_enabled(tcp_enabled);
+    modbus_set_tcp_enabled(tcp_enabled);
     return modbus_set_unit_id(unit_id);
 }
 

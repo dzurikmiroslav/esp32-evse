@@ -240,6 +240,7 @@ static void update_leds(void)
 #ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
 /**
  * @brief Print all running tasks high water mark
+ * @note Aslo enable CONFIG_USE_STATS_FORMATTING_FUNCTIONS
  *
  * @param interval
  */

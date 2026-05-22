@@ -1,16 +1,12 @@
-#include "modbus_tcp.h"
+#include "tcp_server_task.h"
 
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_system.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-#include <freertos/task.h>
 #include <lwip/err.h>
 #include <lwip/netdb.h>
 #include <lwip/sockets.h>
 #include <lwip/sys.h>
-#include <nvs.h>
 #include <stdint.h>
 #include <sys/param.h>
 
@@ -30,19 +26,12 @@
 #define MODBUS_TCP_LEN  4
 #define MODBUS_TCP_DATA 6
 
-#define NVS_NAMESPACE "modbus_tcp"
-#define NVS_ENABLED   "enabled"
-
 #define LOG_LVL_DATA ESP_LOG_VERBOSE
 #define LOG_LVL_CONN ESP_LOG_VERBOSE
 
 static const char* TAG = "modbus_tcp";
 
-static nvs_handle nvs;
-
 static int listen_sock = -1;
-
-static TaskHandle_t tcp_server_task = NULL;
 
 static SemaphoreHandle_t shutdown_sem = NULL;
 
@@ -257,61 +246,26 @@ static void tcp_server_task_func(void* param)
     vTaskDelete(NULL);
 }
 
-void tcp_server_start(void)
+TaskHandle_t tcp_server_task_start(void)
 {
-    if (tcp_server_task == NULL) {
-        ESP_LOGI(TAG, "Starting server");
-        xTaskCreate(tcp_server_task_func, "modbus_tcp", 3 * 1024, NULL, 5, &tcp_server_task);
-    }
+    TaskHandle_t handle = NULL;
+    xTaskCreate(tcp_server_task_func, "modbus_tcp", 3 * 1024, NULL, 5, &handle);
+    return handle;
 }
 
-void tcp_server_stop(void)
+void tcp_server_task_stop(TaskHandle_t task)
 {
-    if (tcp_server_task) {
-        ESP_LOGI(TAG, "Stopping server");
-        shutdown_sem = xSemaphoreCreateBinary();
+    ESP_LOGI(TAG, "Stopping server");
+    shutdown_sem = xSemaphoreCreateBinary();
 
-        close(listen_sock);
-        listen_sock = -1;
+    close(listen_sock);
+    listen_sock = -1;
 
-        if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
-            ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
-            vTaskDelete(tcp_server_task);
-        }
-
-        vSemaphoreDelete(shutdown_sem);
-        shutdown_sem = NULL;
-        tcp_server_task = NULL;
+    if (!xSemaphoreTake(shutdown_sem, pdMS_TO_TICKS(SHUTDOWN_TIMEOUT))) {
+        ESP_LOGE(TAG, "Task stop timeout, will be force stoped");
+        vTaskDelete(task);
     }
-}
 
-void modbus_tcp_set_enabled(bool enabled)
-{
-    nvs_set_u8(nvs, NVS_ENABLED, enabled);
-
-    nvs_commit(nvs);
-
-    if (enabled) {
-        tcp_server_start();
-    } else {
-        tcp_server_stop();
-    }
-}
-
-bool modbus_tcp_is_enabled(void)
-{
-    uint8_t value = false;
-    nvs_get_u8(nvs, NVS_ENABLED, &value);
-    return value;
-}
-
-void modbus_tcp_init(void)
-{
-    ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
-
-    esp_register_shutdown_handler(&tcp_server_stop);
-
-    if (modbus_tcp_is_enabled()) {
-        tcp_server_start();
-    }
+    vSemaphoreDelete(shutdown_sem);
+    shutdown_sem = NULL;
 }

@@ -45,7 +45,8 @@ For this circuit there is config file _board.yaml_, for more information's see [
 ```yaml
 deviceName: ESP32 minimal EVSE
 
-buttonGpio: 0
+button:
+  gpio: 0
 
 pilot:
   gpio: 33
