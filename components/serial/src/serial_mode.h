@@ -30,9 +30,9 @@ typedef struct {
     serial_mode_conf_t* mode;
 } serial_task_t;
 
-extern serial_task_t serial_tasks[SERIAL_ID_MAX];
+extern serial_task_t serial_tasks[UART_NUM_MAX];
 
-int serial_port_find(const char* mode_name);
+uart_port_t serial_port_find(const char* mode_name);
 
 int serial_fd_find(const char* mode_name);
 

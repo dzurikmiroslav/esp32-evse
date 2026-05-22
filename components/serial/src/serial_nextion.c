@@ -15,7 +15,7 @@ static const char* NEX_CMD_FULL_BRIGHTNESS = "dims=100";
 
 static const uint8_t DELIMITER[] = { 0xFF, 0xFF, 0xFF };
 
-static int port;
+static uart_port_t port;
 
 static bool upload_first_chunk;
 

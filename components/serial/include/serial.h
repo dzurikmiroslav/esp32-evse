@@ -5,19 +5,6 @@
 #include <esp_err.h>
 
 /**
- * @brief Serial identifiers
- *
- */
-typedef enum {
-    SERIAL_ID_1,
-    SERIAL_ID_2,
-#if SOC_UART_NUM > 2
-    SERIAL_ID_3,
-#endif
-    SERIAL_ID_MAX
-} serial_id_t;
-
-/**
  * @brief Initialize serial
  *
  */
@@ -26,42 +13,42 @@ void serial_init(void);
 /**
  * @brief Get serial mode
  *
- * @param id serial id
+ * @param port uart number
  * @return const char*
  */
-const char* serial_get_mode(serial_id_t id);
+const char* serial_get_mode(uart_port_t port);
 
 /**
  * @brief Get baud rate
  *
- * @param id serial id
+ * @param port uart number
  * @return int
  */
-int serial_get_baud_rate(serial_id_t id);
+int serial_get_baud_rate(uart_port_t port);
 
 /**
  * @brief Get data bits
  *
- * @param id serial id
+ * @param port uart number
  * @return uart_word_length_t
  */
-uart_word_length_t serial_get_data_bits(serial_id_t id);
+uart_word_length_t serial_get_data_bits(uart_port_t port);
 
 /**
  * @brief Get stop bits
  *
- * @param id serial id
+ * @param port uart number
  * @return uart_stop_bits_t
  */
-uart_stop_bits_t serial_get_stop_bits(serial_id_t id);
+uart_stop_bits_t serial_get_stop_bits(uart_port_t port);
 
 /**
  * @brief Get parity
  *
- * @param id serial id
+ * @param port uart number
  * @return uart_parity_t
  */
-uart_parity_t serial_get_parity(serial_id_t id);
+uart_parity_t serial_get_parity(uart_port_t port);
 
 /**
  * @brief Set serial config
@@ -75,7 +62,7 @@ uart_parity_t serial_get_parity(serial_id_t id);
  * @return esp_err_t
  */
 
-esp_err_t serial_set_config(serial_id_t id, const char* mode, int baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity);
+esp_err_t serial_set_config(uart_port_t port, const char* mode, int baud_rate, uart_word_length_t data_bits, uart_stop_bits_t stop_bits, uart_parity_t parity);
 
 /**
  * @brief Format to string value

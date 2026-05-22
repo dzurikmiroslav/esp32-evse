@@ -6,27 +6,27 @@
 
 static int vars_serial_read(const struct cat_variable* var, const struct cat_command* cmd)
 {
-    serial_id_t id = cmd->name[strlen(cmd->name)] - '0';
+    uart_port_t uart_num = cmd->name[strlen(cmd->name)] - '0';
 
-    strcpy(var_str32_1, serial_get_mode(id));
-    var_i32_1 = serial_get_baud_rate(id);
-    var_u8_2 = serial_get_data_bits(id);
-    var_u8_3 = serial_get_stop_bits(id);
-    var_u8_4 = serial_get_parity(id);
+    strcpy(var_str32_1, serial_get_mode(uart_num));
+    var_i32_1 = serial_get_baud_rate(uart_num);
+    var_u8_2 = serial_get_data_bits(uart_num);
+    var_u8_3 = serial_get_stop_bits(uart_num);
+    var_u8_4 = serial_get_parity(uart_num);
 
     return 0;
 }
 
 static cat_return_state vars_serial_write(const struct cat_command* cmd, const uint8_t* data, const size_t data_size, const size_t args_num)
 {
-    serial_id_t id = cmd->name[strlen(cmd->name)] - '0';
+    uart_port_t uart_num = cmd->name[strlen(cmd->name)] - '0';
     const char* mode = var_str32_1;
     int baud_rate = var_i32_1;
     uart_word_length_t data_bits = var_u8_2;
     uart_stop_bits_t stop_bits = var_u8_3;
     uart_parity_t parity = var_u8_4;
 
-    return serial_set_config(id, mode, baud_rate, data_bits, stop_bits, parity) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
+    return serial_set_config(uart_num, mode, baud_rate, data_bits, stop_bits, parity) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
 }
 
 static struct cat_variable vars_serial[] = {
