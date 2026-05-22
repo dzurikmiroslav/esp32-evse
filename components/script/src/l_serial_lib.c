@@ -1,21 +1,15 @@
 #include "l_serial_lib.h"
 
-#include <esp_log.h>
-
 #include "lauxlib.h"
 #include "lua.h"
 #include "serial_script.h"
 
 #define BUF_SIZE 256
 
-static const char* TAG = "l_serial";
-
 static bool is_opened;
 
 static int l_open(lua_State* L)
 {
-    ESP_LOGW(TAG, "l_open");
-
     if (!serial_script_is_available() || is_opened) {
         lua_pushnil(L);
     } else {
@@ -29,8 +23,6 @@ static int l_open(lua_State* L)
 
 static int l_port_read(lua_State* L)
 {
-    ESP_LOGW(TAG, "l_port_read");
-
     char buf[BUF_SIZE];
     size_t len = BUF_SIZE;
 
@@ -49,8 +41,6 @@ static int l_port_read(lua_State* L)
 
 static int l_port_write(lua_State* L)
 {
-    ESP_LOGW(TAG, "l_port_write");
-
     size_t len;
     const char* buf;
     char buf_num;
@@ -75,8 +65,6 @@ static int l_port_write(lua_State* L)
 
 static int l_port_flush(lua_State* L)
 {
-    ESP_LOGW(TAG, "l_port_flush");
-
     if (serial_script_flush() != ESP_OK) {
         luaL_error(L, "serial error");
     }
@@ -86,8 +74,6 @@ static int l_port_flush(lua_State* L)
 
 static int l_port_gc(lua_State* L)
 {
-    ESP_LOGW(TAG, "l_port_gc");
-
     is_opened = false;
 
     return 0;

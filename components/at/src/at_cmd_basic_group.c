@@ -1,8 +1,6 @@
-#include <freertos/FreeRTOS.h>
 #include <string.h>
 
 #include "at.h"
-#include "at_task_context.h"
 #include "cat.h"
 #include "vars.h"
 

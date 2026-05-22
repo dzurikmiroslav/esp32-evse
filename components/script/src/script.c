@@ -132,7 +132,7 @@ static void script_task_func(void* param)
 
         int top = lua_gettop(L);
         if (top != 0) {
-            ESP_LOGW(TAG, "top is %d, %d", top, lua_type(L, top));
+            ESP_LOGW(TAG, "Top is %d, %d", top, lua_type(L, top));
         }
 
         vTaskDelay(pdMS_TO_TICKS(50));

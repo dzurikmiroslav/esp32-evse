@@ -1,10 +1,6 @@
 #ifndef AT_H_
 #define AT_H_
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <sys/queue.h>
 
 #include "cat.h"
@@ -48,13 +44,12 @@ typedef struct {
     uint8_t aux_analog_input_index;
     char input_char;
     bool has_input_char : 1;
+    int fd;
 } at_task_context_t;
 
-void at_task_context_init(at_task_context_t* context, struct cat_object* at);
+bool at_task_context_subscribe(at_task_context_t* context, const char* command_name, uint32_t period);
 
-void at_task_context_clean(at_task_context_t* context);
-
-void at_handle_subscription(at_task_context_t* context);
+bool at_task_context_unsubscribe(at_task_context_t* context, const char* command_name);
 
 extern struct cat_command_group at_cmd_basic_group;
 extern struct cat_command_group at_cmd_system_group;

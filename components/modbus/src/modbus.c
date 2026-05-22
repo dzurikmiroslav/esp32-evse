@@ -13,6 +13,7 @@
 #include "evse.h"
 #include "schedule_restart.h"
 #include "socket_lock.h"
+#include "tcp_server_task.h"
 #include "temp_sensor.h"
 
 #define MODBUS_REG_STATE           100
@@ -73,8 +74,9 @@
 #define UINT32_GET_HI(value) ((uint16_t)(((uint32_t)(value)) >> 16))
 #define UINT32_GET_LO(value) ((uint16_t)(((uint32_t)(value)) & 0xFFFF))
 
-#define NVS_NAMESPACE "modbus"
-#define NVS_UNIT_ID   "unit_id"
+#define NVS_NAMESPACE   "modbus"
+#define NVS_UNIT_ID     "unit_id"
+#define NVS_TCP_ENABLED "tcp_enabled"
 
 static const char* TAG = "modbus";
 
@@ -82,11 +84,18 @@ static nvs_handle nvs;
 
 static uint8_t unit_id = 1;
 
+static TaskHandle_t tcp_server_task = NULL;
+
 void modbus_init(void)
 {
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
     nvs_get_u8(nvs, NVS_UNIT_ID, &unit_id);
+
+    if (modbus_is_tcp_enabled()) {
+        ESP_LOGI(TAG, "Starting TCP server");
+        tcp_server_task = tcp_server_task_start();
+    }
 }
 
 static uint32_t get_uptime(void)
@@ -527,4 +536,31 @@ esp_err_t modbus_set_unit_id(uint8_t _unit_id)
     nvs_set_u8(nvs, NVS_UNIT_ID, unit_id);
 
     return ESP_OK;
+}
+
+void modbus_set_tcp_enabled(bool enabled)
+{
+    nvs_set_u8(nvs, NVS_TCP_ENABLED, enabled);
+
+    nvs_commit(nvs);
+
+    if (enabled) {
+        if (!tcp_server_task) {
+            ESP_LOGI(TAG, "Starting TCP server");
+            tcp_server_task = tcp_server_task_start();
+        }
+    } else {
+        if (tcp_server_task) {
+            ESP_LOGI(TAG, "Stopping TCP server");
+            tcp_server_task_stop(tcp_server_task);
+            tcp_server_task = NULL;
+        }
+    }
+}
+
+bool modbus_is_tcp_enabled(void)
+{
+    uint8_t value = false;
+    nvs_get_u8(nvs, NVS_TCP_ENABLED, &value);
+    return value;
 }

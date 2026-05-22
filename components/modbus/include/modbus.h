@@ -50,4 +50,19 @@ uint8_t modbus_get_unit_id(void);
  */
 esp_err_t modbus_set_unit_id(uint8_t unit_id);
 
+/**
+ * @brief Set enabled, stored in NVS
+ *
+ * @param enabled
+ */
+void modbus_set_tcp_enabled(bool enabled);
+
+/**
+ * @brief Get enabled, stored in NVS
+ *
+ * @return true
+ * @return false
+ */
+bool modbus_is_tcp_enabled(void);
+
 #endif /* MODBUS_H_ */

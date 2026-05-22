@@ -110,6 +110,7 @@ void http_init(void)
     }
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 5 * 1024;  // default 4096 not enought for OTA esp_https_ota
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.max_uri_handlers = http_rest_handlers_count() + http_dav_handlers_count() + http_web_handlers_count();
     // config.max_open_sockets = 3;

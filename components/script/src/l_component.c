@@ -332,41 +332,43 @@ script_component_param_list_t* l_component_get_component_params(lua_State* L, co
             lua_rawgeti(L, LUA_REGISTRYINDEX, component->params_ref);
             int params_value_idx = lua_gettop(L);
 
-            lua_pushnil(L);
-            while (lua_next(L, params_def_idx)) {
-                lua_getfield(L, -1, "type");
-                script_component_param_type_t type = cfg_entry_type_from_str(lua_tostring(L, -1));
-                lua_pop(L, 1);
-
-                if (type != SCRIPT_COMPONENT_PARAM_TYPE_NONE) {
-                    lua_getfield(L, -1, "name");
-                    const char* name = lua_tostring(L, -1);
+            if (params_def_idx > 0 && lua_istable(L, params_def_idx)) {
+                lua_pushnil(L);
+                while (lua_next(L, params_def_idx)) {
+                    lua_getfield(L, -1, "type");
+                    script_component_param_type_t type = cfg_entry_type_from_str(lua_tostring(L, -1));
                     lua_pop(L, 1);
 
-                    script_component_param_entry_t* entry = (script_component_param_entry_t*)malloc(sizeof(script_component_param_entry_t));
-                    entry->key = strdup(lua_tostring(L, -2));
-                    entry->type = type;
-                    entry->name = strdup(name ? name : lua_tostring(L, -2));
+                    if (type != SCRIPT_COMPONENT_PARAM_TYPE_NONE) {
+                        lua_getfield(L, -1, "name");
+                        const char* name = lua_tostring(L, -1);
+                        lua_pop(L, 1);
 
-                    lua_getfield(L, params_value_idx, entry->key);
-                    switch (entry->type) {
-                    case SCRIPT_COMPONENT_PARAM_TYPE_STRING:
-                        const char* str_value = lua_tostring(L, -1);
-                        entry->value.string = str_value ? strdup(str_value) : NULL;
-                        break;
-                    case SCRIPT_COMPONENT_PARAM_TYPE_NUMBER:
-                        entry->value.number = lua_tonumber(L, -1);
-                        break;
-                    case SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN:
-                        entry->value.boolean = lua_toboolean(L, -1);
-                        break;
-                    default:
+                        script_component_param_entry_t* entry = (script_component_param_entry_t*)malloc(sizeof(script_component_param_entry_t));
+                        entry->key = strdup(lua_tostring(L, -2));
+                        entry->type = type;
+                        entry->name = strdup(name ? name : lua_tostring(L, -2));
+
+                        lua_getfield(L, params_value_idx, entry->key);
+                        switch (entry->type) {
+                        case SCRIPT_COMPONENT_PARAM_TYPE_STRING:
+                            const char* str_value = lua_tostring(L, -1);
+                            entry->value.string = str_value ? strdup(str_value) : NULL;
+                            break;
+                        case SCRIPT_COMPONENT_PARAM_TYPE_NUMBER:
+                            entry->value.number = lua_tonumber(L, -1);
+                            break;
+                        case SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN:
+                            entry->value.boolean = lua_toboolean(L, -1);
+                            break;
+                        default:
+                        }
+                        lua_pop(L, 1);
+
+                        SLIST_INSERT_HEAD(list, entry, entries);
                     }
                     lua_pop(L, 1);
-
-                    SLIST_INSERT_HEAD(list, entry, entries);
                 }
-                lua_pop(L, 1);
             }
 
             lua_pop(L, 2);

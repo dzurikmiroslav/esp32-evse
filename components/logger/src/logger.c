@@ -17,12 +17,9 @@ static uint8_t log_buffer_data[LOG_BUFFER_SIZE];
 
 static output_buffer_t* buffer;
 
-EventGroupHandle_t logger_event_group = NULL;
-
 void logger_init(void)
 {
     mutex = xSemaphoreCreateMutex();
-    logger_event_group = xEventGroupCreate();
 
     buffer = output_buffer_create_static(LOG_BUFFER_SIZE, log_buffer_data);
 }
@@ -37,7 +34,6 @@ void logger_print(const char* str)
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     output_buffer_append_str(buffer, str);
-    xEventGroupSetBits(logger_event_group, 0xFF);
 
     xSemaphoreGive(mutex);
 }
@@ -54,7 +50,6 @@ int logger_vprintf(const char* str, va_list l)
     int len = vsnprintf(log, MAX_LOG_SIZE, str, l);
 
     output_buffer_append_buf(buffer, log, len);
-    xEventGroupSetBits(logger_event_group, 0xFF);
 
     xSemaphoreGive(mutex);
 
