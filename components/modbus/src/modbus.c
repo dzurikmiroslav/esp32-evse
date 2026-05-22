@@ -11,9 +11,9 @@
 
 #include "energy_meter.h"
 #include "evse.h"
-#include "tcp_server_task.h"
 #include "schedule_restart.h"
 #include "socket_lock.h"
+#include "tcp_server_task.h"
 #include "temp_sensor.h"
 
 #define MODBUS_REG_STATE           100
