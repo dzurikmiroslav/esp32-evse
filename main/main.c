@@ -15,9 +15,11 @@
 #include "sdkconfig.h"
 
 #include "board_config.h"
+#include "crash_report.h"
 #include "evse.h"
 #include "led.h"
 #include "logger.h"
+#include "logger_file.h"
 #include "modbus.h"
 #include "network.h"
 #include "peripherals.h"
@@ -285,6 +287,8 @@ void app_main(void)
     logger_init();
     esp_log_set_vprintf(logger_vprintf);
 
+    crash_report_init();
+
     const esp_partition_t* running = esp_ota_get_running_partition();
     ESP_LOGI(TAG, "Running partition: %s", running->label);
 
@@ -311,6 +315,8 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     fs_init();
+
+    logger_file_init();
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
