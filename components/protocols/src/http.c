@@ -113,8 +113,12 @@ void http_init(void)
     config.stack_size = 5 * 1024;  // default 4096 not enought for OTA esp_https_ota
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.max_uri_handlers = http_rest_handlers_count() + http_dav_handlers_count() + http_web_handlers_count();
+    // Close the least-recently-used connection when the socket pool is full so a
+    // new client can always get in. Without this, lingering/keep-alive
+    // connections eventually fill all max_open_sockets slots and the server stops
+    // accepting (UI unreachable while ping still works) until the link is reset.
+    config.lru_purge_enable = true;
     // config.max_open_sockets = 3;
-    // config.lru_purge_enable = true;
     // config.open_fn = sess_on_open;
     // config.close_fn = sess_on_close;
 
