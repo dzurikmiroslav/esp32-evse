@@ -62,39 +62,53 @@ static void timer_callback(TimerHandle_t xTimer)
     led->on = !led->on;
     gpio_set_level(led->gpio, led->on);
 
-    xTimerChangePeriod(xTimer, pdMS_TO_TICKS(led->on ? led->ontime : led->offtime), BLOCK_TIME);
+    // Guard against a zero period: led_set_state() may have switched this led to
+    // a solid state (ontime/offtime == 0) while this callback was already in
+    // flight. xTimerChangePeriod() with 0 ticks trips configASSERT() in the
+    // FreeRTOS timer task and panics, so don't re-arm in that case.
+    uint16_t next = led->on ? led->ontime : led->offtime;
+    if (next > 0) {
+        xTimerChangePeriod(xTimer, pdMS_TO_TICKS(next), BLOCK_TIME);
+    }
 }
 
 void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
 {
     struct led_s* led = &leds[led_id];
-    if (led->gpio != GPIO_NUM_NC) {
-        if (led->timer != NULL) {
-            xTimerStop(led->timer, BLOCK_TIME);
-            led->timer = NULL;
-        }
+    if (led->gpio == GPIO_NUM_NC) {
+        return;
+    }
 
-        led->ontime = ontime;
-        led->offtime = offtime;
+    // Keep one persistent timer per led and reuse it. Previously the timer was
+    // stopped and its handle dropped (leaking a timer on every reconfigure) and
+    // recreated each time, which under rapid reconfiguration left stopped-but-
+    // pending callbacks firing with stale on/off times.
+    if (led->timer != NULL) {
+        xTimerStop(led->timer, BLOCK_TIME);
+    }
 
-        if (ontime == 0) {
-            ESP_LOGD(TAG, "Set led %d off", led_id);
-            led->on = false;
-            gpio_set_level(led->gpio, led->on);
-        } else if (offtime == 0) {
-            ESP_LOGD(TAG, "Set led %d on", led_id);
-            led->on = true;
-            gpio_set_level(led->gpio, led->on);
+    led->ontime = ontime;
+    led->offtime = offtime;
+
+    if (ontime == 0) {
+        ESP_LOGD(TAG, "Set led %d off", led_id);
+        led->on = false;
+        gpio_set_level(led->gpio, led->on);
+    } else if (offtime == 0) {
+        ESP_LOGD(TAG, "Set led %d on", led_id);
+        led->on = true;
+        gpio_set_level(led->gpio, led->on);
+    } else {
+        ESP_LOGD(TAG, "Set led %d blink (on: %d off: %d)", led_id, ontime, offtime);
+
+        led->on = true;
+        gpio_set_level(led->gpio, led->on);
+
+        if (led->timer == NULL) {
+            led->timer = xTimerCreate("led_timer", pdMS_TO_TICKS(ontime), pdFALSE, (void*)led, timer_callback);
         } else {
-            ESP_LOGD(TAG, "Set led %d blink (on: %d off: %d)", led_id, ontime, offtime);
-
-            led->on = true;
-            gpio_set_level(led->gpio, led->on);
-
-            if (led->timer == NULL) {
-                led->timer = xTimerCreate("led_timer", pdMS_TO_TICKS(ontime), pdFALSE, (void*)led, timer_callback);
-            }
-            xTimerStart(led->timer, BLOCK_TIME);
+            xTimerChangePeriod(led->timer, pdMS_TO_TICKS(ontime), BLOCK_TIME);
         }
+        xTimerStart(led->timer, BLOCK_TIME);
     }
 }
