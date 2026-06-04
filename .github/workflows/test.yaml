@@ -14,6 +14,7 @@ jobs:
     name: Run Test App in simulation
     runs-on: ubuntu-latest
     needs: env
+    environment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'wokwi-ci-pr' || '' }}
 
     steps:
       - name: Checkout
