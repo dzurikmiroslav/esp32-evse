@@ -1,0 +1,1 @@
+#pragma weak panic_print_char

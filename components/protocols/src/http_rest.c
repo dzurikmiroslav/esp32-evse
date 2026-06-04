@@ -8,7 +8,6 @@
 #include <esp_ota_ops.h>
 #include <string.h>
 #include <sys/param.h>
-#include <sys/stat.h>
 #include <time.h>
 
 #include "energy_meter.h"
@@ -62,6 +61,7 @@ typedef enum {
     URI_FIRMWARE_UPLOAD,
     URI_NEXTION_INFO,
     URI_NEXTION_UPLOAD,
+    URI_LOG_PANIC,
     URI_LOG,
     URI_INFO,
     URI_BOARD_CONFIG,
@@ -105,6 +105,7 @@ static const char* uris[] = {
     "/firmware/upload",
     "/nextion/info",
     "/nextion/upload",
+    "/log/panic",
     "/log",
     "/info",
     "/board-config",
@@ -221,11 +222,22 @@ esp_err_t handle_not_found(httpd_req_t* req)
     return ESP_FAIL;
 }
 
+static esp_err_t handle_log_panic(httpd_req_t* req)
+{
+    char time_str[16];
+    snprintf(time_str, sizeof(time_str), "%lld", logger_get_panic_time());
+    httpd_resp_set_hdr(req, "X-Time", time_str);
+
+    httpd_resp_sendstr(req, logger_get_panic_log());
+
+    return ESP_OK;
+}
+
 static esp_err_t handle_log(httpd_req_t* req)
 {
-    uint16_t count = logger_count();
+    uint16_t count = logger_log_buffer_get_count();
     char count_str[16];
-    itoa(count, count_str, 10);
+    snprintf(count_str, sizeof(count_str), "%" PRIu16, count);
     httpd_resp_set_hdr(req, "X-Count", count_str);
 
     uint16_t index = 0;
@@ -240,7 +252,7 @@ static esp_err_t handle_log(httpd_req_t* req)
     httpd_resp_set_type(req, "text/plain");
     char* line;
     uint16_t line_len;
-    while (logger_read(&index, &line, &line_len) && index <= count) {
+    while (logger_log_bugger_read(&index, &line, &line_len) && index <= count) {
         if (httpd_resp_send_chunk(req, line, line_len) != ESP_OK) {
             ESP_LOGE(TAG, "Sending failed");
             httpd_resp_sendstr_chunk(req, NULL);
@@ -258,7 +270,7 @@ static esp_err_t handle_script_output(httpd_req_t* req)
 {
     uint16_t count = script_output_count();
     char count_str[16];
-    itoa(count, count_str, 10);
+    snprintf(count_str, sizeof(count_str), "%" PRIu16, count);
     httpd_resp_set_hdr(req, "X-Count", count_str);
 
     uint16_t index = 0;
@@ -573,6 +585,8 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_firmware_check_update());
         case URI_NEXTION_INFO:
             return handle_json_response(req, http_json_get_nextion_info());
+        case URI_LOG_PANIC:
+            return handle_log_panic(req);
         case URI_LOG:
             return handle_log(req);
         case URI_INFO:
@@ -653,9 +667,23 @@ static esp_err_t post_handler(httpd_req_t* req)
     }
 }
 
+static esp_err_t delete_handler(httpd_req_t* req)
+{
+    if (http_authorize_req(req)) {
+        switch (get_uri(req->uri)) {
+        case URI_LOG_PANIC:
+            return handle_void_request(req, logger_clear_panic);
+        default:
+            return handle_not_found(req);
+        }
+    } else {
+        return ESP_FAIL;
+    }
+}
+
 size_t http_rest_handlers_count(void)
 {
-    return 2;
+    return 3;
 }
 
 void http_rest_add_handlers(httpd_handle_t server)
@@ -673,4 +701,11 @@ void http_rest_add_handlers(httpd_handle_t server)
         .handler = post_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &post_uri));
+
+    httpd_uri_t delete_uri = {
+        .uri = REST_BASE_PATH "/*",
+        .method = HTTP_DELETE,
+        .handler = delete_handler,
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &delete_uri));
 }

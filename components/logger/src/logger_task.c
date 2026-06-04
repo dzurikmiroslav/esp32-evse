@@ -13,7 +13,7 @@ static void logger_task_func(void* param)
     uint16_t str_len;
     uint16_t index = 0;
     while (true) {
-        while (logger_read(&index, &str, &str_len)) {
+        while (logger_log_bugger_read(&index, &str, &str_len)) {
             write(fd, str, str_len);
             fsync(fd);
         }
