@@ -39,6 +39,8 @@ static scheduler_schedule_t* schedules = NULL;
 
 static uint8_t* schedules_state = NULL;
 
+static bool s_time_synced = false;
+
 static const char* tz_data[][2] = {
 #include "tz_data.h"
     { NULL, NULL }
@@ -63,7 +65,19 @@ static const char* find_tz(const char* name)
 
 void ntp_sync_cb(struct timeval* tv)
 {
-    ESP_LOGD(TAG, "NTP sync");
+    char buf[20];
+    time_t now = tv->tv_sec;
+    struct tm timeinfo = { 0 };
+    localtime_r(&now, &timeinfo);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+
+    if (s_time_synced) {
+        ESP_LOGI(TAG, "NTP resync: %s", buf);
+    } else {
+        s_time_synced = true;
+        ESP_LOGI(TAG, "NTP time set: %s", buf);
+    }
+
     scheduler_execute_schedules();
 }
 
@@ -166,7 +180,11 @@ void scheduler_init(void)
         esp_err_t ret = esp_netif_sntp_init(&config);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "SNTP init return %s", esp_err_to_name(ret));
+        } else {
+            ESP_LOGI(TAG, "NTP enabled, server '%s', from DHCP %s", ntp_server, scheduler_is_ntp_from_dhcp() ? "yes" : "no");
         }
+    } else {
+        ESP_LOGI(TAG, "NTP disabled");
     }
 
     char str[64];
@@ -273,6 +291,13 @@ esp_err_t scheduler_set_ntp_config(bool enabled, const char* server, bool from_d
         config.sync_cb = ntp_sync_cb;
         config.renew_servers_after_new_IP = from_dhcp;
         ret = esp_netif_sntp_init(&config);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "SNTP init return %s", esp_err_to_name(ret));
+        } else {
+            ESP_LOGI(TAG, "NTP config changed: server '%s', from DHCP %s", server, from_dhcp ? "yes" : "no");
+        }
+    } else {
+        ESP_LOGI(TAG, "NTP disabled");
     }
 
     if (ret == ESP_OK) {
