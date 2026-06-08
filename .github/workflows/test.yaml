@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: env
     environment: external-pull-request
-    #environment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'external-pull-request' || '' }}
+#environment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'external-pull-request' || '' }}
 
     steps:
       - name: Checkout
