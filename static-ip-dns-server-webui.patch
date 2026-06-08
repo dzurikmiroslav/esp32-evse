@@ -1,0 +1,94 @@
+--- a/components/protocols/web/src/pages/NetworkSettings.jsx
++++ b/components/protocols/web/src/pages/NetworkSettings.jsx
+@@ -446,6 +446,21 @@
+               />
+             </Form.Group>
+           </Col>
++          <Col xs={12} md={6} xl={4}>
++            <Form.Group className="mb-3" controlId="staticDns">
++              <Form.Label>{t("dns")}</Form.Label>
++              {/* DNS is optional: blank falls back to the gateway on the device. */}
++              <Form.Control
++                type="staticDns"
++                name="staticDns"
++                disabled={formData?.staticEnabled !== true}
++                pattern="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
++                placeholder="192.168.1.1"
++                value={formData?.staticDns}
++                onChange={onChange}
++              />
++            </Form.Group>
++          </Col>
+         </Row>
+ 
+         <Stack gap={2} direction="horizontal" className="pb-3">
+--- a/components/protocols/web/src/locales/en.json
++++ b/components/protocols/web/src/locales/en.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Static IP address",
+   "gateway": "Gateway",
+   "netmask": "Netmask",
++  "dns": "DNS server",
+   "wifiAccessPoint": "WiFi AP",
+   "wifiAccessPointAutoStop": "The access point will automatically shut down if no one connects to it within one minute.",
+   "wifiStation": "WiFi station",
+--- a/components/protocols/web/src/locales/cz.json
++++ b/components/protocols/web/src/locales/cz.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Statická IP adresa",
+   "gateway": "Brána",
+   "netmask": "Maska podsítě",
++  "dns": "DNS server",
+   "wifiAccessPoint": "WiFi přístupový bod",
+   "wifiAccessPointAutoStop": "Přístupový bod se automaticky vypne, pokud se k němu do jedné minuty nikdo nepřipojí.",
+   "wifiStation": "WiFi stanice",
+--- a/components/protocols/web/src/locales/sk.json
++++ b/components/protocols/web/src/locales/sk.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Statická IP adresa",
+   "gateway": "Brána",
+   "netmask": "Maska podsiete",
++  "dns": "DNS server",
+   "wifiAccessPoint": "WiFi prístupový bod",
+   "wifiAccessPointAutoStop": "Prístupový bod sa automaticky vypne, ak sa k nemu do jednej minúty nikto nepripojí.",
+   "wifiStation": "WiFi stanica",
+--- a/components/protocols/web/src/locales/fr.json
++++ b/components/protocols/web/src/locales/fr.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Adresse IP statique",
+   "gateway": "Passerelle",
+   "netmask": "Masque de sous-réseau",
++  "dns": "Serveur DNS",
+   "wifiAccessPoint": "Point d'accès WiFi",
+   "wifiAccessPointAutoStop": "Le point d'accès s'éteindra automatiquement si personne ne s'y connecte dans la minute.",
+   "wifiStation": "Station WiFi",
+--- a/components/protocols/web/src/locales/hu.json
++++ b/components/protocols/web/src/locales/hu.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Statikus IP cím",
+   "gateway": "Átjáró",
+   "netmask": "Alhálózati maszk",
++  "dns": "DNS-kiszolgáló",
+   "wifiAccessPoint": "Wi-Fi hozzáférési pont",
+   "wifiAccessPointAutoStop": "A hozzáférési pont automatikusan kikapcsol, ha egy percen belül senki sem csatlakozik hozzá.",
+   "wifiStation": "Wi-Fi kliens",
+--- a/components/protocols/web/src/locales/ru.json
++++ b/components/protocols/web/src/locales/ru.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Статический IP-адрес",
+   "gateway": "Шлюз",
+   "netmask": "Маска подсети",
++  "dns": "DNS-сервер",
+   "wifiAccessPoint": "Точка доступа WiFi",
+   "wifiAccessPointAutoStop": "Точка доступа автоматически отключится, если в течение одной минуты к ней никто не подключится.",
+   "wifiStation": "WiFi-станция",
+--- a/components/protocols/web/src/locales/tr.json
++++ b/components/protocols/web/src/locales/tr.json
+@@ -189,6 +189,7 @@
+   "staticIp": "Statik IP adresi",
+   "gateway": "Ağ geçidi",
+   "netmask": "Ağ maskesi",
++  "dns": "DNS sunucusu",
+   "wifiAccessPoint": "WiFi Erişim Noktası (AP)",
+   "wifiAccessPointAutoStop": "Erişim noktasına bir dakika içinde kimse bağlanmazsa otomatik olarak kapanacaktır.",
+   "wifiStation": "WiFi istasyonu",

@@ -20,6 +20,7 @@
 #define NVS_STATIC_IP      "stat_ip"
 #define NVS_STATIC_GATEWAY "stat_gateway"
 #define NVS_STATIC_NETMASK "stat_netmask"
+#define NVS_STATIC_DNS     "stat_dns"
 
 ESP_STATIC_ASSERT(sizeof(((wifi_config_t*)0)->sta.ssid) == WIFI_SSID_SIZE, "Wrong SSID size");
 ESP_STATIC_ASSERT(sizeof(((wifi_config_t*)0)->sta.password) == WIFI_PASSWORD_SIZE, "Wrong password size");
@@ -42,9 +43,6 @@ EventGroupHandle_t wifi_event_group;
 
 static void sta_try_connect(void)
 {
-    // EventBits_t mode_bits = xEventGroupGetBits(wifi_event_group);
-    //  if (!(mode_bits & WIFI_STA_SCAN_BIT) && mode_bits & WIFI_STA_MODE_BIT && !(mode_bits & WIFI_AP_MODE_BIT)) {
-    // if (sta_enabled) {
     if (recconect) {
         ESP_LOGI(TAG, "STA reconnecting...");
         // during AP mode disable reconnecting, it disconect all clients from AP
@@ -52,6 +50,14 @@ static void sta_try_connect(void)
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Connect failed (%s)", esp_err_to_name(err));
         }
+    }
+}
+
+static void log_sta_dns(esp_netif_t* netif)
+{
+    esp_netif_dns_info_t dns_info = { 0 };
+    if (esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns_info) == ESP_OK) {
+        ESP_LOGI(TAG, "WiFi STA dns: " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
     }
 }
 
@@ -93,6 +99,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             if (event_id == IP_EVENT_STA_GOT_IP) {
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
                 ESP_LOGI(TAG, "WiFi STA got ip: " IPSTR, IP2STR(&event->ip_info.ip));
+                log_sta_dns(event->esp_netif);
             } else {
                 ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
                 ESP_LOGI(TAG, "WiFi STA got ip6: " IPV6STR, IPV62STR(event->ip6_info.ip));
@@ -180,6 +187,22 @@ static esp_err_t apply_mode_config()
     return ESP_OK;
 }
 
+// Set the STA DNS server. Falls back to the gateway when no explicit DNS is
+// configured, so hostname resolution (NTP, etc.) still works under static IP.
+static void apply_static_dns(esp_ip4_addr_t dns_addr, esp_ip4_addr_t gw_addr)
+{
+    esp_netif_dns_info_t dns_info = { 0 };
+    dns_info.ip.type = ESP_IPADDR_TYPE_V4;
+    dns_info.ip.u_addr.ip4 = dns_addr.addr != 0 ? dns_addr : gw_addr;
+
+    if (dns_info.ip.u_addr.ip4.addr != 0) {
+        esp_err_t err = esp_netif_set_dns_info(sta_netif, ESP_NETIF_DNS_MAIN, &dns_info);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Set DNS info failed (%s)", esp_err_to_name(err));
+        }
+    }
+}
+
 void wifi_init(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
@@ -214,6 +237,11 @@ void wifi_init(void)
         nvs_get_blob(nvs, NVS_STATIC_NETMASK, &ip_info.netmask, &size);
 
         ESP_ERROR_CHECK(esp_netif_set_ip_info(sta_netif, &ip_info));
+
+        esp_ip4_addr_t dns_addr = { 0 };
+        size = sizeof(esp_ip4_addr_t);
+        nvs_get_blob(nvs, NVS_STATIC_DNS, &dns_addr, &size);
+        apply_static_dns(dns_addr, ip_info.gw);
     }
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
@@ -402,7 +430,7 @@ static void get_nvs_ip(const char* nvs_key, char* str)
 {
     esp_ip4_addr_t value = { 0 };
     size_t size = sizeof(esp_ip4_addr_t);
-    if (nvs_get_blob(nvs, nvs_key, &value, &size) == ESP_OK) {
+    if (nvs_get_blob(nvs, nvs_key, &value, &size) == ESP_OK && value.addr != 0) {
         esp_ip4addr_ntoa(&value, str, 16);
     } else {
         str[0] = '\0';
@@ -424,80 +452,97 @@ void wifi_get_static_netmask(char* str)
     get_nvs_ip(NVS_STATIC_NETMASK, str);
 }
 
-esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask)
+void wifi_get_static_dns(char* str)
 {
-    esp_err_t err;
-    size_t size;
-    esp_netif_ip_info_t ip_info = { 0 };
+    get_nvs_ip(NVS_STATIC_DNS, str);
+}
 
-    if (ip != NULL) {
-        err = esp_netif_str_to_ip4(ip, &ip_info.ip);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Invalid IP");
-            return err;
-        }
-    } else {
-        size = sizeof(esp_ip4_addr_t);
-        nvs_get_blob(nvs, NVS_STATIC_IP, &ip_info.ip, &size);
+// Resolve one static-IP field into `out`: parse `str` when given, otherwise
+// load the stored value from NVS. When `allow_blank` is set, an empty string
+// leaves `out` untouched (used by the optional DNS field to mean "cleared").
+static esp_err_t resolve_static_addr(const char* str, const char* nvs_key, const char* name, bool allow_blank, esp_ip4_addr_t* out)
+{
+    if (str == NULL) {
+        size_t size = sizeof(esp_ip4_addr_t);
+        nvs_get_blob(nvs, nvs_key, out, &size);
+        return ESP_OK;
     }
 
-    if (gateway != NULL) {
-        err = esp_netif_str_to_ip4(gateway, &ip_info.gw);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Invalid gateway");
-            return err;
-        }
-    } else {
-        size = sizeof(esp_ip4_addr_t);
-        nvs_get_blob(nvs, NVS_STATIC_GATEWAY, &ip_info.gw, &size);
+    if (allow_blank && str[0] == '\0') {
+        return ESP_OK;
     }
 
-    if (netmask != NULL) {
-        err = esp_netif_str_to_ip4(netmask, &ip_info.netmask);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Invalid netmask");
-            return err;
-        }
-    } else {
-        size = sizeof(esp_ip4_addr_t);
-        nvs_get_blob(nvs, NVS_STATIC_NETMASK, &ip_info.netmask, &size);
+    esp_err_t err = esp_netif_str_to_ip4(str, out);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Invalid %s", name);
     }
+    return err;
+}
 
+// Switch the STA DHCP client to match `enabled`, applying the static IP info
+// when disabling it. No-op when already in the requested mode.
+static esp_err_t apply_dhcp_mode(bool enabled, const esp_netif_ip_info_t* ip_info)
+{
     esp_netif_dhcp_status_t dhcp_status;
-    err = esp_netif_dhcpc_get_status(sta_netif, &dhcp_status);
+    esp_err_t err = esp_netif_dhcpc_get_status(sta_netif, &dhcp_status);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "DHCP client get status failed (%s)", esp_err_to_name(err));
     }
 
     bool current_enabled = dhcp_status != ESP_NETIF_DHCP_STARTED;
+    if (enabled == current_enabled) {
+        return ESP_OK;
+    }
 
-    if (enabled != current_enabled) {
-        if (enabled) {
-            err = esp_netif_dhcpc_stop(sta_netif);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "DHCP client stop failed (%s)", esp_err_to_name(err));
-                return err;
-            }
-
-            err = esp_netif_set_ip_info(sta_netif, &ip_info);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "Set IP info failed (%s)", esp_err_to_name(err));
-
-                err = esp_netif_dhcpc_start(sta_netif);
-                if (err != ESP_OK) {
-                    ESP_LOGE(TAG, "DHCP client restart failed (%s)", esp_err_to_name(err));
-                    return err;
-                }
-
-                return err;
-            }
-        } else {
-            err = esp_netif_dhcpc_start(sta_netif);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "DHCP client start failed (%s)", esp_err_to_name(err));
-                return err;
-            }
+    if (!enabled) {
+        err = esp_netif_dhcpc_start(sta_netif);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "DHCP client start failed (%s)", esp_err_to_name(err));
         }
+        return err;
+    }
+
+    err = esp_netif_dhcpc_stop(sta_netif);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "DHCP client stop failed (%s)", esp_err_to_name(err));
+        return err;
+    }
+
+    err = esp_netif_set_ip_info(sta_netif, ip_info);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Set IP info failed (%s)", esp_err_to_name(err));
+        esp_netif_dhcpc_start(sta_netif);  // best-effort revert to DHCP
+    }
+    return err;
+}
+
+esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask, const char* dns)
+{
+    esp_err_t err;
+    esp_netif_ip_info_t ip_info = { 0 };
+    esp_ip4_addr_t dns_addr = { 0 };
+
+    err = resolve_static_addr(ip, NVS_STATIC_IP, "IP", false, &ip_info.ip);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = resolve_static_addr(gateway, NVS_STATIC_GATEWAY, "gateway", false, &ip_info.gw);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = resolve_static_addr(netmask, NVS_STATIC_NETMASK, "netmask", false, &ip_info.netmask);
+    if (err != ESP_OK) {
+        return err;
+    }
+    // DNS is optional: a blank value clears it (gateway used as fallback when applied).
+    err = resolve_static_addr(dns, NVS_STATIC_DNS, "DNS", true, &dns_addr);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    err = apply_dhcp_mode(enabled, &ip_info);
+    if (err != ESP_OK) {
+        return err;
     }
 
     if (enabled) {
@@ -506,12 +551,15 @@ esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gatew
             ESP_LOGE(TAG, "Set IP info failed (%s)", esp_err_to_name(err));
             return err;
         }
+
+        apply_static_dns(dns_addr, ip_info.gw);
     }
 
     nvs_set_u8(nvs, NVS_STATIC_ENABLED, enabled);
     nvs_set_blob(nvs, NVS_STATIC_IP, &ip_info.ip, sizeof(esp_ip4_addr_t));
     nvs_set_blob(nvs, NVS_STATIC_GATEWAY, &ip_info.gw, sizeof(esp_ip4_addr_t));
     nvs_set_blob(nvs, NVS_STATIC_NETMASK, &ip_info.netmask, sizeof(esp_ip4_addr_t));
+    nvs_set_blob(nvs, NVS_STATIC_DNS, &dns_addr, sizeof(esp_ip4_addr_t));
 
     return ESP_OK;
 }
