@@ -37,7 +37,7 @@ jobs:
             cat $file | jq ".version = \"${{ needs.build.outputs.app_version }}\"" | tee $file
           done
           mv tmp/ota-*/*-evse.ota.bin ota/${{ github.event.inputs.channel }}/
-          mv tmp/ota-*/*-evse.elf ota/${{ github.event.inputs.channel }}/
+          mv tmp/elf-*/*-evse.elf ota/${{ github.event.inputs.channel }}/
 
       - name: Write web installer
         if: ${{ github.event.inputs.channel == 'stable' }}
