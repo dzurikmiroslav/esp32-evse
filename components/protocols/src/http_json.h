@@ -25,6 +25,10 @@ cJSON* http_json_get_config_discovery(void);
 
 esp_err_t http_json_set_config_discovery(cJSON* json);
 
+cJSON* http_json_get_config_syslog(void);
+
+esp_err_t http_json_set_config_syslog(cJSON* json);
+
 cJSON* http_json_get_config_serial(void);
 
 esp_err_t http_json_set_config_serial(cJSON* json);
