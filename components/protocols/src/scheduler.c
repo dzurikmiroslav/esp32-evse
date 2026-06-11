@@ -179,7 +179,7 @@ void scheduler_init(void)
 
         esp_err_t ret = esp_netif_sntp_init(&config);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "SNTP init return %s", esp_err_to_name(ret));
+            ESP_LOGE(TAG, "NTP init return %s", esp_err_to_name(ret));
         } else {
             ESP_LOGI(TAG, "NTP enabled, server '%s', from DHCP %s", ntp_server, scheduler_is_ntp_from_dhcp() ? "yes" : "no");
         }
