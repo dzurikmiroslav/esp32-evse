@@ -7,6 +7,7 @@
 
 #include "cat.h"
 #include "schedule_restart.h"
+#include "scheduler.h"
 #include "temp_sensor.h"
 #include "vars.h"
 
@@ -174,6 +175,29 @@ static struct cat_variable vars_temperature[] = {
     },
 };
 
+static int var_tz_read(const struct cat_variable* var)
+{
+    scheduler_get_timezone(var_str32_1);
+
+    return 0;
+}
+
+static int var_tz_write(const struct cat_variable* var, const size_t write_size)
+{
+    return scheduler_set_timezone(var_str32_1) != ESP_OK;
+}
+
+static struct cat_variable vars_tz[] = {
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_1,
+        .data_size = sizeof(var_str32_1),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+        .read = var_tz_read,
+        .write = var_tz_write,
+    },
+};
+
 static int var_time_read(const struct cat_variable* var)
 {
     struct timeval tv;
@@ -255,6 +279,11 @@ static struct cat_command cmds[] = {
         .name = "+TEMP",
         .var = vars_temperature,
         .var_num = sizeof(vars_temperature) / sizeof(vars_temperature[0]),
+    },
+    {
+        .name = "+TZ",
+        .var = vars_tz,
+        .var_num = sizeof(vars_tz) / sizeof(vars_tz[0]),
     },
     {
         .name = "+TIME",

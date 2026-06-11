@@ -18,14 +18,9 @@ static int read_char(char* ch)
 {
     at_task_context_t* context = (at_task_context_t*)pvTaskGetThreadLocalStoragePointer(NULL, AT_TASK_CONTEXT_INDEX);
 
-    int readed;
-    if (context->has_input_char) {
-        *ch = context->input_char;
-        context->has_input_char = false;
-        readed = 1;
-    } else {
-        readed = read(context->fd, ch, 1) > 0 ? 1 : 0;
-    }
+    if (!context->can_read) return 0;
+
+    int readed = read(context->fd, ch, 1) > 0 ? 1 : 0;
 
     if (readed > 0 && context->echo) {
         write(context->fd, ch, 1);
@@ -45,7 +40,7 @@ static void handle_subscription(at_task_context_t* context)
             cat_trigger_unsolicited_read(context->at, entry->command);
             entry->last_tick = now;
 
-            // this prevents overflow of unsolicited buffer
+            // this prevents overflow of unsolicited buffer, context.can_read must be false
             while (cat_service(context->at) != 0) {
             };
         }
@@ -78,7 +73,7 @@ static void at_task_func(void* param)
         .at = &at,
         .echo = false,
         .wifi_scan_ap_list = NULL,
-        .has_input_char = false,
+        .can_read = false,
         .fd = fd,
     };
     context.subscribe_list = (at_subscribe_list_t*)malloc(sizeof(at_subscribe_list_t));
@@ -99,11 +94,10 @@ static void at_task_func(void* param)
 
         if (select(fd + 1, &read_set, NULL, NULL, &tv) > 0) {
             if (FD_ISSET(fd, &read_set)) {
-                context.has_input_char = read(fd, &context.input_char, 1) > 0;
-                if (context.has_input_char) {
-                    while (cat_service(&at) != 0) {
-                    };
-                }
+                context.can_read = true;
+                while (cat_service(&at) != 0) {
+                };
+                context.can_read = false;
             }
         }
 

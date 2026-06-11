@@ -35,15 +35,14 @@ typedef SLIST_HEAD(at_subscribe_list_t, at_subscribe_entry_s) at_subscribe_list_
  */
 typedef struct {
     struct cat_object* at;
-    bool echo;
+    bool echo : 1;
     wifi_scan_ap_list_t* wifi_scan_ap_list;
     at_subscribe_list_t* subscribe_list;
     uint8_t serial_index;
     uint8_t aux_input_index;
     uint8_t aux_output_index;
     uint8_t aux_analog_input_index;
-    char input_char;
-    bool has_input_char : 1;
+    bool can_read : 1;
     int fd;
 } at_task_context_t;
 
