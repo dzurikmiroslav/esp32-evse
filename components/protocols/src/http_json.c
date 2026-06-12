@@ -7,6 +7,7 @@
 #include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 
@@ -48,7 +49,16 @@ typedef struct {
     char static_ip[16];
     char static_gateway[16];
     char static_netmask[16];
+    char static_dns[16];
 } wifi_set_config_arg_t;
+
+typedef struct {
+    bool enabled;
+    const char* ip;
+    const char* gateway;
+    const char* netmask;
+    const char* dns;
+} wifi_static_input_t;
 
 cJSON* http_json_get_config(void)
 {
@@ -183,6 +193,8 @@ cJSON* http_json_get_config_wifi(void)
     cJSON_AddStringToObject(json, "staticGateway", str);
     wifi_get_static_netmask(str);
     cJSON_AddStringToObject(json, "staticNetmask", str);
+    wifi_get_static_dns(str);
+    cJSON_AddStringToObject(json, "staticDns", str);
 
     return json;
 }
@@ -191,7 +203,7 @@ static void wifi_set_config_timer_callback(TimerHandle_t timer)
 {
     wifi_set_config_arg_t* config = (wifi_set_config_arg_t*)pvTimerGetTimerID(timer);
 
-    wifi_set_static_config(config->static_enabled, config->static_ip, config->static_gateway, config->static_netmask);
+    wifi_set_static_config(config->static_enabled, config->static_ip, config->static_gateway, config->static_netmask, config->static_dns);
     wifi_set_config(config->enabled, config->ssid_blank ? NULL : config->ssid, config->password_blank ? NULL : config->password);
 
     free((void*)config);
@@ -199,8 +211,16 @@ static void wifi_set_config_timer_callback(TimerHandle_t timer)
     xTimerDelete(timer, 0);
 }
 
-static esp_err_t timeout_wifi_set_config(
-    bool enabled, const char* ssid, const char* password, bool static_enabled, const char* static_ip, const char* static_gateway, const char* static_netmask)
+static void copy_or_blank(char* dst, size_t dst_size, const char* src)
+{
+    if (src != NULL) {
+        snprintf(dst, dst_size, "%s", src);
+    } else {
+        dst[0] = '\0';
+    }
+}
+
+static esp_err_t timeout_wifi_set_config(bool enabled, const char* ssid, const char* password, const wifi_static_input_t* sta)
 {
     if (enabled) {
         if (ssid == NULL || strlen(ssid) == 0) {
@@ -229,25 +249,11 @@ static esp_err_t timeout_wifi_set_config(
         strcpy(config->password, password);
     }
 
-    config->static_enabled = static_enabled;
-
-    if (static_ip != NULL) {
-        strcpy(config->static_ip, static_ip);
-    } else {
-        config->static_ip[0] = '\0';
-    }
-
-    if (static_gateway != NULL) {
-        strcpy(config->static_gateway, static_gateway);
-    } else {
-        config->static_gateway[0] = '\0';
-    }
-
-    if (static_netmask != NULL) {
-        strcpy(config->static_netmask, static_netmask);
-    } else {
-        config->static_netmask[0] = '\0';
-    }
+    config->static_enabled = sta->enabled;
+    copy_or_blank(config->static_ip, sizeof(config->static_ip), sta->ip);
+    copy_or_blank(config->static_gateway, sizeof(config->static_gateway), sta->gateway);
+    copy_or_blank(config->static_netmask, sizeof(config->static_netmask), sta->netmask);
+    copy_or_blank(config->static_dns, sizeof(config->static_dns), sta->dns);
 
     TimerHandle_t timer = xTimerCreate("wifi_set_config", pdMS_TO_TICKS(1000), pdFALSE, (void*)config, wifi_set_config_timer_callback);
     xTimerStart(timer, 0);
@@ -264,8 +270,17 @@ esp_err_t http_json_set_config_wifi(cJSON* json)
     char* static_ip = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticIp"));
     char* static_gateway = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticGateway"));
     char* static_netmask = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticNetmask"));
+    char* static_dns = cJSON_GetStringValue(cJSON_GetObjectItem(json, "staticDns"));
 
-    return timeout_wifi_set_config(enabled, ssid, password, static_enabled, static_ip, static_gateway, static_netmask);
+    wifi_static_input_t sta = {
+        .enabled = static_enabled,
+        .ip = static_ip,
+        .gateway = static_gateway,
+        .netmask = static_netmask,
+        .dns = static_dns,
+    };
+
+    return timeout_wifi_set_config(enabled, ssid, password, &sta);
 }
 
 cJSON* http_json_get_wifi_scan(void)

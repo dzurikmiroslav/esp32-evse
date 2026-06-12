@@ -60,6 +60,7 @@ static int vars_sta_static_config_read(const struct cat_variable* var)
     wifi_get_static_ip(var_str32_1);
     wifi_get_static_gateway(var_str32_2);
     wifi_get_static_netmask(var_str32_3);
+    wifi_get_static_dns(var_str32_4);
 
     return 0;
 }
@@ -90,6 +91,12 @@ static struct cat_variable vars_sta_static_config[] = {
         .data_size = sizeof(var_str32_3),
         .access = CAT_VAR_ACCESS_READ_WRITE,
     },
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_4,
+        .data_size = sizeof(var_str32_4),
+        .access = CAT_VAR_ACCESS_READ_WRITE,
+    },
 };
 
 static cat_return_state vars_sta_static_config_write(const struct cat_command* cmd, const uint8_t* data, const size_t data_size, const size_t args_num)
@@ -98,6 +105,7 @@ static cat_return_state vars_sta_static_config_write(const struct cat_command* c
     const char* ip = NULL;
     const char* gateway = NULL;
     const char* netmask = NULL;
+    const char* dns = NULL;
 
     if (args_num > 1) {
         ip = var_str32_1;
@@ -108,8 +116,11 @@ static cat_return_state vars_sta_static_config_write(const struct cat_command* c
     if (args_num > 3) {
         netmask = var_str32_3;
     }
+    if (args_num > 4) {
+        dns = var_str32_4;
+    }
 
-    return wifi_set_static_config(enabled, ip, gateway, netmask) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
+    return wifi_set_static_config(enabled, ip, gateway, netmask, dns) == ESP_OK ? CAT_RETURN_STATE_OK : CAT_RETURN_STATE_ERROR;
 }
 
 static int vars_ap_config_read(const struct cat_variable* var)
