@@ -39,8 +39,6 @@ static scheduler_schedule_t* schedules = NULL;
 
 static uint8_t* schedules_state = NULL;
 
-static bool s_time_synced = false;
-
 static const char* tz_data[][2] = {
 #include "tz_data.h"
     { NULL, NULL }
@@ -71,12 +69,7 @@ void ntp_sync_cb(struct timeval* tv)
     localtime_r(&now, &timeinfo);
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-    if (s_time_synced) {
-        ESP_LOGI(TAG, "NTP resync: %s", buf);
-    } else {
-        s_time_synced = true;
-        ESP_LOGI(TAG, "NTP time set: %s", buf);
-    }
+    ESP_LOGI(TAG, "NTP sync: %s", buf);
 
     scheduler_execute_schedules();
 }
