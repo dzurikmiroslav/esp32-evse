@@ -42,6 +42,7 @@ typedef enum {
     URI_CONFIG_EVSE,
     URI_CONFIG_WIFI,
     URI_CONFIG_DISCOVERY,
+    URI_CONFIG_SYSLOG,
     URI_CONFIG_SERIAL,
     URI_CONFIG_MODBUS,
     URI_CONFIG_SCRIPT,
@@ -86,6 +87,7 @@ static const char* uris[] = {
     "/config/evse",
     "/config/wifi",
     "/config/discovery",
+    "/config/syslog",
     "/config/serial",
     "/config/modbus",
     "/config/script",
@@ -557,6 +559,8 @@ static esp_err_t get_handler(httpd_req_t* req)
             return handle_json_response(req, http_json_get_config_wifi());
         case URI_CONFIG_DISCOVERY:
             return handle_json_response(req, http_json_get_config_discovery());
+        case URI_CONFIG_SYSLOG:
+            return handle_json_response(req, http_json_get_config_syslog());
         case URI_CONFIG_SERIAL:
             return handle_json_response(req, http_json_get_config_serial());
         case URI_CONFIG_MODBUS:
@@ -631,6 +635,8 @@ static esp_err_t post_handler(httpd_req_t* req)
             return handle_json_request(req, http_json_set_config_wifi);
         case URI_CONFIG_DISCOVERY:
             return handle_json_request(req, http_json_set_config_discovery);
+        case URI_CONFIG_SYSLOG:
+            return handle_json_request(req, http_json_set_config_syslog);
         case URI_WIFI_STATE_AP:
             return handle_json_request(req, http_json_set_wifi_state_ap);
         case URI_CONFIG_SERIAL:

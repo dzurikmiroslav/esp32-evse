@@ -13,6 +13,24 @@
 void logger_init(void);
 
 /**
+ * @brief Callback invoked for every captured log line.
+ *
+ * Runs in the context of the logging task under the logger mutex, so the
+ * callback MUST NOT log or block: copy the line and return immediately.
+ *
+ * @param line formatted log line (not NUL-guaranteed beyond len)
+ * @param len  length of the line in bytes
+ */
+typedef void (*logger_line_cb_t)(const char* line, int len);
+
+/**
+ * @brief Register a single line callback (replaces any previous one).
+ *
+ * @param cb callback, or NULL to disable
+ */
+void logger_register_line_cb(logger_line_cb_t cb);
+
+/**
  * @brief Get log bugger lengt
  *
  * @return uint16_t

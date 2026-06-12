@@ -23,6 +23,8 @@ static uint8_t s_log_buffer_data[LOG_BUFFER_SIZE];
 
 static output_buffer_t* s_log_buffer;
 
+static logger_line_cb_t s_line_cb = NULL;
+
 typedef struct {
     uint32_t magic;
     char log[PANIC_LOG_SIZE];
@@ -44,6 +46,10 @@ static int logger_vprintf(const char* str, va_list l)
     int len = vsnprintf(log, LOG_LINE_SIZE, str, l);
 
     output_buffer_append_buf(s_log_buffer, log, len);
+
+    if (s_line_cb != NULL) {
+        s_line_cb(log, len);
+    }
 
     xSemaphoreGive(s_mutex);
 
@@ -76,6 +82,11 @@ bool logger_log_bugger_read(uint16_t* index, char** str, uint16_t* len)
     xSemaphoreGive(s_mutex);
 
     return has_next;
+}
+
+void logger_register_line_cb(logger_line_cb_t cb)
+{
+    s_line_cb = cb;
 }
 
 time_t logger_get_panic_time(void)
