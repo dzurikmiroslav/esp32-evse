@@ -151,7 +151,9 @@ void wifi_get_static_gateway(char* str);
 
 void wifi_get_static_netmask(char* str);
 
-esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask);
+void wifi_get_static_dns(char* str);
+
+esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask, const char* dns);
 
 bool wifi_is_ap_enabled(void);
 
