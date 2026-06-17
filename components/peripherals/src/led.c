@@ -11,20 +11,23 @@
 
 #define BLOCK_TIME 10
 
-static const char* TAG = "led";
-
-static struct led_s {
+typedef struct {
     gpio_num_t gpio;
     bool on : 1;
-    uint16_t ontime, offtime;
+    uint16_t ontime;
+    uint16_t offtime;
     TimerHandle_t timer;
-} leds[3];
+} led_t;
+
+static const char* TAG = "led";
+
+static led_t s_leds[LED_ID_MAX];
 
 void led_init(void)
 {
     for (int i = 0; i < LED_ID_MAX; i++) {
-        leds[i].timer = NULL;
-        leds[i].gpio = GPIO_NUM_NC;
+        s_leds[i].timer = NULL;
+        s_leds[i].gpio = GPIO_NUM_NC;
     }
 
     gpio_config_t io_conf = {
@@ -36,17 +39,17 @@ void led_init(void)
     };
 
     if (board_config.leds.wifi_gpio != -1) {
-        leds[LED_ID_WIFI].gpio = board_config.leds.wifi_gpio;
+        s_leds[LED_ID_WIFI].gpio = board_config.leds.wifi_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.leds.wifi_gpio);
     }
 
     if (board_config.leds.charging_gpio != -1) {
-        leds[LED_ID_CHARGING].gpio = board_config.leds.charging_gpio;
+        s_leds[LED_ID_CHARGING].gpio = board_config.leds.charging_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.leds.charging_gpio);
     }
 
     if (board_config.leds.error_gpio != -1) {
-        leds[LED_ID_ERROR].gpio = board_config.leds.error_gpio;
+        s_leds[LED_ID_ERROR].gpio = board_config.leds.error_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.leds.error_gpio);
     }
 
@@ -57,44 +60,50 @@ void led_init(void)
 
 static void timer_callback(TimerHandle_t xTimer)
 {
-    struct led_s* led = (struct led_s*)pvTimerGetTimerID(xTimer);
+    led_t* led = (led_t*)pvTimerGetTimerID(xTimer);
 
     led->on = !led->on;
     gpio_set_level(led->gpio, led->on);
 
-    xTimerChangePeriod(xTimer, pdMS_TO_TICKS(led->on ? led->ontime : led->offtime), BLOCK_TIME);
+    uint16_t next = led->on ? led->ontime : led->offtime;
+    if (next > 0) {
+        xTimerChangePeriod(xTimer, pdMS_TO_TICKS(next), BLOCK_TIME);
+    }
 }
 
 void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
 {
-    struct led_s* led = &leds[led_id];
-    if (led->gpio != GPIO_NUM_NC) {
-        if (led->timer != NULL) {
-            xTimerStop(led->timer, BLOCK_TIME);
-            led->timer = NULL;
-        }
+    led_t* led = &s_leds[led_id];
+    if (led->gpio == GPIO_NUM_NC) {
+        return;
+    }
 
-        led->ontime = ontime;
-        led->offtime = offtime;
+    if (led->timer != NULL) {
+        xTimerStop(led->timer, BLOCK_TIME);
+    }
 
-        if (ontime == 0) {
-            ESP_LOGD(TAG, "Set led %d off", led_id);
-            led->on = false;
-            gpio_set_level(led->gpio, led->on);
-        } else if (offtime == 0) {
-            ESP_LOGD(TAG, "Set led %d on", led_id);
-            led->on = true;
-            gpio_set_level(led->gpio, led->on);
+    led->ontime = ontime;
+    led->offtime = offtime;
+
+    if (ontime == 0) {
+        ESP_LOGD(TAG, "Set led %d off", led_id);
+        led->on = false;
+        gpio_set_level(led->gpio, led->on);
+    } else if (offtime == 0) {
+        ESP_LOGD(TAG, "Set led %d on", led_id);
+        led->on = true;
+        gpio_set_level(led->gpio, led->on);
+    } else {
+        ESP_LOGD(TAG, "Set led %d blink (on: %d off: %d)", led_id, ontime, offtime);
+
+        led->on = true;
+        gpio_set_level(led->gpio, led->on);
+
+        if (led->timer == NULL) {
+            led->timer = xTimerCreate("led_timer", pdMS_TO_TICKS(ontime), pdFALSE, (void*)led, timer_callback);
         } else {
-            ESP_LOGD(TAG, "Set led %d blink (on: %d off: %d)", led_id, ontime, offtime);
-
-            led->on = true;
-            gpio_set_level(led->gpio, led->on);
-
-            if (led->timer == NULL) {
-                led->timer = xTimerCreate("led_timer", pdMS_TO_TICKS(ontime), pdFALSE, (void*)led, timer_callback);
-            }
-            xTimerStart(led->timer, BLOCK_TIME);
+            xTimerChangePeriod(led->timer, pdMS_TO_TICKS(ontime), BLOCK_TIME);
         }
+        xTimerStart(led->timer, BLOCK_TIME);
     }
 }
