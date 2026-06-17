@@ -11,20 +11,23 @@
 
 #define BLOCK_TIME 10
 
-static const char* TAG = "led";
-
-static struct led_s {
+typedef struct {
     gpio_num_t gpio;
     bool on : 1;
-    uint16_t ontime, offtime;
+    uint16_t ontime;
+    uint16_t offtime;
     TimerHandle_t timer;
-} leds[3];
+} led_t;
+
+static const char* TAG = "led";
+
+static led_t s_leds[LED_ID_MAX];
 
 void led_init(void)
 {
     for (int i = 0; i < LED_ID_MAX; i++) {
-        leds[i].timer = NULL;
-        leds[i].gpio = GPIO_NUM_NC;
+        s_leds[i].timer = NULL;
+        s_leds[i].gpio = GPIO_NUM_NC;
     }
 
     gpio_config_t io_conf = {
@@ -36,17 +39,17 @@ void led_init(void)
     };
 
     if (board_config.leds.wifi_gpio != -1) {
-        leds[LED_ID_WIFI].gpio = board_config.leds.wifi_gpio;
+        s_leds[LED_ID_WIFI].gpio = board_config.leds.wifi_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.leds.wifi_gpio);
     }
 
     if (board_config.leds.charging_gpio != -1) {
-        leds[LED_ID_CHARGING].gpio = board_config.leds.charging_gpio;
+        s_leds[LED_ID_CHARGING].gpio = board_config.leds.charging_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.leds.charging_gpio);
     }
 
     if (board_config.leds.error_gpio != -1) {
-        leds[LED_ID_ERROR].gpio = board_config.leds.error_gpio;
+        s_leds[LED_ID_ERROR].gpio = board_config.leds.error_gpio;
         io_conf.pin_bit_mask |= BIT64(board_config.leds.error_gpio);
     }
 
@@ -57,15 +60,11 @@ void led_init(void)
 
 static void timer_callback(TimerHandle_t xTimer)
 {
-    struct led_s* led = (struct led_s*)pvTimerGetTimerID(xTimer);
+    led_t* led = (led_t*)pvTimerGetTimerID(xTimer);
 
     led->on = !led->on;
     gpio_set_level(led->gpio, led->on);
 
-    // Guard against a zero period: led_set_state() may have switched this led to
-    // a solid state (ontime/offtime == 0) while this callback was already in
-    // flight. xTimerChangePeriod() with 0 ticks trips configASSERT() in the
-    // FreeRTOS timer task and panics, so don't re-arm in that case.
     uint16_t next = led->on ? led->ontime : led->offtime;
     if (next > 0) {
         xTimerChangePeriod(xTimer, pdMS_TO_TICKS(next), BLOCK_TIME);
@@ -74,15 +73,11 @@ static void timer_callback(TimerHandle_t xTimer)
 
 void led_set_state(led_id_t led_id, uint16_t ontime, uint16_t offtime)
 {
-    struct led_s* led = &leds[led_id];
+    led_t* led = &s_leds[led_id];
     if (led->gpio == GPIO_NUM_NC) {
         return;
     }
 
-    // Keep one persistent timer per led and reuse it. Previously the timer was
-    // stopped and its handle dropped (leaking a timer on every reconfigure) and
-    // recreated each time, which under rapid reconfiguration left stopped-but-
-    // pending callbacks firing with stale on/off times.
     if (led->timer != NULL) {
         xTimerStop(led->timer, BLOCK_TIME);
     }
