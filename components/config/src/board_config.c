@@ -28,7 +28,7 @@ void board_config_load(bool reset)
     if (!file) {
         ESP_LOGI(TAG, "Creating minimal config");
         file = fopen(BOARD_CONFIG_YAML, "w");
-        fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, file);
+        fwrite(board_yaml_start, sizeof(char), board_yaml_end - board_yaml_start, file);  // NOSONAR - linker-generated symbols bounding the same embedded binary blob
         file = freopen(BOARD_CONFIG_YAML, "r", file);
     }
 
