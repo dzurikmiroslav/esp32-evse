@@ -159,7 +159,7 @@ static void improv_send_response_wifi_network(int fd, wifi_scan_ap_entry_t* scan
         improv_append_str(&data[11], &pos, scan_ap->ssid);
 
         char rssi_str[8];
-        sprintf(rssi_str, "%d", scan_ap->rssi);
+        snprintf(rssi_str, sizeof(rssi_str), "%d", scan_ap->rssi);
         improv_append_str(&data[11], &pos, rssi_str);
 
         if (scan_ap->auth) {

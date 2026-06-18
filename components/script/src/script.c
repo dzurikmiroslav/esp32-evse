@@ -371,8 +371,9 @@ void script_set_component_params(const char* id, script_component_param_list_t* 
             raw_entry->value = entry->value.string ? strdup(entry->value.string) : NULL;
             break;
         case SCRIPT_COMPONENT_PARAM_TYPE_NUMBER:
-            raw_entry->value = (char*)malloc(32 * sizeof(char));
-            sprintf(raw_entry->value, "%f", entry->value.number);
+            const size_t value_size = 32 * sizeof(char);
+            raw_entry->value = (char*)malloc(value_size);
+            snprintf(raw_entry->value, value_size, "%f", entry->value.number);
             break;
         case SCRIPT_COMPONENT_PARAM_TYPE_BOOLEAN:
             raw_entry->value = strdup(entry->value.boolean ? "true" : "false");

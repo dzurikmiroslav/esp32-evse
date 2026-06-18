@@ -152,7 +152,7 @@ static esp_err_t serial_start(uart_port_t port, uint32_t baud_rate, uart_word_le
         }
 
         char file_name[16];
-        sprintf(file_name, "/dev/uart/%d", port);
+        snprintf(file_name, sizeof(file_name), "/dev/uart/%d", port);
 
         serial_tasks[port].fd = open(file_name, O_RDWR | O_NONBLOCK);
         if (serial_tasks[port].fd == -1) {
@@ -209,7 +209,7 @@ void serial_init(void)
             uart_vfs_dev_port_set_tx_line_endings(port, ESP_LINE_ENDINGS_LF);
 
             char key[12];
-            sprintf(key, NVS_MODE, port);
+            snprintf(key, sizeof(key), NVS_MODE, port);
 
             size_t mode_name_len = SEIAL_MODE_NAME_SIZE;
             char mode_name[SEIAL_MODE_NAME_SIZE];
@@ -239,7 +239,7 @@ int serial_get_baud_rate(uart_port_t port)
 {
     int32_t value = 115200;
     char key[12];
-    sprintf(key, NVS_BAUD_RATE, port);
+    snprintf(key, sizeof(key), NVS_BAUD_RATE, port);
     nvs_get_i32(nvs, key, &value);
     return value;
 }
@@ -248,7 +248,7 @@ uart_word_length_t serial_get_data_bits(uart_port_t port)
 {
     uint8_t value = UART_DATA_8_BITS;
     char key[12];
-    sprintf(key, NVS_DATA_BITS, port);
+    snprintf(key, sizeof(key), NVS_DATA_BITS, port);
     nvs_get_u8(nvs, key, &value);
     return value;
 }
@@ -257,7 +257,7 @@ uart_stop_bits_t serial_get_stop_bits(uart_port_t port)
 {
     uint8_t value = UART_STOP_BITS_1;
     char key[12];
-    sprintf(key, NVS_STOP_BITS, port);
+    snprintf(key, sizeof(key), NVS_STOP_BITS, port);
     nvs_get_u8(nvs, key, &value);
     return value;
 }
@@ -266,7 +266,7 @@ uart_parity_t serial_get_parity(uart_port_t port)
 {
     uint8_t value = UART_PARITY_DISABLE;
     char key[12];
-    sprintf(key, NVS_PARITY, port);
+    snprintf(key, sizeof(key), NVS_PARITY, port);
     nvs_get_u8(nvs, key, &value);
     return value;
 }
@@ -306,19 +306,19 @@ esp_err_t serial_set_config(uart_port_t port, const char* mode, int baud_rate, u
     }
 
     char key[12];
-    sprintf(key, NVS_MODE, port);
+    snprintf(key, sizeof(key), NVS_MODE, port);
     nvs_set_str(nvs, key, mode_config ? mode_config->name : "none");
 
-    sprintf(key, NVS_BAUD_RATE, port);
+    snprintf(key, sizeof(key), NVS_BAUD_RATE, port);
     nvs_set_i32(nvs, key, baud_rate);
 
-    sprintf(key, NVS_DATA_BITS, port);
+    snprintf(key, sizeof(key), NVS_DATA_BITS, port);
     nvs_set_u8(nvs, key, data_bits);
 
-    sprintf(key, NVS_STOP_BITS, port);
+    snprintf(key, sizeof(key), NVS_STOP_BITS, port);
     nvs_set_u8(nvs, key, stop_bits);
 
-    sprintf(key, NVS_PARITY, port);
+    snprintf(key, sizeof(key), NVS_PARITY, port);
     nvs_set_u8(nvs, key, parity);
 
     nvs_commit(nvs);

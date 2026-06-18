@@ -147,11 +147,11 @@ static void propfind_response_directory_with_quota(httpd_req_t* req, const char*
     httpd_resp_send_chunk(req, "</href>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<propstat>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<prop>\n", HTTPD_RESP_USE_STRLEN);
-    sprintf(str, "%zu", used);
+    snprintf(str, sizeof(str), "%zu", used);
     httpd_resp_send_chunk(req, "<quota-used-bytes>", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, str, HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "</quota-used-bytes>\n", HTTPD_RESP_USE_STRLEN);
-    sprintf(str, "%zu", total - used);
+    snprintf(str, sizeof(str), "%zu", total - used);
     httpd_resp_send_chunk(req, "<quota-available-bytes>", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, str, HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "</quota-available-bytes>\n", HTTPD_RESP_USE_STRLEN);
@@ -167,7 +167,7 @@ static void propfind_response_file(httpd_req_t* req, const char* path)
     struct stat statbuf;
     char str[16];
     stat(path, &statbuf);
-    sprintf(str, "%" PRId32, statbuf.st_size);
+    snprintf(str, sizeof(str), "%" PRId32, statbuf.st_size);
 
     httpd_resp_send_chunk(req, "<response>\n", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, "<href>" DAV_BASE_PATH, HTTPD_RESP_USE_STRLEN);

@@ -184,7 +184,7 @@ static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
         ctx->var_sub.enabled = subscribe;
         if (subscribe) {
             ctx->enabled = evse_is_enabled();
-            sprintf(tx_cmd, VAR_FMT_ENABLED, ctx->enabled);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_ENABLED, ctx->enabled);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_ERROR)) {
@@ -197,21 +197,21 @@ static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
         ctx->var_sub.charging_current = subscribe;
         if (subscribe) {
             ctx->charging_current = evse_get_charging_current();
-            sprintf(tx_cmd, VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_DEFAULT_CHARGING_CURRENT)) {
         ctx->var_sub.default_charging_current = subscribe;
         if (subscribe) {
             ctx->default_charging_current = evse_get_default_charging_current();
-            sprintf(tx_cmd, VAR_FMT_DEFAULT_CHARGING_CURRENT, ctx->default_charging_current);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_DEFAULT_CHARGING_CURRENT, ctx->default_charging_current);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_MAX_CHARGING_CURRENT)) {
         ctx->var_sub.max_charging_current = subscribe;
         if (subscribe) {
             ctx->max_charging_current = evse_get_max_charging_current();
-            sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_SESSION_TIME)) {
@@ -240,38 +240,38 @@ static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
         ctx->var_sub.consumption_limit = subscribe;
         if (subscribe) {
             ctx->consumption_limit = evse_get_consumption_limit();
-            sprintf(tx_cmd, VAR_FMT_CONSUMPTION_LIMIT, ctx->consumption_limit);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CONSUMPTION_LIMIT, ctx->consumption_limit);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_CHARGING_TIME_LIMIT)) {
         ctx->var_sub.charging_time_limit = subscribe;
         ctx->charging_time_limit = evse_get_charging_time_limit();
-        sprintf(tx_cmd, VAR_FMT_CHARGING_TIME_LIMIT, ctx->charging_time_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CHARGING_TIME_LIMIT, ctx->charging_time_limit);
         tx_str(ctx->fd, tx_cmd);
     } else if (!strcmp(var, VAR_UNDER_POWER_LIMIT)) {
         ctx->var_sub.default_under_power_limit = subscribe;
         if (subscribe) {
             ctx->default_under_power_limit = evse_get_default_under_power_limit();
-            sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_DEFAULT_CONSUMPTION_LIMIT)) {
         ctx->var_sub.default_consumption_limit = subscribe;
         if (subscribe) {
             ctx->default_consumption_limit = evse_get_default_consumption_limit();
-            sprintf(tx_cmd, VAR_FMT_DEFAULT_CONSUMPTION_LIMIT, ctx->default_consumption_limit);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_DEFAULT_CONSUMPTION_LIMIT, ctx->default_consumption_limit);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_DEFAULT_CHARGING_TIME_LIMIT)) {
         ctx->var_sub.default_charging_time_limit = subscribe;
         ctx->default_charging_time_limit = evse_get_default_charging_time_limit();
-        sprintf(tx_cmd, VAR_FMT_DEFAULT_CHARGING_TIME_LIMIT, ctx->default_charging_time_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_DEFAULT_CHARGING_TIME_LIMIT, ctx->default_charging_time_limit);
         tx_str(ctx->fd, tx_cmd);
     } else if (!strcmp(var, VAR_DEFAULT_UNDER_POWER_LIMIT)) {
         ctx->var_sub.default_under_power_limit = subscribe;
         if (subscribe) {
             ctx->default_under_power_limit = evse_get_default_under_power_limit();
-            sprintf(tx_cmd, VAR_FMT_DEFAULT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_DEFAULT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_UPTIME)) {
@@ -286,7 +286,7 @@ static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
         ctx->var_sub.ip = subscribe;
         if (subscribe) {
             wifi_get_ip(false, ctx->ip, sizeof(ctx->ip));
-            sprintf(tx_cmd, VAR_FMT_IP, ctx->ip);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_IP, ctx->ip);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_HEAP_SIZE)) {
@@ -295,13 +295,13 @@ static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
         ctx->var_sub.max_heap_size = subscribe;
     } else if (!strcmp(var, VAR_DEVICE_NAME)) {
         if (subscribe) {
-            sprintf(tx_cmd, VAR_FMT_DEVICE_NAME, board_config.device_name);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_DEVICE_NAME, board_config.device_name);
             tx_str(ctx->fd, tx_cmd);
         }
     } else if (!strcmp(var, VAR_APP_VERSION)) {
         if (subscribe) {
             const esp_app_desc_t* app_desc = esp_app_get_description();
-            sprintf(tx_cmd, VAR_FMT_APP_VERSION, app_desc->version);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_APP_VERSION, app_desc->version);
             tx_str(ctx->fd, tx_cmd);
         }
     } else {
@@ -373,129 +373,129 @@ static void tx_vars(task_context_t* ctx)
     char tx_cmd[64];
 
     if (ctx->var_sub.state) {
-        sprintf(tx_cmd, VAR_FMT_STATE, evse_state_to_str(evse_get_state()));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_STATE, evse_state_to_str(evse_get_state()));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.enabled && ctx->enabled != evse_is_enabled()) {
         ctx->enabled = evse_is_enabled();
-        sprintf(tx_cmd, VAR_FMT_ENABLED, ctx->enabled);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_ENABLED, ctx->enabled);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.error) {
-        sprintf(tx_cmd, VAR_FMT_ERROR, evse_get_error());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_ERROR, evse_get_error());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.pending_auth) {
-        sprintf(tx_cmd, VAR_FMT_PENDING_AUTH, evse_is_pending_auth());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_PENDING_AUTH, evse_is_pending_auth());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.limit_reached) {
-        sprintf(tx_cmd, VAR_FMT_LIMIT_REACHED, evse_is_limit_reached());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_LIMIT_REACHED, evse_is_limit_reached());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.charging_current && ctx->charging_current != evse_get_charging_current()) {
         ctx->charging_current = evse_get_charging_current();
-        sprintf(tx_cmd, VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CHARGING_CURRENT, ctx->charging_current);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.max_charging_current && ctx->max_charging_current != evse_get_max_charging_current()) {
         ctx->max_charging_current = evse_get_max_charging_current();
-        sprintf(tx_cmd, VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_MAX_CHARGING_CURRENT, ctx->max_charging_current);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.default_charging_current && ctx->default_charging_current != evse_get_default_charging_current()) {
         ctx->default_charging_current = evse_get_default_charging_current();
-        sprintf(tx_cmd, VAR_FMT_DEFAULT_CHARGING_CURRENT, ctx->default_charging_current);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_DEFAULT_CHARGING_CURRENT, ctx->default_charging_current);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.session_time) {
-        sprintf(tx_cmd, VAR_FMT_SESSION_TIME, energy_meter_get_session_time());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_SESSION_TIME, energy_meter_get_session_time());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.charging_time) {
-        sprintf(tx_cmd, VAR_FMT_CHARGING_TIME, energy_meter_get_charging_time());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CHARGING_TIME, energy_meter_get_charging_time());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.power) {
-        sprintf(tx_cmd, VAR_FMT_POWER, energy_meter_get_power());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_POWER, energy_meter_get_power());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.consumption) {
-        sprintf(tx_cmd, VAR_FMT_CONSUMPTION, energy_meter_get_consumption());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CONSUMPTION, energy_meter_get_consumption());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.total_consumption) {
-        sprintf(tx_cmd, VAR_FMT_TOTAL_CONSUMPTION, energy_meter_get_total_consumption());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_TOTAL_CONSUMPTION, energy_meter_get_total_consumption());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.voltage_l1) {
-        sprintf(tx_cmd, VAR_FMT_VOLTAGE_L1, (uint16_t)(energy_meter_get_l1_voltage() * 100));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_VOLTAGE_L1, (uint16_t)(energy_meter_get_l1_voltage() * 100));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.voltage_l2) {
-        sprintf(tx_cmd, VAR_FMT_VOLTAGE_L2, (uint16_t)(energy_meter_get_l2_voltage() * 100));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_VOLTAGE_L2, (uint16_t)(energy_meter_get_l2_voltage() * 100));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.voltage_l3) {
-        sprintf(tx_cmd, VAR_FMT_VOLTAGE_L3, (uint16_t)(energy_meter_get_l3_voltage() * 100));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_VOLTAGE_L3, (uint16_t)(energy_meter_get_l3_voltage() * 100));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.current_l1) {
-        sprintf(tx_cmd, VAR_FMT_CURRENT_L1, (uint16_t)(energy_meter_get_l1_current() * 100));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CURRENT_L1, (uint16_t)(energy_meter_get_l1_current() * 100));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.current_l2) {
-        sprintf(tx_cmd, VAR_FMT_CURRENT_L2, (uint16_t)(energy_meter_get_l2_current() * 100));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CURRENT_L2, (uint16_t)(energy_meter_get_l2_current() * 100));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.current_l3) {
-        sprintf(tx_cmd, VAR_FMT_CURRENT_L3, (uint16_t)(energy_meter_get_l3_current() * 100));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CURRENT_L3, (uint16_t)(energy_meter_get_l3_current() * 100));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.consumption_limit && ctx->consumption_limit != evse_get_consumption_limit()) {
         ctx->consumption_limit = evse_get_consumption_limit();
-        sprintf(tx_cmd, VAR_FMT_CONSUMPTION_LIMIT, ctx->consumption_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CONSUMPTION_LIMIT, ctx->consumption_limit);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.charging_time_limit && ctx->charging_time_limit != evse_get_charging_time_limit()) {
         ctx->charging_time_limit = evse_get_charging_time_limit();
-        sprintf(tx_cmd, VAR_FMT_CHARGING_TIME_LIMIT, ctx->charging_time_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CHARGING_TIME_LIMIT, ctx->charging_time_limit);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.under_power_limit && ctx->under_power_limit != evse_get_under_power_limit()) {
         ctx->under_power_limit = evse_get_under_power_limit();
-        sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->under_power_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_UNDER_POWER_LIMIT, ctx->under_power_limit);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.default_consumption_limit && ctx->default_consumption_limit != evse_get_default_consumption_limit()) {
         ctx->default_consumption_limit = evse_get_default_consumption_limit();
-        sprintf(tx_cmd, VAR_FMT_CONSUMPTION_LIMIT, ctx->default_consumption_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CONSUMPTION_LIMIT, ctx->default_consumption_limit);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.default_charging_time_limit && ctx->default_charging_time_limit != evse_get_default_charging_time_limit()) {
         ctx->default_charging_time_limit = evse_get_default_charging_time_limit();
-        sprintf(tx_cmd, VAR_FMT_CHARGING_TIME_LIMIT, ctx->default_charging_time_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_CHARGING_TIME_LIMIT, ctx->default_charging_time_limit);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.default_under_power_limit && ctx->default_under_power_limit != evse_get_default_under_power_limit()) {
         ctx->default_under_power_limit = evse_get_default_under_power_limit();
-        sprintf(tx_cmd, VAR_FMT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_UNDER_POWER_LIMIT, ctx->default_under_power_limit);
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.uptime) {
-        sprintf(tx_cmd, VAR_FMT_UPTIME, (uint32_t)(esp_timer_get_time() / 1000000));
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_UPTIME, (uint32_t)(esp_timer_get_time() / 1000000));
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.temperature) {
-        sprintf(tx_cmd, VAR_FMT_TEMPERATURE, temp_sensor_get_high());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_TEMPERATURE, temp_sensor_get_high());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.low_temperature) {
-        sprintf(tx_cmd, VAR_FMT_LOW_TEMPERATURE, temp_sensor_get_low());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_LOW_TEMPERATURE, temp_sensor_get_low());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.high_temperature) {
-        sprintf(tx_cmd, VAR_FMT_HIGH_TEMPERATURE, temp_sensor_get_high());
+        snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_HIGH_TEMPERATURE, temp_sensor_get_high());
         tx_str(ctx->fd, tx_cmd);
     }
     if (ctx->var_sub.ip) {
@@ -503,7 +503,7 @@ static void tx_vars(task_context_t* ctx)
         wifi_get_ip(false, str, sizeof(str));
         if (strncmp(ctx->ip, str, 16) != 0) {
             strncpy(ctx->ip, str, 16);
-            sprintf(tx_cmd, VAR_FMT_IP, str);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_IP, str);
             tx_str(ctx->fd, tx_cmd);
         }
     }
@@ -511,11 +511,11 @@ static void tx_vars(task_context_t* ctx)
         multi_heap_info_t heap_info;
         heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL);
         if (ctx->var_sub.heap_size) {
-            sprintf(tx_cmd, VAR_FMT_HEAP_SIZE, heap_info.total_allocated_bytes);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_HEAP_SIZE, heap_info.total_allocated_bytes);
             tx_str(ctx->fd, tx_cmd);
         }
         if (ctx->var_sub.max_heap_size) {
-            sprintf(tx_cmd, VAR_FMT_MAX_HEAP_SIZE, heap_info.total_free_bytes + heap_info.total_allocated_bytes);
+            snprintf(tx_cmd, sizeof(tx_cmd), VAR_FMT_MAX_HEAP_SIZE, heap_info.total_free_bytes + heap_info.total_allocated_bytes);
             tx_str(ctx->fd, tx_cmd);
         }
     }

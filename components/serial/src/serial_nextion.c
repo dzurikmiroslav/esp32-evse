@@ -118,7 +118,7 @@ esp_err_t serial_nextion_upload_begin(size_t file_size, uint32_t baud_rate)
     uart_flush_input(port);
 
     char buf[BUF_SIZE];
-    sprintf(buf, "whmi-wris %" PRIuSIZE ",%" PRIu32 ",1", file_size, baud_rate);
+    snprintf(buf, sizeof(buf), "whmi-wris %" PRIuSIZE ",%" PRIu32 ",1", file_size, baud_rate);
     tx_str(buf);
     uart_wait_tx_done(port, pdMS_TO_TICKS(1000));
 
