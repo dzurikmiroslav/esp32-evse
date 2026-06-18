@@ -100,7 +100,7 @@ static void improv_send_device_url(int fd, uint8_t cmd)
     uint8_t pos = 0;
 
     char url[64];
-    strlcpy(url, "http://", sizeof(url));
+    strlcpy(url, "http://", sizeof(url));  // noncompliant
     wifi_get_ip(false, &url[7], sizeof(url) - 7);
 
     improv_append_str(&data[11], &pos, url);

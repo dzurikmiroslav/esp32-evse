@@ -7,7 +7,7 @@
 
 static void logger_task_func(void* param)
 {
-    int fd = (int)param;
+    int fd = (int)(intptr_t)param;
 
     char* str;
     uint16_t str_len;
