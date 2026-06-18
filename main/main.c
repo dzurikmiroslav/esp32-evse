@@ -24,6 +24,7 @@
 #include "protocols.h"
 #include "script.h"
 #include "serial.h"
+#include "syslog.h"
 #include "wifi.h"
 
 #define AP_CONNECTION_TIMEOUT 60000  // 60sec
@@ -320,6 +321,7 @@ void app_main(void)
     board_config_load(init_count > 5);
 
     network_init();
+    syslog_init();
     peripherals_init();
     modbus_init();
     serial_init();

@@ -26,6 +26,7 @@
 #include "serial.h"
 #include "serial_nextion.h"
 #include "socket_lock.h"
+#include "syslog.h"
 #include "temp_sensor.h"
 #include "wifi.h"
 
@@ -72,6 +73,7 @@ cJSON* http_json_get_config(void)
     cJSON_AddItemToObject(json, "evse", http_json_get_config_evse());
     cJSON_AddItemToObject(json, "wifi", http_json_get_config_wifi());
     cJSON_AddItemToObject(json, "discovery", http_json_get_config_discovery());
+    cJSON_AddItemToObject(json, "syslog", http_json_get_config_syslog());
     cJSON_AddItemToObject(json, "serial", http_json_get_config_serial());
     cJSON_AddItemToObject(json, "modbus", http_json_get_config_modbus());
     cJSON_AddItemToObject(json, "script", http_json_get_config_script());
@@ -384,6 +386,27 @@ esp_err_t http_json_set_config_discovery(cJSON* json)
     }
 
     return written > 0 ? ESP_OK : ESP_ERR_INVALID_ARG;
+}
+
+cJSON* http_json_get_config_syslog(void)
+{
+    cJSON* json = cJSON_CreateObject();
+
+    cJSON_AddBoolToObject(json, "enabled", syslog_is_enabled());
+
+    char host[SYSLOG_HOST_SIZE];
+    syslog_get_host(host);
+    cJSON_AddStringToObject(json, "host", host);
+
+    return json;
+}
+
+esp_err_t http_json_set_config_syslog(cJSON* json)
+{
+    bool enabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "enabled"));
+    char* host = cJSON_GetStringValue(cJSON_GetObjectItem(json, "host"));
+
+    return syslog_set_config(enabled, host);
 }
 
 cJSON* http_json_get_config_serial(void)

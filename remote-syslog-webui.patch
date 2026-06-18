@@ -1,0 +1,208 @@
+--- a/components/protocols/web/src/pages/NetworkSettings.jsx
++++ b/components/protocols/web/src/pages/NetworkSettings.jsx
+@@ -81,6 +81,7 @@
+   const [loading, setLoading] = useState(true);
+   const [wifiFormData, setWifiFormData] = useState(); // /config/wifi
+   const [discoveryFormData, setDiscoveryFormData] = useState(); // /config/discovery
++  const [syslogFormData, setSyslogFormData] = useState(); // /config/syslog
+   const [wifiState, setWifiState] = useState(); // /wifi/state
+ 
+   const fetchJsonResp = fetchJson(); // u = Ne()
+@@ -95,6 +96,9 @@
+       fetch("/api/v1/config/wifi", { signal: abortController.signal })
+         .then(fetchJsonResp)
+         .then(setWifiFormData),
++      fetch("/api/v1/config/syslog", { signal: abortController.signal })
++        .then(fetchJsonResp)
++        .then(setSyslogFormData),
+       fetch("/api/v1/wifi/state", { signal: abortController.signal })
+         .then(fetchJsonResp)
+         .then(setWifiState),
+@@ -124,6 +128,13 @@
+             state={wifiState}
+             formData={wifiFormData}
+             setFormData={setWifiFormData}
++          />
++          {/* Remote syslog: enable + server host */}
++          <SyslogSection
++            setLoading={setLoading}
++            abortController={abortController}
++            formData={syslogFormData}
++            setFormData={setSyslogFormData}
+           />
+           {/* Discovery: hostname + instance name */}
+           <DiscoverySection
+@@ -572,4 +583,96 @@
+   );
+ };
+ 
++const SyslogSection = ({ setLoading, abortController, formData, setFormData }) => {
++  const t = useTranslation();
++  const [validated, setValidated] = useState(false);
++
++  const fetchJsonResp = fetchJson();
++  const fetchVoidResp = fetchVoid();
++  const handleApiError = useApiErrorHandler();
++  const onChange = createChangeHandler(setFormData);
++  const toast = useToast();
++
++  // Submit -> POST /config/syslog
++  const onSubmit = (e) => {
++    e.preventDefault();
++    if (e.currentTarget.checkValidity()) {
++      setLoading(true);
++      fetch("/api/v1/config/syslog", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify(formData),
++        signal: abortController.signal,
++      })
++        .then(fetchVoidResp)
++        .then(() => toast.success(t("successfullyUpdated")))
++        .finally(() => {
++          setLoading(false);
++          setValidated(false);
++        })
++        .catch(handleApiError);
++    } else {
++      setValidated(true);
++    }
++  };
++
++  // Reset -> re-fetch /config/syslog
++  const onReset = (e) => {
++    e.preventDefault();
++    setLoading(true);
++    fetch("/api/v1/config/syslog", { signal: abortController.signal })
++      .then(fetchJsonResp)
++      .then(setFormData)
++      .finally(() => {
++        setLoading(false);
++        setValidated(false);
++      })
++      .catch(handleApiError);
++  };
++
++  return (
++    <div>
++      <h5 className="mt-3">{t("syslog")}</h5>
++      <Form noValidate validated={validated} onSubmit={onSubmit} onReset={onReset}>
++        <Row>
++          <Col xs={12}>
++            <Form.Check
++              type="switch"
++              id="syslogEnabled"
++              name="enabled"
++              className="mb-3"
++              checked={formData?.enabled}
++              onChange={onChange}
++              label={t("enabled")}
++            />
++          </Col>
++        </Row>
++        <Row>
++          <Col xs={12} md={6} xl={4}>
++            <Form.Group className="mb-3" controlId="syslogHost">
++              <Form.Label>{t("syslogHost")}</Form.Label>
++              <Form.Control
++                name="host"
++                required={formData?.enabled === true}
++                disabled={formData?.enabled !== true}
++                placeholder="192.168.1.10"
++                value={formData?.host}
++                onChange={onChange}
++              />
++            </Form.Group>
++          </Col>
++        </Row>
++        <Stack gap={2} direction="horizontal">
++          <Button variant="primary" type="submit">
++            {t("submit")}
++          </Button>
++          <Button variant="secondary" type="reset">
++            {t("reset")}
++          </Button>
++        </Stack>
++      </Form>
++    </div>
++  );
++};
++
+ export default NetworkSettings;
+--- a/components/protocols/web/src/locales/en.json
++++ b/components/protocols/web/src/locales/en.json
+@@ -196,6 +196,8 @@
+   "discovery": "Discovery",
+   "hostname": "Hostname",
+   "instanceName": "Instance name",
++  "syslog": "Remote syslog",
++  "syslogHost": "Syslog server",
+   "rssi": "RSSI",
+   "panicReboot": "Panic reboot",
+   "acknowledge": "Acknowledge",
+--- a/components/protocols/web/src/locales/cz.json
++++ b/components/protocols/web/src/locales/cz.json
+@@ -196,6 +196,8 @@
+   "discovery": "Objevování",
+   "hostname": "Název hostitele",
+   "instanceName": "Název instance",
++  "syslog": "Vzdálený syslog",
++  "syslogHost": "Syslog server",
+   "rssi": "RSSI",
+   "panicReboot": "Panický reštart",
+   "acknowledge": "Potvrdit",
+--- a/components/protocols/web/src/locales/sk.json
++++ b/components/protocols/web/src/locales/sk.json
+@@ -196,6 +196,8 @@
+   "discovery": "Objavovanie",
+   "hostname": "Názov hostiteľa",
+   "instanceName": "Názov inštancie",
++  "syslog": "Vzdialený syslog",
++  "syslogHost": "Syslog server",
+   "rssi": "RSSI",
+   "panicReboot": "Panický reštart",
+   "acknowledge": "Potvrdiť",
+--- a/components/protocols/web/src/locales/fr.json
++++ b/components/protocols/web/src/locales/fr.json
+@@ -196,6 +196,8 @@
+   "discovery": "Découverte",
+   "hostname": "Nom d'hôte",
+   "instanceName": "Nom de l'instance",
++  "syslog": "Syslog distant",
++  "syslogHost": "Serveur syslog",
+   "rssi": "RSSI",
+   "panicReboot": "Redémarrage panique",
+   "acknowledge": "Acquitter",
+--- a/components/protocols/web/src/locales/hu.json
++++ b/components/protocols/web/src/locales/hu.json
+@@ -196,6 +196,8 @@
+   "discovery": "Felfedezés",
+   "hostname": "Gépnév",
+   "instanceName": "Eszköznév",
++  "syslog": "Távoli syslog",
++  "syslogHost": "Syslog kiszolgáló",
+   "rssi": "RSSI",
+   "panicReboot": "Pánik újraindítás",
+   "acknowledge": "Nyugtázás",
+--- a/components/protocols/web/src/locales/ru.json
++++ b/components/protocols/web/src/locales/ru.json
+@@ -196,6 +196,8 @@
+   "discovery": "Обнаружение",
+   "hostname": "Имя хоста",
+   "instanceName": "Имя экземпляра",
++  "syslog": "Удалённый syslog",
++  "syslogHost": "Сервер syslog",
+   "rssi": "RSSI",
+   "panicReboot": "Паника перезагрузка",
+   "acknowledge": "Подтвердить",
+--- a/components/protocols/web/src/locales/tr.json
++++ b/components/protocols/web/src/locales/tr.json
+@@ -196,6 +196,8 @@
+   "discovery": "Keşif (Discovery)",
+   "hostname": "Ana bilgisayar adı",
+   "instanceName": "Örnek adı",
++  "syslog": "Uzak syslog",
++  "syslogHost": "Syslog sunucusu",
+   "rssi": "Sinyal Gücü (RSSI)",
+   "panicReboot": "Panik yeniden başlatma",
+   "acknowledge": "Onayla",
