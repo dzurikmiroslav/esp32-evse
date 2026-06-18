@@ -266,7 +266,6 @@ void component_params_write(const char* component, component_param_list_t* list)
         file = freopen(PARAMS_YAML, "w", file);
         if (!file) {
             ESP_LOGE(TAG, "Failed to open " PARAMS_YAML);
-            fclose(file);
             fclose(tmp_file);
             return;
         }
