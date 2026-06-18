@@ -249,10 +249,27 @@ void component_params_write(const char* component, component_param_list_t* list)
     FILE* file = fopen(PARAMS_YAML, "r");
     if (file) {  // some params.yaml exists
         FILE* tmp_file = fopen(PARAMS_TMP_YAML, "w");
+        if (!tmp_file) {
+            ESP_LOGE(TAG, "Failed to open " PARAMS_TMP_YAML);
+            fclose(file);
+            return;
+        }
+
         yaml_file_copy_omit(tmp_file, file, component);
 
         tmp_file = freopen(PARAMS_TMP_YAML, "r", tmp_file);
+        if (!tmp_file) {
+            ESP_LOGE(TAG, "Failed to open " PARAMS_TMP_YAML);
+            fclose(file);
+            return;
+        }
         file = freopen(PARAMS_YAML, "w", file);
+        if (!file) {
+            ESP_LOGE(TAG, "Failed to open " PARAMS_YAML);
+            fclose(file);
+            fclose(tmp_file);
+            return;
+        }
 
         yaml_file_copy(file, tmp_file);
         yaml_file_append(file, component, list);
@@ -261,8 +278,13 @@ void component_params_write(const char* component, component_param_list_t* list)
         remove(PARAMS_TMP_YAML);
     } else {  // no params.yaml exists
         file = fopen(PARAMS_YAML, "w");
+        if (!file) {
+            ESP_LOGE(TAG, "Failed to open " PARAMS_YAML);
+            return;
+        }
         yaml_file_append(file, component, list);
     }
+
     fclose(file);
 }
 
