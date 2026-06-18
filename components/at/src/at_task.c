@@ -49,7 +49,7 @@ static void handle_subscription(at_task_context_t* context)
 
 static void at_task_func(void* param)
 {
-    int fd = (int)param;
+    int fd = (int)(intptr_t)param;
 
     uint8_t buf[BUF_SIZE];
     struct cat_command_group* cmd_desc[] = AT_CMD_GROUPS;

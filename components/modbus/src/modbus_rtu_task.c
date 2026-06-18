@@ -51,7 +51,7 @@ static uint16_t compute_crc(uint8_t* buf, uint16_t len)
 
 static void modbus_rtu_task_func(void* param)
 {
-    int fd = (int)param;
+    int fd = (int)(intptr_t)param;
 
     uint8_t buf[BUF_SIZE];
 
