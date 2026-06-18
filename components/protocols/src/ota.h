@@ -6,7 +6,7 @@
 
 void ota_init(void);
 
-void ota_get_channel(char* value);
+void ota_get_channel(char* value, size_t value_size);
 
 void ota_set_channel(const char* value);
 

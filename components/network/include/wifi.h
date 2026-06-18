@@ -89,25 +89,28 @@ void wifi_scan_aps_free(wifi_scan_ap_list_t* list);
 void wifi_scan_aps_entry_free(wifi_scan_ap_entry_t* entry);
 
 /**
- * @brief Get WiFi STA ssid, string length 32, stored in NVS
+ * @brief Get WiFi STA ssid, stored in NVS
  *
  * @param value
+ * @param value_size
  */
-void wifi_get_ssid(char* value);
+void wifi_get_ssid(char* value, size_t value_size);
 
 /**
- * @brief Get WiFi AP ssid, string length 32
+ * @brief Get WiFi AP ssid
  *
  * @param value
+ * @param value_size
  */
-void wifi_get_ap_ssid(char* value);
+void wifi_get_ap_ssid(char* value, size_t value_size);
 
 /**
- * @brief Get WiFi STA password, string length 32, stored in NVS
+ * @brief Get WiFi STA password, stored in NVS
  *
  * @param value
+ * @param value_size
  */
-void wifi_get_password(char* value);
+void wifi_get_password(char* value, size_t value_size);
 
 /**
  * @brief Get WiFi STA rssi
@@ -131,27 +134,29 @@ void wifi_ap_stop(void);
  * @brief Get WiFI ip address str
  *
  * @param ap true means AP, false means STA
- * @param str at least char[15]
+ * @param value
+ * @param value_size
  */
-void wifi_get_ip(bool ap, char* str);
+void wifi_get_ip(bool ap, char* value, size_t value_size);
 
 /**
  * @brief Get WiFI map address str
  *
  * @param ap true means AP, false means STA
- * @param str at least char[17]
+ * @param value
+ * @param value_size
  */
-void wifi_get_mac(bool ap, char* str);
+void wifi_get_mac(bool ap, char* value, size_t value_size);
 
 bool wifi_is_static_enabled(void);
 
-void wifi_get_static_ip(char* str);
+void wifi_get_static_ip(char* value, size_t value_size);
 
-void wifi_get_static_gateway(char* str);
+void wifi_get_static_gateway(char* value, size_t value_size);
 
-void wifi_get_static_netmask(char* str);
+void wifi_get_static_netmask(char* value, size_t value_size);
 
-void wifi_get_static_dns(char* str);
+void wifi_get_static_dns(char* value, size_t value_size);
 
 esp_err_t wifi_set_static_config(bool enabled, const char* ip, const char* gateway, const char* netmask, const char* dns);
 

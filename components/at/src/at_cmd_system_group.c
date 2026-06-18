@@ -177,7 +177,7 @@ static struct cat_variable vars_temperature[] = {
 
 static int var_tz_read(const struct cat_variable* var)
 {
-    scheduler_get_timezone(var_str32_1);
+    scheduler_get_timezone(var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }

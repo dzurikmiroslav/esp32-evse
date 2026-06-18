@@ -23,6 +23,8 @@
 #define STATE_ON   1
 #define STATE_OFF  2
 
+#define DEFAULT_TIMEZONE "Etc/UTC"
+
 static const char* TAG = "scheduler";
 
 static nvs_handle nvs;
@@ -165,7 +167,7 @@ void scheduler_init(void)
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
 
     if (scheduler_is_ntp_enabled()) {
-        scheduler_get_ntp_server(ntp_server);
+        scheduler_get_ntp_server(ntp_server, sizeof(ntp_server));
 
         esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(ntp_server);
         config.sync_cb = ntp_sync_cb;
@@ -181,7 +183,7 @@ void scheduler_init(void)
     }
 
     char str[64];
-    scheduler_get_timezone(str);
+    scheduler_get_timezone(str, sizeof(str));
     const char* tz = find_tz(str);
     if (tz) {
         setenv("TZ", tz, 1);
@@ -259,11 +261,10 @@ bool scheduler_is_ntp_enabled(void)
     return value;
 }
 
-void scheduler_get_ntp_server(char* value)
+void scheduler_get_ntp_server(char* value, size_t value_size)
 {
-    size_t len = 64;
     value[0] = '\0';
-    nvs_get_str(nvs, NVS_NTP_SERVER, value, &len);
+    nvs_get_str(nvs, NVS_NTP_SERVER, value, &value_size);
 }
 
 bool scheduler_is_ntp_from_dhcp(void)
@@ -279,7 +280,7 @@ esp_err_t scheduler_set_ntp_config(bool enabled, const char* server, bool from_d
 
     esp_netif_sntp_deinit();
     if (enabled) {
-        strcpy(ntp_server, server);
+        strlcpy(ntp_server, server, sizeof(ntp_server));
         esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(ntp_server);
         config.sync_cb = ntp_sync_cb;
         config.renew_servers_after_new_IP = from_dhcp;
@@ -303,12 +304,12 @@ esp_err_t scheduler_set_ntp_config(bool enabled, const char* server, bool from_d
     return ret;
 }
 
-void scheduler_get_timezone(char* value)
+void scheduler_get_timezone(char* value, size_t value_size)
 {
-    size_t len = 64;
-    value[0] = '\0';
-    strcpy(value, "Etc/UTC");
-    nvs_get_str(nvs, NVS_TIMEZONE, value, &len);
+    size_t len = value_size;
+    if (nvs_get_str(nvs, NVS_TIMEZONE, value, &len) != ESP_OK) {
+        strlcpy(value, DEFAULT_TIMEZONE, value_size);
+    }
 }
 
 esp_err_t scheduler_set_timezone(const char* value)

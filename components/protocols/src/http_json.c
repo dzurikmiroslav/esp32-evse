@@ -188,17 +188,17 @@ cJSON* http_json_get_config_wifi(void)
     char str[32];
 
     cJSON_AddBoolToObject(json, "enabled", wifi_is_enabled());
-    wifi_get_ssid(str);
+    wifi_get_ssid(str, sizeof(str));
     cJSON_AddStringToObject(json, "ssid", str);
 
     cJSON_AddBoolToObject(json, "staticEnabled", wifi_is_static_enabled());
-    wifi_get_static_ip(str);
+    wifi_get_static_ip(str, sizeof(str));
     cJSON_AddStringToObject(json, "staticIp", str);
-    wifi_get_static_gateway(str);
+    wifi_get_static_gateway(str, sizeof(str));
     cJSON_AddStringToObject(json, "staticGateway", str);
-    wifi_get_static_netmask(str);
+    wifi_get_static_netmask(str, sizeof(str));
     cJSON_AddStringToObject(json, "staticNetmask", str);
-    wifi_get_static_dns(str);
+    wifi_get_static_dns(str, sizeof(str));
     cJSON_AddStringToObject(json, "staticDns", str);
 
     return json;
@@ -241,7 +241,7 @@ static esp_err_t timeout_wifi_set_config(bool enabled,
     if (enabled) {
         if (ssid == NULL || strlen(ssid) == 0) {
             char old_ssid[32];
-            wifi_get_ssid(old_ssid);
+            wifi_get_ssid(old_ssid, sizeof(old_ssid));
             if (strlen(old_ssid) == 0) {
                 return ESP_ERR_INVALID_ARG;
             }
@@ -304,23 +304,23 @@ cJSON* http_json_get_wifi_state(void)
 
     char str[32];
 
-    wifi_get_ip(false, str);
+    wifi_get_ip(false, str, sizeof(str));
     cJSON_AddStringToObject(json, "ip", str);
 
-    wifi_get_mac(false, str);
+    wifi_get_mac(false, str, sizeof(str));
     cJSON_AddStringToObject(json, "mac", str);
 
     cJSON_AddNumberToObject(json, "rssi", wifi_get_rssi());
 
-    wifi_get_ip(true, str);
+    wifi_get_ip(true, str, sizeof(str));
     cJSON_AddStringToObject(json, "apIp", str);
 
-    wifi_get_mac(true, str);
+    wifi_get_mac(true, str, sizeof(str));
     cJSON_AddStringToObject(json, "apMac", str);
 
     cJSON_AddBoolToObject(json, "apEnabled", wifi_is_ap_enabled());
 
-    wifi_get_ap_ssid(str);
+    wifi_get_ap_ssid(str, sizeof(str));
     cJSON_AddStringToObject(json, "apSsid", str);
 
     return json;
@@ -360,10 +360,10 @@ cJSON* http_json_get_config_discovery(void)
 
     char str[DISCOVERY_NAME_SIZE];
 
-    discovery_get_hostname(str);
+    discovery_get_hostname(str, sizeof(str));
     cJSON_AddStringToObject(json, "hostname", str);
 
-    discovery_get_instance_name(str);
+    discovery_get_instance_name(str, sizeof(str));
     cJSON_AddStringToObject(json, "instanceName", str);
 
     return json;
@@ -570,10 +570,10 @@ cJSON* http_json_get_config_scheduler(void)
     char str[64];
 
     cJSON_AddBoolToObject(json, "ntpEnabled", scheduler_is_ntp_enabled());
-    scheduler_get_ntp_server(str);
+    scheduler_get_ntp_server(str, sizeof(str));
     cJSON_AddStringToObject(json, "ntpServer", str);
     cJSON_AddBoolToObject(json, "ntpFromDhcp", scheduler_is_ntp_from_dhcp());
-    scheduler_get_timezone(str);
+    scheduler_get_timezone(str, sizeof(str));
     cJSON_AddStringToObject(json, "timezone", str);
 
     cJSON* schedules_json = cJSON_CreateArray();
@@ -938,7 +938,7 @@ cJSON* http_json_firmware_channels(void)
 cJSON* http_json_firmware_channel(void)
 {
     char channel[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
-    ota_get_channel(channel);
+    ota_get_channel(channel, sizeof(channel));
     return cJSON_CreateString(channel);
 }
 

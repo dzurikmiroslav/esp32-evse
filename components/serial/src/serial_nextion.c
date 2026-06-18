@@ -57,7 +57,7 @@ esp_err_t serial_nextion_get_info(serial_nextion_info_t* info)
                 }
                 break;
             case 2:
-                strcpy(info->model, token);
+                strlcpy(info->model, token, sizeof(info->model));
                 break;
             case 6:
                 sscanf(token, "%" PRIu32, &info->flash_size);

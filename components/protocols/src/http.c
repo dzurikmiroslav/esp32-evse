@@ -15,16 +15,17 @@
 
 static const char* TAG = "rest";
 
-static nvs_handle_t nvs;
+static nvs_handle_t s_nvs;
 
-static char user[32];
-static char password[32];
+static char s_user[32];
 
-static httpd_handle_t server = NULL;
+static char s_password[32];
+
+static httpd_handle_t s_server = NULL;
 
 bool http_authorize_req(httpd_req_t* req)
 {
-    if (!strlen(user) && !strlen(password)) {
+    if (!strlen(s_user) && !strlen(s_password)) {
         // no authentication
         return true;
     } else if (httpd_req_get_hdr_value_len(req, "Authorization") > 0) {
@@ -45,15 +46,15 @@ bool http_authorize_req(httpd_req_t* req)
                 char* saveptr;
                 char* token = strtok_r(authorization, ":", &saveptr);
                 if (token != NULL) {
-                    strcpy(req_user, token);
+                    strlcpy(req_user, token, sizeof(req_user));
 
                     token = strtok_r(NULL, ":", &saveptr);
                     if (token != NULL) {
-                        strcpy(req_password, token);
+                        strlcpy(req_password, token, sizeof(req_password));
                     }
                 }
 
-                if (strcmp(user, req_user) == 0 && strcmp(password, req_password) == 0) {
+                if (strcmp(s_user, req_user) == 0 && strcmp(s_password, req_password) == 0) {
                     return true;
                 } else {
                     ESP_LOGW(TAG, "Failed authorize user : %s", req_user);
@@ -69,17 +70,17 @@ bool http_authorize_req(httpd_req_t* req)
     return false;
 }
 
-void http_set_credentials(const char* _user, const char* _password)
+void http_set_credentials(const char* user, const char* password)
 {
-    strcpy(user, _user);
-    ESP_LOGI(TAG, "Set credentials user: %s", user);
-    nvs_set_str(nvs, NVS_USER, user);
+    strlcpy(s_user, user, sizeof(s_user));
+    ESP_LOGI(TAG, "Set credentials user: %s", s_user);
+    nvs_set_str(s_nvs, NVS_USER, s_user);
 
-    strcpy(password, _password);
-    nvs_set_str(nvs, NVS_PASSWORD, password);
-    ESP_LOGI(TAG, "Set credentials password: %s", strlen(password) ? "****" : "<none>");
+    strlcpy(s_password, password, sizeof(s_password));
+    nvs_set_str(s_nvs, NVS_PASSWORD, s_password);
+    ESP_LOGI(TAG, "Set credentials password: %s", strlen(s_password) ? "****" : "<none>");
 
-    nvs_commit(nvs);
+    nvs_commit(s_nvs);
 }
 
 // #include "lwip/sockets.h"
@@ -99,14 +100,14 @@ void http_set_credentials(const char* _user, const char* _password)
 
 void http_init(void)
 {
-    ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
+    ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &s_nvs));
 
     size_t len;
-    if (ESP_OK != nvs_get_str(nvs, NVS_USER, user, &len)) {
-        user[0] = '\0';
+    if (ESP_OK != nvs_get_str(s_nvs, NVS_USER, s_user, &len)) {
+        s_user[0] = '\0';
     }
-    if (ESP_OK != nvs_get_str(nvs, NVS_PASSWORD, password, &len)) {
-        password[0] = '\0';
+    if (ESP_OK != nvs_get_str(s_nvs, NVS_PASSWORD, s_password, &len)) {
+        s_password[0] = '\0';
     }
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -123,11 +124,11 @@ void http_init(void)
     // config.close_fn = sess_on_close;
 
     ESP_LOGI(TAG, "Starting server on port: %d", config.server_port);
-    ESP_ERROR_CHECK(httpd_start(&server, &config));
+    ESP_ERROR_CHECK(httpd_start(&s_server, &config));
 
     // ESP_LOGI(TAG, "Credentials user / password: %s / %s", user, password);
 
-    http_rest_add_handlers(server);
-    http_dav_add_handlers(server);
-    http_web_add_handlers(server);
+    http_rest_add_handlers(s_server);
+    http_dav_add_handlers(s_server);
+    http_web_add_handlers(s_server);
 }

@@ -92,7 +92,7 @@ static esp_err_t get_handler(httpd_req_t* req)
 {
     if (http_authorize_req(req)) {
         char file_name[CONFIG_HTTPD_MAX_URI_LEN];
-        strcpy(file_name, req->uri + 1);
+        strlcpy(file_name, req->uri + 1, sizeof(file_name));
         char* file_suffix = strrchr(file_name, '.');
         strcat(file_name, ".gz");
 

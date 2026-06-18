@@ -23,8 +23,9 @@ esp_err_t discovery_set_hostname(const char* value);
  * @brief Get hostname
  *
  * @param value
+ * @param value_size
  */
-void discovery_get_hostname(char* value);
+void discovery_get_hostname(char* value, size_t value_size);
 
 /**
  * @brief Set instance name
@@ -38,7 +39,8 @@ esp_err_t discovery_set_instance_name(const char* value);
  * @brief Get instance name
  *
  * @param value
+ * @param value_size
  */
-void discovery_get_instance_name(char* value);
+void discovery_get_instance_name(char* value, size_t value_size);
 
 #endif /* DISCOVERY_ */

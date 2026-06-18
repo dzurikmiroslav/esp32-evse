@@ -214,7 +214,7 @@ void serial_init(void)
             size_t mode_name_len = SEIAL_MODE_NAME_SIZE;
             char mode_name[SEIAL_MODE_NAME_SIZE];
             if (port == UART_NUM_0)
-                strcpy(mode_name, SERIAL_MODE_LOG_NAME);  // UART_NUM_0 is default system log
+                strlcpy(mode_name, SERIAL_MODE_LOG_NAME, sizeof(mode_name));  // UART_NUM_0 is default system log
             else
                 mode_name[0] = '\0';
             nvs_get_str(nvs, key, mode_name, &mode_name_len);

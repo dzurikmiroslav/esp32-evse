@@ -81,11 +81,12 @@ void scheduler_set_schedule_config(const scheduler_schedule_t* schedules, uint8_
 bool scheduler_is_ntp_enabled(void);
 
 /**
- * @brief Get NTP server, string length 64, stored in NVS
+ * @brief Get NTP server, stored in NVS
  *
  * @param value
+ * @param value_size
  */
-void scheduler_get_ntp_server(char* value);
+void scheduler_get_ntp_server(char* value, size_t value_size);
 
 /**
  * @brief Return true if NTP server from DHCP fetch is enabled, stored in NVS
@@ -106,11 +107,12 @@ bool scheduler_is_ntp_from_dhcp(void);
 esp_err_t scheduler_set_ntp_config(bool enabled, const char* server, bool from_dhcp);
 
 /**
- * @brief Get timezone, string length 64, stored in NVS
+ * @brief Get timezone, stored in NVS
  *
  * @param value
+ * @param value_size
  */
-void scheduler_get_timezone(char* value);
+void scheduler_get_timezone(char* value, size_t value_size);
 
 /**
  * @brief Set timezone, string length 64, stored in NVS

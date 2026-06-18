@@ -11,7 +11,7 @@
 static int vars_sta_config_read(const struct cat_variable* var)
 {
     var_u8_1 = wifi_is_enabled();
-    wifi_get_ssid(var_str32_1);
+    wifi_get_ssid(var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -57,10 +57,10 @@ static cat_return_state vars_sta_config_write(const struct cat_command* cmd, con
 static int vars_sta_static_config_read(const struct cat_variable* var)
 {
     var_u8_1 = wifi_is_static_enabled();
-    wifi_get_static_ip(var_str32_1);
-    wifi_get_static_gateway(var_str32_2);
-    wifi_get_static_netmask(var_str32_3);
-    wifi_get_static_dns(var_str32_4);
+    wifi_get_static_ip(var_str32_1, sizeof(var_str32_1));
+    wifi_get_static_gateway(var_str32_2, sizeof(var_str32_2));
+    wifi_get_static_netmask(var_str32_3, sizeof(var_str32_3));
+    wifi_get_static_dns(var_str32_4, sizeof(var_str32_4));
 
     return 0;
 }
@@ -126,7 +126,7 @@ static cat_return_state vars_sta_static_config_write(const struct cat_command* c
 static int vars_ap_config_read(const struct cat_variable* var)
 {
     var_u8_1 = wifi_is_ap_enabled();
-    wifi_get_ap_ssid(var_str32_1);
+    wifi_get_ap_ssid(var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -196,7 +196,7 @@ static struct cat_variable vars_ap_connection[] = {
 
 static int var_sta_ip_read(const struct cat_variable* var)
 {
-    wifi_get_ip(false, var_str32_1);
+    wifi_get_ip(false, var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -213,7 +213,7 @@ static struct cat_variable vars_sta_ip[] = {
 
 static int var_sta_mac_read(const struct cat_variable* var)
 {
-    wifi_get_mac(false, var_str32_1);
+    wifi_get_mac(false, var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -230,7 +230,7 @@ static struct cat_variable vars_sta_mac[] = {
 
 static int var_ap_ip_read(const struct cat_variable* var)
 {
-    wifi_get_ip(true, var_str32_1);
+    wifi_get_ip(true, var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -247,7 +247,7 @@ static struct cat_variable vars_ap_ip[] = {
 
 static int var_ap_mac_read(const struct cat_variable* var)
 {
-    wifi_get_mac(true, var_str32_1);
+    wifi_get_mac(true, var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -285,7 +285,7 @@ static void pop_wifi_ap_scan_result(at_task_context_t* context)
     if (!SLIST_EMPTY(context->wifi_scan_ap_list)) {
         wifi_scan_ap_entry_t* item = SLIST_FIRST(context->wifi_scan_ap_list);
 
-        strcpy(var_str32_1, item->ssid);
+        strlcpy(var_str32_1, item->ssid, sizeof(var_str32_1));
         var_u8_1 = item->auth;
         var_i8_1 = item->rssi;
 
@@ -337,7 +337,7 @@ static cat_return_state cmd_ap_scan_run(const struct cat_command* cmd)
 
 static int var_hostname_read(const struct cat_variable* var)
 {
-    discovery_get_hostname(var_str32_1);
+    discovery_get_hostname(var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }
@@ -360,7 +360,7 @@ static struct cat_variable vars_hostname[] = {
 
 static int var_instance_name_read(const struct cat_variable* var)
 {
-    discovery_get_instance_name(var_str32_1);
+    discovery_get_instance_name(var_str32_1, sizeof(var_str32_1));
 
     return 0;
 }

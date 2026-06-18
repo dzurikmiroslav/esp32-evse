@@ -26,10 +26,10 @@ void discovery_init(void)
 
     char name[DISCOVERY_NAME_SIZE];
 
-    discovery_get_hostname(name);
+    discovery_get_hostname(name, sizeof(name));
     mdns_hostname_set(name);
 
-    discovery_get_instance_name(name);
+    discovery_get_instance_name(name, sizeof(name));
     mdns_instance_name_set(name);
 
     ESP_ERROR_CHECK(mdns_service_add(name, "_http", "_tcp", 80, NULL, 0));
@@ -50,11 +50,11 @@ esp_err_t discovery_set_hostname(const char* value)
     return ret;
 }
 
-void discovery_get_hostname(char* value)
+void discovery_get_hostname(char* value, size_t value_size)
 {
-    size_t len = DISCOVERY_NAME_SIZE - 1;
+    size_t len = value_size;
     if (nvs_get_str(nvs, NVS_HOSTNAME, value, &len) != ESP_OK) {
-        strcpy(value, DEFAULT_HOSTNAME);
+        strlcpy(value, DEFAULT_HOSTNAME, value_size);
     }
 }
 
@@ -73,10 +73,10 @@ esp_err_t discovery_set_instance_name(const char* value)
     return ret;
 }
 
-void discovery_get_instance_name(char* value)
+void discovery_get_instance_name(char* value, size_t value_size)
 {
-    size_t len = DISCOVERY_NAME_SIZE - 1;
+    size_t len = value_size;
     if (nvs_get_str(nvs, NVS_INSTANCE_NAME, value, &len) != ESP_OK) {
-        strcpy(value, DEFAULT_INSTANCE_NAME);
+        strlcpy(value, DEFAULT_INSTANCE_NAME, value_size);
     }
 }

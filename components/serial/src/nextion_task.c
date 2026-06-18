@@ -285,7 +285,7 @@ static void set_subscribe(task_context_t* ctx, const char* var, bool subscribe)
     } else if (!strcmp(var, VAR_IP)) {
         ctx->var_sub.ip = subscribe;
         if (subscribe) {
-            wifi_get_ip(false, ctx->ip);
+            wifi_get_ip(false, ctx->ip, sizeof(ctx->ip));
             sprintf(tx_cmd, VAR_FMT_IP, ctx->ip);
             tx_str(ctx->fd, tx_cmd);
         }
@@ -500,7 +500,7 @@ static void tx_vars(task_context_t* ctx)
     }
     if (ctx->var_sub.ip) {
         char str[16];
-        wifi_get_ip(false, str);
+        wifi_get_ip(false, str, sizeof(str));
         if (strncmp(ctx->ip, str, 16) != 0) {
             strncpy(ctx->ip, str, 16);
             sprintf(tx_cmd, VAR_FMT_IP, str);

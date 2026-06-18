@@ -139,8 +139,8 @@ static esp_err_t apply_mode_config()
         wifi_config_t sta_config = { 0 };
 
         if (sta_enabled /*&& sta_priority*/) {
-            wifi_get_ssid((char*)sta_config.sta.ssid);
-            wifi_get_password((char*)sta_config.sta.password);
+            wifi_get_ssid((char*)sta_config.sta.ssid, sizeof(sta_config.sta.ssid));
+            wifi_get_password((char*)sta_config.sta.password, sizeof(sta_config.sta.password));
         }
 
         if (!(mode_bits & WIFI_STA_CONNECTED_BIT) || (strcmp((char*)prev_sta_config.sta.ssid, (char*)sta_config.sta.ssid) != 0)) {
@@ -170,7 +170,7 @@ static esp_err_t apply_mode_config()
                     },
                 },
         };
-        wifi_get_ap_ssid((char*)ap_config.ap.ssid);
+        wifi_get_ap_ssid((char*)ap_config.ap.ssid, sizeof(ap_config.ap.ssid));
 
         err = esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         if (err != ESP_OK) {
@@ -362,23 +362,23 @@ bool wifi_is_enabled(void)
     return value;
 }
 
-void wifi_get_ssid(char* value)
+void wifi_get_ssid(char* value, size_t value_size)
 {
-    size_t len = WIFI_SSID_SIZE - 1;
+    size_t len = value_size;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_SSID, value, &len);
 }
 
-void wifi_get_ap_ssid(char* value)
+void wifi_get_ap_ssid(char* value, size_t value_size)
 {
     uint8_t mac[6];
     esp_wifi_get_mac(WIFI_IF_AP, mac);
-    sprintf(value, AP_SSID, mac[3], mac[4], mac[5]);
+    snprintf(value, value_size, AP_SSID, mac[3], mac[4], mac[5]);
 }
 
-void wifi_get_password(char* value)
+void wifi_get_password(char* value, size_t value_size)
 {
-    size_t len = WIFI_PASSWORD_SIZE - 1;
+    size_t len = value_size;
     value[0] = '\0';
     nvs_get_str(nvs, NVS_PASSWORD, value, &len);
 }
@@ -407,18 +407,18 @@ void wifi_ap_stop(void)
     apply_mode_config();
 }
 
-void wifi_get_ip(bool ap, char* str)
+void wifi_get_ip(bool ap, char* value, size_t value_size)
 {
     esp_netif_ip_info_t ip_info;
     esp_netif_get_ip_info(ap ? ap_netif : sta_netif, &ip_info);
-    esp_ip4addr_ntoa(&ip_info.ip, str, 16);
+    esp_ip4addr_ntoa(&ip_info.ip, value, value_size);
 }
 
-void wifi_get_mac(bool ap, char* str)
+void wifi_get_mac(bool ap, char* value, size_t value_size)
 {
     uint8_t mac[6];
     esp_wifi_get_mac(ap ? WIFI_IF_AP : WIFI_IF_STA, mac);
-    sprintf(str, MACSTR, MAC2STR(mac));
+    snprintf(value, value_size, MACSTR, MAC2STR(mac));
 }
 
 bool wifi_is_static_enabled(void)
@@ -428,35 +428,35 @@ bool wifi_is_static_enabled(void)
     return value;
 }
 
-static void get_nvs_ip(const char* nvs_key, char* str)
+static void get_nvs_ip(const char* nvs_key, char* value, size_t value_size)
 {
-    esp_ip4_addr_t value = { 0 };
+    esp_ip4_addr_t addr = { 0 };
     size_t size = sizeof(esp_ip4_addr_t);
-    if (nvs_get_blob(nvs, nvs_key, &value, &size) == ESP_OK && value.addr != 0) {
-        esp_ip4addr_ntoa(&value, str, 16);
+    if (nvs_get_blob(nvs, nvs_key, &addr, &size) == ESP_OK && addr.addr != 0) {
+        esp_ip4addr_ntoa(&addr, value, value_size);
     } else {
-        str[0] = '\0';
+        value[0] = '\0';
     }
 }
 
-void wifi_get_static_ip(char* str)
+void wifi_get_static_ip(char* value, size_t value_size)
 {
-    get_nvs_ip(NVS_STATIC_IP, str);
+    get_nvs_ip(NVS_STATIC_IP, value, value_size);
 }
 
-void wifi_get_static_gateway(char* str)
+void wifi_get_static_gateway(char* value, size_t value_size)
 {
-    get_nvs_ip(NVS_STATIC_GATEWAY, str);
+    get_nvs_ip(NVS_STATIC_GATEWAY, value, value_size);
 }
 
-void wifi_get_static_netmask(char* str)
+void wifi_get_static_netmask(char* value, size_t value_size)
 {
-    get_nvs_ip(NVS_STATIC_NETMASK, str);
+    get_nvs_ip(NVS_STATIC_NETMASK, value, value_size);
 }
 
-void wifi_get_static_dns(char* str)
+void wifi_get_static_dns(char* value, size_t value_size)
 {
-    get_nvs_ip(NVS_STATIC_DNS, str);
+    get_nvs_ip(NVS_STATIC_DNS, value, value_size);
 }
 
 static esp_err_t apply_static_mode(bool enabled, const esp_netif_ip_info_t* ip_info)

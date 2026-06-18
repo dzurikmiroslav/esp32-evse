@@ -71,7 +71,7 @@ cJSON* http_get_json(const char* url)
 esp_err_t ota_get_available(char** version, char** path)
 {
     char channel_name[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
-    ota_get_channel(channel_name);
+    ota_get_channel(channel_name, sizeof(channel_name));
 
     const char* channel_info_path = NULL;
     for (int i = 0; i < BOARD_CFG_OTA_CHANNEL_COUNT; i++) {
@@ -112,11 +112,11 @@ esp_err_t ota_get_available(char** version, char** path)
     return ESP_OK;
 }
 
-void ota_get_channel(char* value)
+void ota_get_channel(char* value, size_t value_size)
 {
-    size_t len = BOARD_CFG_OTA_CHANNEL_NAME_SIZE;
+    size_t len = value_size;
     if (nvs_get_str(nvs, NVS_CHANNEL, value, &len) != ESP_OK) {
-        strcpy(value, board_config.ota.channels[0].name);
+        strlcpy(value, board_config.ota.channels[0].name, value_size);
     }
 }
 
