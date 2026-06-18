@@ -120,7 +120,7 @@ static bool pop_next_serial(at_task_context_t* context)
         return true;
     } else if (context->serial_index < BOARD_CFG_SERIAL_COUNT) {
         var_u8_1 = board_config.serials[context->serial_index].type;
-        strcpy(var_str32_1, board_config.serials[context->serial_index].name);
+        strlcpy(var_str32_1, board_config.serials[context->serial_index].name, sizeof(var_str32_1));
         context->serial_index++;
 
         return true;
@@ -194,7 +194,7 @@ static bool pop_next_aux_input(at_task_context_t* context)
 
         return true;
     } else if (context->aux_input_index < BOARD_CFG_AUX_INPUT_COUNT) {
-        strcpy(var_str32_1, board_config.aux.inputs[context->aux_input_index].name);
+        strlcpy(var_str32_1, board_config.aux.inputs[context->aux_input_index].name, sizeof(var_str32_1));
         context->aux_input_index++;
 
         return true;
@@ -262,7 +262,7 @@ static bool pop_next_aux_output(at_task_context_t* context)
 
         return true;
     } else if (context->aux_output_index < BOARD_CFG_AUX_INPUT_COUNT) {
-        strcpy(var_str32_1, board_config.aux.outputs[context->aux_output_index].name);
+        strlcpy(var_str32_1, board_config.aux.outputs[context->aux_output_index].name, sizeof(var_str32_1));
         context->aux_output_index++;
 
         return true;
@@ -330,7 +330,7 @@ static bool pop_next_aux_analog_input(at_task_context_t* context)
 
         return true;
     } else if (context->aux_analog_input_index < BOARD_CFG_AUX_ANALOG_INPUT_COUNT) {
-        strcpy(var_str32_1, board_config.aux.analog_inputs[context->aux_analog_input_index].name);
+        strlcpy(var_str32_1, board_config.aux.analog_inputs[context->aux_analog_input_index].name, sizeof(var_str32_1));
         context->aux_analog_input_index++;
 
         return true;

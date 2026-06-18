@@ -23,7 +23,7 @@ static int vars_chip_chip_cores_revision_read(const struct cat_variable* var)
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 
-    strcpy(var_str32_1, CONFIG_IDF_TARGET);
+    strlcpy(var_str32_1, CONFIG_IDF_TARGET, sizeof(var_str32_1));
     var_u8_1 = chip_info.cores;
     var_u16_1 = chip_info.revision;
 
@@ -84,7 +84,7 @@ static int var_ver_read(const struct cat_variable* var)
 {
     const esp_app_desc_t* app_desc = esp_app_get_description();
 
-    strcpy(var_str32_1, app_desc->version);
+    strlcpy(var_str32_1, app_desc->version, sizeof(var_str32_1));
 
     return 0;
 }
@@ -103,7 +103,7 @@ static int var_idf_ver_read(const struct cat_variable* var)
 {
     const esp_app_desc_t* app_desc = esp_app_get_description();
 
-    strcpy(var_str32_1, app_desc->idf_ver);
+    strlcpy(var_str32_1, app_desc->idf_ver, sizeof(var_str32_1));
 
     return 0;
 }
@@ -122,8 +122,8 @@ static int var_buildtime_date_time_read(const struct cat_variable* var)
 {
     const esp_app_desc_t* app_desc = esp_app_get_description();
 
-    strcpy(var_str32_1, app_desc->date);
-    strcpy(var_str32_2, app_desc->time);
+    strlcpy(var_str32_1, app_desc->date, sizeof(var_str32_1));
+    strlcpy(var_str32_2, app_desc->time, sizeof(var_str32_2));
 
     return 0;
 }
@@ -195,6 +195,23 @@ static struct cat_variable vars_tz[] = {
         .access = CAT_VAR_ACCESS_READ_WRITE,
         .read = var_tz_read,
         .write = var_tz_write,
+    },
+};
+
+static int var_tzrule_read(const struct cat_variable* var)
+{
+    strlcpy(var_str32_1, getenv("TZ"), sizeof(var_str32_1));
+
+    return 0;
+}
+
+static struct cat_variable vars_tzrule[] = {
+    {
+        .type = CAT_VAR_BUF_STRING,
+        .data = var_str32_1,
+        .data_size = sizeof(var_str32_1),
+        .access = CAT_VAR_ACCESS_READ_ONLY,
+        .read = var_tzrule_read,
     },
 };
 
@@ -284,6 +301,11 @@ static struct cat_command cmds[] = {
         .name = "+TZ",
         .var = vars_tz,
         .var_num = sizeof(vars_tz) / sizeof(vars_tz[0]),
+    },
+    {
+        .name = "+TZRULE",
+        .var = vars_tzrule,
+        .var_num = sizeof(vars_tzrule) / sizeof(vars_tzrule[0]),
     },
     {
         .name = "+TIME",
