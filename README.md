@@ -1,7 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full.svg">
-</picture>
+![ESP32 EVSE](https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full.svg)
 
 J1772 EVSE firmware for ESP32 based devices.
 
