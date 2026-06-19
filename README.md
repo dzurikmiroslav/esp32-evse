@@ -1,5 +1,5 @@
-![ESP32 EVSE](https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full.svg#only-light)
-![ESP32 EVSE](https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full-dark.svg#only-dark)
+![ESP32 EVSE](https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full.svg#gh-light-mode-only)
+![ESP32 EVSE](https://dzurikmiroslav.github.io/esp32-evse-docs/assets/logo-full-dark.svg#gh-dark-mode-only)
 
 J1772 EVSE firmware for ESP32 based devices.
 
