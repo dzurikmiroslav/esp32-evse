@@ -4,9 +4,12 @@
 #include <esp_private/panic_internal.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <freertos/task.h>
 #include <memory.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/param.h>
+#include <time.h>
 
 #include "sdkconfig.h"
 
@@ -32,6 +35,61 @@ typedef struct {
 
 static RTC_NOINIT_ATTR panic_t s_panic;
 
+// Build the per-line prefix: local "YYYY-MM-DD HH:MM:SS " once the clock is set
+// (after SNTP sync / manual set), otherwise an uptime "[ssss.mmm] " - so with NTP
+// disabled or not yet synced we never emit a misleading 1970/01:00 wall-clock.
+// Timezone follows the device TZ set by the scheduler.
+static size_t format_timestamp(char* dst, size_t dst_size)
+{
+    time_t now_s = time(NULL);
+    struct tm tm_now;
+    localtime_r(&now_s, &tm_now);
+
+    size_t n;
+    if (tm_now.tm_year + 1900 >= 2020) {
+        n = strftime(dst, dst_size, "%Y-%m-%d %H:%M:%S ", &tm_now);
+    } else {
+        uint64_t up_ms = (uint64_t)pdTICKS_TO_MS(xTaskGetTickCount());
+        n = snprintf(dst, dst_size, "[%6llu.%03llu] ", (unsigned long long)(up_ms / 1000), (unsigned long long)(up_ms % 1000));
+    }
+    return MIN(n, dst_size);
+}
+
+// Copy a line-start fragment with esp_log's own "(<timestamp>)" token removed, so
+// it is not double-timestamped. Format is "<LEVEL> (<ts>) <tag>: <msg>"; result is
+// "<LEVEL> <tag>: <msg>". A fragment not matching that shape is copied verbatim.
+static size_t strip_esp_log_timestamp(const char* log, size_t len, char* dst, size_t dst_size)
+{
+    const char* open = memchr(log, '(', len);
+    const char* close = open != NULL ? memchr(open, ')', len - (open - log)) : NULL;
+    if (open == NULL || close == NULL) {
+        size_t n = MIN(len, dst_size);
+        memcpy(dst, log, n);
+        return n;
+    }
+
+    size_t head_len = open - log;  // "<LEVEL> "
+    while (head_len > 0 && log[head_len - 1] == ' ') {
+        head_len--;  // -> "<LEVEL>"
+    }
+
+    const char* rest = close + 1;  // " <tag>: <msg>\n"
+    size_t rest_len = len - (rest - log);
+    if (rest_len > 0 && rest[0] == ' ') {
+        rest++;
+        rest_len--;
+    }
+
+    size_t pos = MIN(head_len, dst_size);
+    memcpy(dst, log, pos);
+    if (pos < dst_size) {
+        dst[pos++] = ' ';
+    }
+    size_t n = MIN(rest_len, dst_size - pos);
+    memcpy(dst + pos, rest, n);
+    return pos + n;
+}
+
 static int logger_vprintf(const char* str, va_list l)
 {
 #ifdef CONFIG_ESP_CONSOLE_UART
@@ -42,8 +100,25 @@ static int logger_vprintf(const char* str, va_list l)
 
     static char log[LOG_LINE_SIZE];
     int len = vsnprintf(log, LOG_LINE_SIZE, str, l);
+    size_t safe_len = len < 0 ? 0 : MIN((size_t)len, (size_t)(LOG_LINE_SIZE - 1));
 
-    output_buffer_append_buf(s_log_buffer, log, len);
+    // A single log line can reach the ring as several fragments (the WiFi/ROM
+    // logger emits "<LEVEL> (<ts>) <tag>:", the message, and "\n" separately).
+    // Prefix our timestamp only at line starts and strip esp_log's own token, so
+    // the ring holds clean, singly-timestamped lines for both /log and the file.
+    static bool at_line_start = true;
+    if (at_line_start && safe_len > 0) {
+        static char out[LOG_LINE_SIZE + 32];
+        size_t out_len = format_timestamp(out, sizeof(out));
+        out_len += strip_esp_log_timestamp(log, safe_len, out + out_len, sizeof(out) - out_len);
+        output_buffer_append_buf(s_log_buffer, out, out_len);
+    } else {
+        output_buffer_append_buf(s_log_buffer, log, safe_len);
+    }
+
+    if (safe_len > 0) {
+        at_line_start = (log[safe_len - 1] == '\n');
+    }
 
     xSemaphoreGive(s_mutex);
 
