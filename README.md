@@ -15,30 +15,28 @@ J1772 EVSE firmware for ESP32 based devices.
  - Integrated energy meter
  - REST API
  - WebDAV
- - [Modbus](https://github.com/dzurikmiroslav/esp32-evse/wiki/Modbus) (RS485, TCP)
- - [Lua scripting](https://github.com/dzurikmiroslav/esp32-evse/wiki/Lua)
- - [Nextion HMI](https://github.com/dzurikmiroslav/esp32-evse/wiki/Nextion)
- - [AT commands](https://github.com/dzurikmiroslav/esp32-evse/wiki/AT-commands)
+ - [Modbus](https://dzurikmiroslav.github.io/esp32-evse-docs/20-software/Modbus/) (RS485, TCP)
+ - [Lua scripting](https://dzurikmiroslav.github.io/esp32-evse-docs/20-software/Lua/)
+ - [Nextion HMI](https://dzurikmiroslav.github.io/esp32-evse-docs/20-software/Nextion/)
+ - [AT commands](https://dzurikmiroslav.github.io/esp32-evse-docs/20-software/AT-Commands/)
  - Scheduler
 
 ### Web installer
 
-Easy initial installation of esp32-evse firmware can be performed using your browser (currently Google Chrome or Microsoft Edge).
+Easy initial installation of esp32-evse firmware can be performed using your browser.
 
-[ Web installer](https://dzurikmiroslav.github.io/esp32-evse/web-installer)
+[Web installer](https://dzurikmiroslav.github.io/esp32-evse/web-installer)
 
 ### Device definition method
 
-_One firmware to rule them all._ Not really :-) one per device platform (ESP32, ESP32-S2...).
+One firmware to rule them all. Not really :-) one per device platform (ESP32, ESP32-S2...).
 
-There is no need to compile the firmware for your EVSE design.
-Source code ist not hardcoded to GPIOs or other hardware design features.
-All code is written in ESP-IDF without additional mapping layer like Arduino.
+There is no need to compile the firmware for your EVSE design. Source code ist not hardcoded to GPIOs or other hardware design features. All code is written in ESP-IDF without additional wrapping layer like Arduino.
 
-All configuration is written outside firmware in configuration file named _board.yaml_ on dedicated partition.
+All configuration is specified separately form the firmware binary in a configuration file named board.yaml stored on a dedicated partition.
 For example, on following scheme is minimal EVSE circuit with ESP32 devkit.
 
-![Minimal circuit](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/minimal-circuit.png)
+![Minimal circuit](https://dzurikmiroslav.github.io/esp32-evse-docs/images/minimal-circuit.png)
 
 For this circuit there is config file _board.yaml_, for more information's see [YAML schema](board-config/board-config-schema-1.json).
 
@@ -63,15 +61,15 @@ Fully responsive web interface is accessible local network IP address on port 80
 
 Dashboard page
 
-![Dashboard](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-dashboard.png) 
+![Dashboard](https://dzurikmiroslav.github.io/esp32-evse-docs/images/web-dashboard.png) 
 
 Settings page
 
-![Settings](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-settings.png)
+![Settings](https://dzurikmiroslav.github.io/esp32-evse-docs/images/web-settings.png)
 
 Mobile dashboard page
 
-![Dashboard mobile](https://github.com/dzurikmiroslav/esp32-evse/wiki/images/web-dashboard-mobile.png)
+![Dashboard mobile](https://dzurikmiroslav.github.io/esp32-evse-docs/images/web-dashboard-mobile.png)
 
 ## Hardware
 
