@@ -71,12 +71,12 @@
 
     @media (prefers-color-scheme: dark) {
       body {
-        background-color: #333;
-        color: #fff;
+        background-color: #1E2129;
+        color: #BEC1C6;
       }
 
       a {
-        color: #58a6ff;
+        color: #577EC8;
       }
     }
   </style>
@@ -90,13 +90,13 @@
     <ol>
       <li>Connect the EVSE board to your computer using USB or serial-to-USB adapter</li>
       <li>Press <strong>Connect</strong> button and select connet serial port</li>
-      <li>Confirm install in dialog, some boards must be manualy switched to flashing mode by holding WiFi buton while
-        reset (ESP32-S2 EVSE DIY ALPHA)</li>
-      <li>Install firmware</li>
-      <li>Set up a WiFi network in dialog, if none is set up</li>
-      <li>Then click <em>Visit Device</em> in dialog, should open Web interface of EVSE board</li>
+      <li>Confirm install in the popup dialog, some boards must be manualy switched to flashing mode by holding IO0 buton while
+        reset (for ESP32-S2 EVSE DIY Alpha this is the WiFi button)</li>
+      <li>Let the firmware install</li>
+      <li>Set up a WiFi network in the dialog, if none is set up</li>
+      <li>Then click <em>Visit Device</em>, should open Web interface of EVSE board</li>
       <li>Go to <em>settings</em> / <em>files</em></li>
-      <li>Then modify <em>board.yaml</em> and restart device</li>
+      <li>Then adjust <em>board.yaml</em> according to your hardware and restart the board</li>
     </ol>
 
     <esp-web-install-button manifest="./manifest.json"></esp-web-install-button>
