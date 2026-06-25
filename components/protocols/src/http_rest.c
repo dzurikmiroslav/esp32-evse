@@ -336,15 +336,14 @@ esp_err_t handle_void_request(httpd_req_t* req, void (*action)(void))
 
 static esp_err_t handle_firmware_update(httpd_req_t* req)
 {
-    char* version;
-    char* path;
-    if (ota_get_available(&version, &path) == ESP_OK) {
+    char version[32];
+    char *path;
+    if (ota_get_available(version, sizeof(version), &path) == ESP_OK) {
         const esp_app_desc_t* app_desc = esp_app_get_description();
 
         bool not_match = strcmp(app_desc->version, version) != 0;
-        free((void*)version);
 
-        if (not_match) {
+        if (not_match && path) {
             esp_http_client_config_t http_config = {
                 .url = path,
                 .crt_bundle_attach = esp_crt_bundle_attach,

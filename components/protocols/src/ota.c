@@ -68,7 +68,7 @@ cJSON* http_get_json(const char* url)
     return json;
 }
 
-esp_err_t ota_get_available(char** version, char** path)
+esp_err_t ota_get_available(char* version, size_t version_size, char** path)
 {
     char channel_name[BOARD_CFG_OTA_CHANNEL_NAME_SIZE];
     ota_get_channel(channel_name, sizeof(channel_name));
@@ -93,10 +93,10 @@ esp_err_t ota_get_available(char** version, char** path)
     }
 
     cJSON* json_item;
-    if (version) {
+    if (version && version_size > 0) {
         json_item = cJSON_GetObjectItem(json, "version");
         if (cJSON_IsString(json_item)) {
-            *version = strdup(cJSON_GetStringValue(json_item));
+            strlcpy(version, cJSON_GetStringValue(json_item), version_size);
         }
     }
 

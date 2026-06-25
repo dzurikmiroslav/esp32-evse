@@ -955,15 +955,13 @@ cJSON* http_json_firmware_check_update(void)
 {
     cJSON* root = NULL;
 
-    char* version;
-    if (ota_get_available(&version, NULL) == ESP_OK) {
+    char version[32];
+    if (ota_get_available(version, sizeof(version), NULL) == ESP_OK) {
         const esp_app_desc_t* app_desc = esp_app_get_description();
 
         root = cJSON_CreateObject();
         cJSON_AddStringToObject(root, "available", version);
         cJSON_AddStringToObject(root, "current", app_desc->version);
-
-        free((void*)version);
     }
 
     return root;

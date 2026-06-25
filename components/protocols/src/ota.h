@@ -10,6 +10,6 @@ void ota_get_channel(char* value, size_t value_size);
 
 void ota_set_channel(const char* value);
 
-esp_err_t ota_get_available(char** version, char** path);
+esp_err_t ota_get_available(char* version, size_t version_size, char** path);
 
 #endif /* OTA_H */
