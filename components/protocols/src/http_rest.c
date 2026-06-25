@@ -337,7 +337,7 @@ esp_err_t handle_void_request(httpd_req_t* req, void (*action)(void))
 static esp_err_t handle_firmware_update(httpd_req_t* req)
 {
     char version[32];
-    char *path;
+    char* path;
     if (ota_get_available(version, sizeof(version), &path) == ESP_OK) {
         const esp_app_desc_t* app_desc = esp_app_get_description();
 
@@ -546,137 +546,137 @@ static esp_err_t handle_nextion_upload(httpd_req_t* req)
 
 static esp_err_t get_handler(httpd_req_t* req)
 {
-    if (http_authorize_req(req)) {
-        switch (get_uri(req->uri)) {
-        case URI_STATE:
-            return handle_json_response(req, http_json_get_state());
-        case URI_CONFIG_EVSE:
-            return handle_json_response(req, http_json_get_config_evse());
-        case URI_CONFIG_WIFI:
-            return handle_json_response(req, http_json_get_config_wifi());
-        case URI_CONFIG_DISCOVERY:
-            return handle_json_response(req, http_json_get_config_discovery());
-        case URI_CONFIG_SERIAL:
-            return handle_json_response(req, http_json_get_config_serial());
-        case URI_CONFIG_MODBUS:
-            return handle_json_response(req, http_json_get_config_modbus());
-        case URI_CONFIG_SCRIPT:
-            return handle_json_response(req, http_json_get_config_script());
-        case URI_CONFIG_SCHEDULER:
-            return handle_json_response(req, http_json_get_config_scheduler());
-        case URI_CONFIG:
-            return handle_json_response(req, http_json_get_config());
-        case URI_WIFI_SCAN:
-            return handle_json_response(req, http_json_get_wifi_scan());
-        case URI_WIFI_STATE:
-            return handle_json_response(req, http_json_get_wifi_state());
-        case URI_SCRIPT_OUTPUT:
-            return handle_script_output(req);
-        case URI_SCRIPT_COMPONENTS:
-            return handle_json_response(req, http_json_get_script_components());
-        case URI_SCRIPT_COMPONENTS_ID:
-            return handle_json_response(req, http_json_get_script_component_config(req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID)));
-        case URI_FIRMWARE_CHANNELS:
-            return handle_json_response(req, http_json_firmware_channels());
-        case URI_FIRMWARE_CHANNEL:
-            return handle_json_response(req, http_json_firmware_channel());
-        case URI_FIRMWARE_CHECK_UPDATE:
-            return handle_json_response(req, http_json_firmware_check_update());
-        case URI_NEXTION_INFO:
-            return handle_json_response(req, http_json_get_nextion_info());
-        case URI_LOG_PANIC:
-            return handle_log_panic(req);
-        case URI_LOG:
-            return handle_log(req);
-        case URI_INFO:
-            return handle_json_response(req, http_json_get_info());
-        case URI_BOARD_CONFIG:
-            return handle_json_response(req, http_json_get_board_config());
-        case URI_TIME:
-            return handle_json_response(req, http_json_get_time());
-        default:
-            return handle_not_found(req);
-        }
-    } else {
+    if (!http_authorize_req(req)) {
         return ESP_FAIL;
+    }
+
+    switch (get_uri(req->uri)) {
+    case URI_STATE:
+        return handle_json_response(req, http_json_get_state());
+    case URI_CONFIG_EVSE:
+        return handle_json_response(req, http_json_get_config_evse());
+    case URI_CONFIG_WIFI:
+        return handle_json_response(req, http_json_get_config_wifi());
+    case URI_CONFIG_DISCOVERY:
+        return handle_json_response(req, http_json_get_config_discovery());
+    case URI_CONFIG_SERIAL:
+        return handle_json_response(req, http_json_get_config_serial());
+    case URI_CONFIG_MODBUS:
+        return handle_json_response(req, http_json_get_config_modbus());
+    case URI_CONFIG_SCRIPT:
+        return handle_json_response(req, http_json_get_config_script());
+    case URI_CONFIG_SCHEDULER:
+        return handle_json_response(req, http_json_get_config_scheduler());
+    case URI_CONFIG:
+        return handle_json_response(req, http_json_get_config());
+    case URI_WIFI_SCAN:
+        return handle_json_response(req, http_json_get_wifi_scan());
+    case URI_WIFI_STATE:
+        return handle_json_response(req, http_json_get_wifi_state());
+    case URI_SCRIPT_OUTPUT:
+        return handle_script_output(req);
+    case URI_SCRIPT_COMPONENTS:
+        return handle_json_response(req, http_json_get_script_components());
+    case URI_SCRIPT_COMPONENTS_ID:
+        return handle_json_response(req, http_json_get_script_component_config(req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID)));
+    case URI_FIRMWARE_CHANNELS:
+        return handle_json_response(req, http_json_firmware_channels());
+    case URI_FIRMWARE_CHANNEL:
+        return handle_json_response(req, http_json_firmware_channel());
+    case URI_FIRMWARE_CHECK_UPDATE:
+        return handle_json_response(req, http_json_firmware_check_update());
+    case URI_NEXTION_INFO:
+        return handle_json_response(req, http_json_get_nextion_info());
+    case URI_LOG_PANIC:
+        return handle_log_panic(req);
+    case URI_LOG:
+        return handle_log(req);
+    case URI_INFO:
+        return handle_json_response(req, http_json_get_info());
+    case URI_BOARD_CONFIG:
+        return handle_json_response(req, http_json_get_board_config());
+    case URI_TIME:
+        return handle_json_response(req, http_json_get_time());
+    default:
+        return handle_not_found(req);
     }
 }
 
 static esp_err_t post_handler(httpd_req_t* req)
 {
-    if (http_authorize_req(req)) {
-        switch (get_uri(req->uri)) {
-        case URI_STATE:
-            return handle_json_request(req, http_json_set_state);
-        case URI_STATE_ENABLED:
-            return handle_json_request(req, http_json_set_state_enabled);
-        case URI_STATE_AVAILABLE:
-            return handle_json_request(req, http_json_set_state_available);
-        case URI_STATE_CHARGING_CURRENT:
-            return handle_json_request(req, http_json_set_state_charging_current);
-        case URI_STATE_CONSUMPTION_LIMIT:
-            return handle_json_request(req, http_json_set_state_consumption_limit);
-        case URI_STATE_CHARGING_TIME_LIMIT:
-            return handle_json_request(req, http_json_set_state_charging_time_limit);
-        case URI_STATE_UNDER_POWER_LIMIT:
-            return handle_json_request(req, http_json_set_state_under_power_limit);
-        case URI_STATE_AUTHORIZE:
-            return handle_void_request(req, evse_authorize);
-        case URI_STATE_RESET_TOTAL_CONSUMPTION:
-            return handle_void_request(req, energy_meter_reset_total_consumption);
-        case URI_CONFIG_EVSE:
-            return handle_json_request(req, http_json_set_config_evse);
-        case URI_CONFIG_WIFI:
-            return handle_json_request(req, http_json_set_config_wifi);
-        case URI_CONFIG_DISCOVERY:
-            return handle_json_request(req, http_json_set_config_discovery);
-        case URI_WIFI_STATE_AP:
-            return handle_json_request(req, http_json_set_wifi_state_ap);
-        case URI_CONFIG_SERIAL:
-            return handle_json_request(req, http_json_set_config_serial);
-        case URI_CONFIG_MODBUS:
-            return handle_json_request(req, http_json_set_config_modbus);
-        case URI_CONFIG_SCRIPT:
-            return handle_json_request(req, http_json_set_config_script);
-        case URI_CONFIG_SCHEDULER:
-            return handle_json_request(req, http_json_set_config_scheduler);
-        case URI_SCRIPT_RELOAD:
-            return handle_void_request(req, script_reload);
-        case URI_SCRIPT_COMPONENTS_ID:
-            return handle_str_json_request(req, req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID), http_json_set_script_component_config);
-        case URI_FIRMWARE_CHANNEL:
-            return handle_json_request(req, http_json_set_firmware_channel);
-        case URI_FIRMWARE_UPDATE:
-            return handle_firmware_update(req);
-        case URI_FIRMWARE_UPLOAD:
-            return handle_firmware_upload(req);
-        case URI_NEXTION_UPLOAD:
-            return handle_nextion_upload(req);
-        case URI_RESTART:
-            return handle_void_request(req, schedule_restart);
-        case URI_TIME:
-            return handle_json_request(req, http_json_set_time);
-        case URI_CREDENTIALS:
-            return handle_json_request(req, http_json_set_credentials);
-        default:
-            return handle_not_found(req);
-        }
-    } else {
+    if (!http_authorize_req(req)) {
         return ESP_FAIL;
+    }
+
+    switch (get_uri(req->uri)) {
+    case URI_STATE:
+        return handle_json_request(req, http_json_set_state);
+    case URI_STATE_ENABLED:
+        return handle_json_request(req, http_json_set_state_enabled);
+    case URI_STATE_AVAILABLE:
+        return handle_json_request(req, http_json_set_state_available);
+    case URI_STATE_CHARGING_CURRENT:
+        return handle_json_request(req, http_json_set_state_charging_current);
+    case URI_STATE_CONSUMPTION_LIMIT:
+        return handle_json_request(req, http_json_set_state_consumption_limit);
+    case URI_STATE_CHARGING_TIME_LIMIT:
+        return handle_json_request(req, http_json_set_state_charging_time_limit);
+    case URI_STATE_UNDER_POWER_LIMIT:
+        return handle_json_request(req, http_json_set_state_under_power_limit);
+    case URI_STATE_AUTHORIZE:
+        return handle_void_request(req, evse_authorize);
+    case URI_STATE_RESET_TOTAL_CONSUMPTION:
+        return handle_void_request(req, energy_meter_reset_total_consumption);
+    case URI_CONFIG_EVSE:
+        return handle_json_request(req, http_json_set_config_evse);
+    case URI_CONFIG_WIFI:
+        return handle_json_request(req, http_json_set_config_wifi);
+    case URI_CONFIG_DISCOVERY:
+        return handle_json_request(req, http_json_set_config_discovery);
+    case URI_WIFI_STATE_AP:
+        return handle_json_request(req, http_json_set_wifi_state_ap);
+    case URI_CONFIG_SERIAL:
+        return handle_json_request(req, http_json_set_config_serial);
+    case URI_CONFIG_MODBUS:
+        return handle_json_request(req, http_json_set_config_modbus);
+    case URI_CONFIG_SCRIPT:
+        return handle_json_request(req, http_json_set_config_script);
+    case URI_CONFIG_SCHEDULER:
+        return handle_json_request(req, http_json_set_config_scheduler);
+    case URI_SCRIPT_RELOAD:
+        return handle_void_request(req, script_reload);
+    case URI_SCRIPT_COMPONENTS_ID:
+        return handle_str_json_request(req, req->uri + uri_full_length(URI_SCRIPT_COMPONENTS_ID), http_json_set_script_component_config);
+    case URI_FIRMWARE_CHANNEL:
+        return handle_json_request(req, http_json_set_firmware_channel);
+    case URI_FIRMWARE_UPDATE:
+        return handle_firmware_update(req);
+    case URI_FIRMWARE_UPLOAD:
+        return handle_firmware_upload(req);
+    case URI_NEXTION_UPLOAD:
+        return handle_nextion_upload(req);
+    case URI_RESTART:
+        return handle_void_request(req, schedule_restart);
+    case URI_TIME:
+        return handle_json_request(req, http_json_set_time);
+    case URI_CREDENTIALS:
+        return handle_json_request(req, http_json_set_credentials);
+    default:
+        return handle_not_found(req);
     }
 }
 
 static esp_err_t delete_handler(httpd_req_t* req)
 {
-    if (http_authorize_req(req)) {
-        switch (get_uri(req->uri)) {
-        case URI_LOG_PANIC:
-            return handle_void_request(req, logger_clear_panic);
-        default:
-            return handle_not_found(req);
-        }
-    } else {
+    if (!http_authorize_req(req)) {
         return ESP_FAIL;
+    }
+
+    switch (get_uri(req->uri)) {
+    case URI_LOG_PANIC:
+        return handle_void_request(req, logger_clear_panic);
+    default:
+        return handle_not_found(req);
     }
 }
 

@@ -90,46 +90,46 @@ static size_t web_archive_find(const char* name, char** content)
 
 static esp_err_t get_handler(httpd_req_t* req)
 {
-    if (http_authorize_req(req)) {
-        char file_name[CONFIG_HTTPD_MAX_URI_LEN];
-        strlcpy(file_name, req->uri + 1, sizeof(file_name));
-        char* file_suffix = strrchr(file_name, '.');
-        strcat(file_name, ".gz");
-
-        char* file_data;
-        uint32_t file_size = web_archive_find(file_name, &file_data);
-        if (file_size == 0) {
-            // fallback to index.html
-            file_size = web_archive_find("index.html.gz", &file_data);
-            file_suffix = ".html.gz";
-        }
-
-        if (file_size > 0) {
-            if (strcmp(file_suffix, ".html.gz") == 0) {
-                httpd_resp_set_type(req, "text/html");
-            } else if (strcmp(file_suffix, ".css.gz") == 0) {
-                httpd_resp_set_type(req, "text/css");
-            } else if (strcmp(file_suffix, ".js.gz") == 0) {
-                httpd_resp_set_type(req, "application/javascript");
-            } else if (strcmp(file_suffix, ".json.gz") == 0) {
-                httpd_resp_set_type(req, "application/json");
-            } else if (strcmp(file_suffix, ".svg.gz") == 0) {
-                httpd_resp_set_type(req, "application/svg+xml");
-            } else if (strcmp(file_suffix, ".ico.gz") == 0) {
-                httpd_resp_set_type(req, "image/x-icon");
-            }
-
-            httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-            httpd_resp_send(req, file_data, file_size);
-        } else {
-            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
-            return ESP_FAIL;
-        }
-
-        return ESP_OK;
-    } else {
+    if (!http_authorize_req(req)) {
         return ESP_FAIL;
     }
+
+    char file_name[CONFIG_HTTPD_MAX_URI_LEN];
+    strlcpy(file_name, req->uri + 1, sizeof(file_name));
+    char* file_suffix = strrchr(file_name, '.');
+    strcat(file_name, ".gz");
+
+    char* file_data;
+    uint32_t file_size = web_archive_find(file_name, &file_data);
+    if (file_size == 0) {
+        // fallback to index.html
+        file_size = web_archive_find("index.html.gz", &file_data);
+        file_suffix = ".html.gz";
+    }
+
+    if (file_size > 0) {
+        if (strcmp(file_suffix, ".html.gz") == 0) {
+            httpd_resp_set_type(req, "text/html");
+        } else if (strcmp(file_suffix, ".css.gz") == 0) {
+            httpd_resp_set_type(req, "text/css");
+        } else if (strcmp(file_suffix, ".js.gz") == 0) {
+            httpd_resp_set_type(req, "application/javascript");
+        } else if (strcmp(file_suffix, ".json.gz") == 0) {
+            httpd_resp_set_type(req, "application/json");
+        } else if (strcmp(file_suffix, ".svg.gz") == 0) {
+            httpd_resp_set_type(req, "application/svg+xml");
+        } else if (strcmp(file_suffix, ".ico.gz") == 0) {
+            httpd_resp_set_type(req, "image/x-icon");
+        }
+
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        httpd_resp_send(req, file_data, file_size);
+    } else {
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, NULL);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
 }
 
 size_t http_web_handlers_count(void)

@@ -199,6 +199,10 @@ static void send_redirect_append_slash(httpd_req_t* req)
 
 static esp_err_t options_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     ESP_LOGD(TAG, "Options: %s", path);
@@ -225,6 +229,10 @@ static esp_err_t options_handler(httpd_req_t* req)
 
 static esp_err_t propfind_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     ESP_LOGD(TAG, "Propfind: %s", path);
@@ -294,6 +302,10 @@ static esp_err_t propfind_handler(httpd_req_t* req)
 
 static esp_err_t get_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     ESP_LOGD(TAG, "Get: %s", path);
@@ -333,6 +345,10 @@ static esp_err_t get_handler(httpd_req_t* req)
 
 static esp_err_t put_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     ESP_LOGD(TAG, "Put: %s", path);
@@ -380,6 +396,10 @@ static esp_err_t put_handler(httpd_req_t* req)
 
 static esp_err_t mkcol_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     char path[FILE_PATH_MAX];
     strcpy(path, req->uri + DAV_BASE_PATH_LEN);
 
@@ -413,6 +433,10 @@ static esp_err_t mkcol_handler(httpd_req_t* req)
 
 static esp_err_t delete_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     ESP_LOGD(TAG, "Delete: %s", path);
@@ -428,6 +452,10 @@ static esp_err_t delete_handler(httpd_req_t* req)
 
 static esp_err_t move_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     char dest[FILE_PATH_MAX];
@@ -447,6 +475,10 @@ static esp_err_t move_handler(httpd_req_t* req)
 
 static esp_err_t copy_handler(httpd_req_t* req)
 {
+    if (!http_authorize_req(req)) {
+        return ESP_FAIL;
+    }
+
     const char* path = req->uri + DAV_BASE_PATH_LEN;
 
     char dest[FILE_PATH_MAX];
