@@ -27,6 +27,13 @@
 #define TEMP_THRESHOLD_MIN       40
 #define TEMP_THRESHOLD_MAX       80
 
+// Number of consecutive evse_process() samples a new pilot voltage must hold
+// before the state machine acts on it. Debounces a noisy CP line (which can
+// otherwise flap A<->B1 with no cable connected). At the ~50ms process cadence
+// this is roughly PILOT_STABLE_SAMPLES*50ms of added latency on state changes
+// (including disconnect detection during charging); lower to 2 if faster.
+#define PILOT_STABLE_SAMPLES 3
+
 #define NVS_NAMESPACE                   "evse"
 #define NVS_MAX_CHARGING_CURRENT        "max_chrg_curr"
 #define NVS_DEFAULT_CHARGING_CURRENT    "def_chrg_curr"
@@ -317,6 +324,32 @@ void evse_process(void)
     pilot_voltage_t pilot_voltage;
     bool pilot_down_voltage_n12;
     pilot_measure(&pilot_voltage, &pilot_down_voltage_n12);
+
+    // Debounce the pilot voltage so a single noisy sample can't flap the state
+    // machine (A<->B1 with no cable), which would hammer the relay / energy
+    // meter / LED. A changed reading must persist PILOT_STABLE_SAMPLES times in
+    // a row before the state machine below sees it. (pilot_down_voltage_n12,
+    // used for the diode-short check, is intentionally left on the raw reading.)
+    {
+        static pilot_voltage_t stable_voltage = PILOT_VOLTAGE_12;
+        static pilot_voltage_t prev_raw = PILOT_VOLTAGE_12;
+        static uint8_t stable_count = 0;
+
+        if (pilot_voltage == prev_raw) {
+            if (stable_count < PILOT_STABLE_SAMPLES) {
+                stable_count++;
+            }
+        } else {
+            prev_raw = pilot_voltage;
+            stable_count = 1;
+        }
+
+        if (stable_count >= PILOT_STABLE_SAMPLES) {
+            stable_voltage = pilot_voltage;
+        }
+
+        pilot_voltage = stable_voltage;
+    }
 
     if (is_expired(&error_wait_to)) {
         clear_error_bits(EVSE_ERR_AUTO_CLEAR_BITS);
