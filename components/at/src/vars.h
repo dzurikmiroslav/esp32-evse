@@ -90,4 +90,6 @@ extern char var_str32_2[32];
 extern char var_str32_3[32];
 extern char var_str32_4[32];
 
+extern char var_str64_1[64];
+
 #endif /* VARS_H_ */

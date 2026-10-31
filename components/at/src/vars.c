@@ -22,3 +22,5 @@ char var_str32_1[32];
 char var_str32_2[32];
 char var_str32_3[32];
 char var_str32_4[32];
+
+char var_str64_1[64];

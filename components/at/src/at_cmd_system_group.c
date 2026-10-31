@@ -2,6 +2,7 @@
 #include <esp_ota_ops.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
@@ -200,16 +201,19 @@ static struct cat_variable vars_tz[] = {
 
 static int var_tzrule_read(const struct cat_variable* var)
 {
-    strlcpy(var_str32_1, getenv("TZ"), sizeof(var_str32_1));
+    // TZ is unset when the stored timezone is not in tz_data, report an empty rule then
+    const char* tz = getenv("TZ");
+    strlcpy(var_str64_1, tz != NULL ? tz : "", sizeof(var_str64_1));
 
     return 0;
 }
 
+// POSIX rules can be longer than 31 characters (Pacific/Chatham is 44)
 static struct cat_variable vars_tzrule[] = {
     {
         .type = CAT_VAR_BUF_STRING,
-        .data = var_str32_1,
-        .data_size = sizeof(var_str32_1),
+        .data = var_str64_1,
+        .data_size = sizeof(var_str64_1),
         .access = CAT_VAR_ACCESS_READ_ONLY,
         .read = var_tzrule_read,
     },
