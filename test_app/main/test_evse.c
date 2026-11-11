@@ -793,6 +793,218 @@ TEST(evse, under_power_limit)
     TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
     TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
     TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    /**
+     * Limit stays reached, even when it's disabled
+     * C1
+     */
+    evse_set_under_power_limit(0);
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_TRUE(evse_is_limit_reached());
+
+    /**
+     * EV disconnect, limit is cleared
+     * C1 -> A
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_12;
+    pilot_mock_down_voltage_n12 = false;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_A, evse_get_state());
+    TEST_ASSERT_FALSE(evse_is_limit_reached());
+}
+
+TEST(evse, under_power_limit_never_above)
+{
+    uint16_t limit = 10000;  // 10kW (in W)
+    evse_set_under_power_limit(limit);
+
+    /**
+     * EV connect
+     * A -> B2
+     */
+    ev_connect_sequence();
+
+    /**
+     * EV require charging
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    pilot_mock_down_voltage_n12 = true;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * EV charge under the limit from the start, limit not applied
+     * C2
+     */
+    energy_meter_mock_power = limit - 10;
+    evse_process();
+
+    vTaskStepTick(pdMS_TO_TICKS(61000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    vTaskStepTick(pdMS_TO_TICKS(61000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_FALSE(evse_is_limit_reached());
+}
+
+TEST(evse, under_power_limit_resume)
+{
+    uint16_t limit = 10000;  // 10kW (in W)
+    evse_set_under_power_limit(limit);
+
+    /**
+     * EV connect
+     * A -> B2
+     */
+    ev_connect_sequence();
+
+    /**
+     * EV require charging, power above the limit
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    pilot_mock_down_voltage_n12 = true;
+    evse_process();
+
+    energy_meter_mock_power = limit + 10;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * EV pause charging
+     * C2 -> B2
+     */
+    energy_meter_mock_power = 0;
+    pilot_mock_up_voltage = PILOT_VOLTAGE_9;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_B2, evse_get_state());
+
+    vTaskStepTick(pdMS_TO_TICKS(61000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_B2, evse_get_state());
+
+    /**
+     * EV resume charging, power under the limit, timer start from zero
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_PWM, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+
+    vTaskStepTick(pdMS_TO_TICKS(59000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * After 1min under the limit since resume react
+     * C2 -> C1
+     */
+    vTaskStepTick(pdMS_TO_TICKS(2000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
+}
+
+TEST(evse, under_power_limit_change)
+{
+    uint16_t limit = 10000;  // 10kW (in W)
+    evse_set_under_power_limit(limit);
+
+    /**
+     * EV connect
+     * A -> B2
+     */
+    ev_connect_sequence();
+
+    /**
+     * EV require charging, power under the limit
+     * B2 -> C2
+     */
+    pilot_mock_up_voltage = PILOT_VOLTAGE_6;
+    pilot_mock_down_voltage_n12 = true;
+    evse_process();
+
+    energy_meter_mock_power = 8000;
+    evse_process();
+
+    vTaskStepTick(pdMS_TO_TICKS(61000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * Decrease limit under the session max power, power drop under the limit
+     * C2
+     */
+    evse_set_under_power_limit(5000);
+    evse_process();
+
+    energy_meter_mock_power = 4000;
+    evse_process();
+
+    vTaskStepTick(pdMS_TO_TICKS(59000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * Increase limit above the session max power, limit not applied
+     * C2
+     */
+    evse_set_under_power_limit(9000);
+    evse_process();
+
+    vTaskStepTick(pdMS_TO_TICKS(61000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * Decrease limit under the session max power again, timer start from zero
+     * C2
+     */
+    evse_set_under_power_limit(5000);
+    evse_process();
+
+    vTaskStepTick(pdMS_TO_TICKS(59000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C2, evse_get_state());
+
+    /**
+     * After 1min react
+     * C2 -> C1
+     */
+    vTaskStepTick(pdMS_TO_TICKS(2000));
+    evse_process();
+
+    TEST_ASSERT_EQUAL(EVSE_STATE_C1, evse_get_state());
+    TEST_ASSERT_EQUAL(PILOT_MOCK_STATE_HIGH, pilot_mock_state);
+    TEST_ASSERT_TRUE(ac_relay_mock_state);
 }
 
 TEST_GROUP_RUNNER(evse)
@@ -809,4 +1021,7 @@ TEST_GROUP_RUNNER(evse)
     RUN_TEST_CASE(evse, charging_time_limit);
     RUN_TEST_CASE(evse, consumption_limit);
     RUN_TEST_CASE(evse, under_power_limit);
+    RUN_TEST_CASE(evse, under_power_limit_never_above);
+    RUN_TEST_CASE(evse, under_power_limit_resume);
+    RUN_TEST_CASE(evse, under_power_limit_change);
 }
