@@ -86,6 +86,8 @@ static TickType_t error_wait_to = 0;
 
 static TickType_t under_power_start_time = 0;
 
+static uint16_t session_max_power = 0;
+
 static TickType_t c1_d1_ac_relay_wait_to = 0;
 
 static uint8_t max_charging_current = 32;
@@ -194,6 +196,7 @@ static void enter_new_state(evse_state_t state_to_enter)
         authorized = false;
         reached_limit = 0;
         under_power_start_time = 0;
+        session_max_power = 0;
         rcm_selftest = false;
         energy_meter_stop_session();
         break;
@@ -257,7 +260,14 @@ static void check_charging_limits()
 
     // check under power limit
     if (evse_state_is_charging(state)) {
-        if (under_power_limit > 0 && energy_meter_get_power() < under_power_limit) {
+        uint16_t power = energy_meter_get_power();
+        if (power > session_max_power) {
+            session_max_power = power;
+        }
+
+        // armed only when the power was at or above the limit at least once in this session,
+        // the session max power is compared with the current limit, so the limit can be changed during the session
+        if (under_power_limit > 0 && session_max_power >= under_power_limit && power < under_power_limit) {
             if (under_power_start_time == 0) {
                 under_power_start_time = xTaskGetTickCount();
             }
@@ -270,6 +280,9 @@ static void check_charging_limits()
         } else {
             reached_limit &= ~LIMIT_UNDER_POWER_BIT;
         }
+    } else {
+        // not charging, the time under the limit is counted again from zero when charging starts or resumes
+        under_power_start_time = 0;
     }
 }
 
@@ -546,6 +559,7 @@ void evse_reset(void)
     auth_grant_to = 0;
     error_wait_to = 0;
     under_power_start_time = 0;
+    session_max_power = 0;
     c1_d1_ac_relay_wait_to = 0;
     cable_max_current = 63;
     pilot_state = PILOT_STATE_12V;

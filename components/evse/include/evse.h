@@ -272,7 +272,12 @@ uint16_t evse_get_under_power_limit(void);
 /**
  * @brief Set under power limit
  *
- * @param under_power_limit power in W
+ * Charging stops when the power stays under the limit for 1 minute while charging.
+ * Only applies after the power has been at or above the limit at least once in the session,
+ * the 1 minute is counted from zero each time charging starts or resumes.
+ * Once reached, the limit stays reached until the EV is disconnected.
+ *
+ * @param under_power_limit power in W, 0 disables the limit
  */
 void evse_set_under_power_limit(uint16_t under_power_limit);
 
